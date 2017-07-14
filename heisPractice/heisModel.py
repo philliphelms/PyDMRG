@@ -15,9 +15,9 @@ class heis_mpo:
         self.M = []
         for cnt in range(self.nsite):
             if cnt < nsite/2:
-                self.M.append(np.zeros([2,self.d**cnt,self.d**(cnt+1)]))
+                self.M.append(np.zeros([2,self.d**cnt,self.d**(cnt+1)],dtype=np.complex128))
             else:
-                self.M.append(np.zeros([2,self.d**(self.nsite-cnt),self.d**(self.nsite-cnt-1)]))
+                self.M.append(np.zeros([2,self.d**(self.nsite-cnt),self.d**(self.nsite-cnt-1)],dtype=np.complex128))
             self.M[cnt][:,0,0] = 1
         # Construct L and R arrays, or left and right blocks in DMRG parlance
         self.R = [None]*(self.nsite+1)
@@ -73,11 +73,13 @@ class heis_mpo:
                 v = v[:,w.argsort()]
                 self.shape_m(l,v[:,0])
                 # Left-normalize M into A by SVD
-                (U,S,V) = np.linalg.svd(self.M[l].reshape(-1,self.M[l][0,0,:].size))
-                self.M[l][0,:,:] = U[0,:]
-                self.M[l][1,:,:] = U[1,:]
+                (U,S,V) = np.linalg.svd(self.M[l][0])
+                self.M[l][0] = U
+                self.M[l+1][0] = np.einsum('i,ij,jk->ik',S,V,self.M[l+1][0])
+                (U,S,V) = np.linalg.svd(self.M[l][0])
+                self.M[l][1] = U
+                self.M[l+1][1] = np.einsum('i,ij,jk->ik',S,V,self.M[l+1][1])
                 # Multiply remaining SVD Matrices into M(l+1)
-                self.M[l+1] = np.einsum('i,ij,ljk->lik',S,V,self.M[l+1])
                 # Build the L expression by adding one more site
                 if l == 0:
                     self.L[l+1] = np.einsum('ijo,ink,km,jpm->nop',self.Wint[:,:,-1,:],self.M[l+1],self.L[l],self.M[l+1])
