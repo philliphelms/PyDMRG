@@ -88,11 +88,17 @@ class HeisMPS:
         for i in range(self.d):
             self.M[i][site] = v[i,:,:]
 
-    def make_m_2d(self,site):
+    def make_m_2d(self,site,sweep_dir):
         # 
         (aim,ai) = self.M[0][site].shape
         m_3d = np.dstack((self.M[0][site],self.M[1][site])).transpose()
-        return m_3d.reshape(self.d*aim,ai)
+        if sweep_dir is 'R':
+            return m_3d.reshape(self.d*aim,ai)
+        elif sweep_dir is 'L':
+            return m_3d.reshape(aim,self.d*ai)
+        else:
+            raise ValueError('Sweep Direction must be L or R')
+
 
     def convert_u2a(self,site,U):
         (aim,ai) = self.M[0][site].shape
@@ -101,7 +107,7 @@ class HeisMPS:
             self.M[i][site] = u_3d[i,:,:]
 
     def update_L(self,site):
-        # Update L array associated with the partition occuring at site+1
+        # Update L array associated with the partition occuring at site
         for i in range(self.d):
              for j in range(self.d):
                 if i+j == 0:
@@ -112,6 +118,16 @@ class HeisMPS:
             self.L.insert(len(self.L),tmp_array)
         else:
             self.L[site+1] = tmp_array
+
+    def update_R(self,site):
+        # Update R-expression associated with the partition occuring at site
+        for i in range(self.d):
+            for j in range(self.d):
+                if i+j == 0:
+                    tmp_array = np.einsum('->',self.M[i][site],self.W(site)[:,:,i,j],self.M[j][site],self.R[site])
+                else:
+                    tmp_array += np.einsum('->',self.M[i][site],self.W(site)[:,:,i,j],self.M[j][site],self.R[site])
+        self.R[site] = tmp_array
 
     def calc_ground_state(self):
         # Run the DMRG optimization to calculate the system's ground state
@@ -134,7 +150,7 @@ class HeisMPS:
                 v = v[:,w.argsort()]
                 self.shape_m(i,v[:,0])
                 # Left-normalize and distribute matrices
-                (U,S,V) = np.linalg.svd(self.make_m_2d(i),full_matrices=0)
+                (U,S,V) = np.linalg.svd(self.make_m_2d(i,'R'),full_matrices=0)
                 self.convert_u2a(i,U)
                 for j in range(self.d):
                     self.M[j][i+1] = np.einsum('i,ij,jk->ik',S,V,self.M[j][i+1])
@@ -145,18 +161,26 @@ class HeisMPS:
             for i in range(self.nsite-1,0,-1):
                 print('\t\tSite {}'.format(i))
                 # Solve eigenvalue problem
-                H = np.einsum('ijk,lmno,pmq->nipokq',self.L[i],self.W(i),self.R[i+1]) # Indices may be incorrect
+                H = np.einsum('ijk,lmno,pmq->nipokq',self.L[i],self.W(i),self.R[i+1]) # Indices should be correct
                 H = self.reshape_hamiltonian(H)
                 w,v = np.linalg.eig(H)
                 w = np.sort(w)
                 v= v[:,w.argsort()]
-                # Left-normalize and distribute matrices
+                self.shape_m(i,v[:,0])
+                # Right-normalize and distribute matrices
+                (U,S,V) = np.linalg.svd(self.make_m_2d(i,'L'),full_matrices=0)
+                self.convert_u2a(i,V)
+                for j in range(self.d):
+                    self.M[j][i] = np.einsum('i,ij,jk->ik',S,U,self.M[j][i])
+                # Update R-expression
+                self.update_R(i)
             print('\tResulting Energy:\t')
             # Check for Convergence #################################
             if sweep_cnt == 3:
                 converged = True
                 print('Energy Converged at:\t')
             sweep_cnt += 1
+
 if __name__ == "__main__":
     x = HeisMPS(6)
     x.calc_ground_state()
