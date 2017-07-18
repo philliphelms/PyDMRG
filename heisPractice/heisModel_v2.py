@@ -50,9 +50,9 @@ class HeisMPS:
         # Simple function that acts as an index for the MPO matrices W. 
         # Returns correct vectors for first and last site and the full matrix for all intermediate sites
         if ind == 0:
-            return self.w_arr[-1,:]
+            return np.array([self.w_arr[-1,:]])
         elif ind == self.nsite-1:
-            return self.w_arr[:,0]
+            return np.array([self.w_arr[:,0]])
         else:
             return self.w_arr
 
@@ -67,12 +67,7 @@ class HeisMPS:
         for out_cnt in range(self.nsite)[::-1]:
             for i in range(self.d):
                 for j in range(self.d):
-                    if out_cnt == self.nsite-1:
-                        if i+j == 0:
-                            tmp_array = np.einsum('ji,k,mn,iln->jkm',self.M[i][out_cnt],self.W(out_cnt)[:,i,j],self.M[j][out_cnt],self.R[0])
-                        else:
-                            tmp_array += np.einsum('ji,k,mn,iln->jkm',self.M[i][out_cnt],self.W(out_cnt)[:,i,j],self.M[j][out_cnt],self.R[0])
-                    elif out_cnt == 0: 
+                    if out_cnt == 0: 
                         tmp_array = np.array([[[1]]])
                     else:
                         if i+j == 0:
@@ -106,19 +101,13 @@ class HeisMPS:
             self.M[i][site] = u_3d[i,:,:]
 
     def update_L(self,site):
-        # Update L matrix associated with site
+        # Update L array associated with the partition occuring at site+1
         for i in range(self.d):
              for j in range(self.d):
-                if site == self.nsite:
-                    if i+j == 0:
-                        tmp_array = np.einsum('ji,l,mn,jlm->ikn',self.M[i][site+1],self.W(site+1)[:,i,j],self.M[j][site+1],self.L[site])
-                    else:
-                        tmp_array += np.einsum('ji,l,mn,jlm->ikn',self.M[i][site+1],self.W(site+1)[:,i,j],self.M[j][site+1],self.L[site])
+                if i+j == 0:
+                    tmp_array = np.einsum('ji,kl,mn,jlm->ikn',self.M[i][site],self.W(site)[:,:,i,j],self.M[j][site],self.L[site])
                 else:
-                    if i+j == 0:
-                        tmp_array = np.einsum('ji,kl,mn,jlm->ikn',self.M[i][site+1],self.W(site+1)[:,:,i,j],self.M[j][site+1],self.L[site])
-                    else:
-                        tmp_array += np.einsum('ji,kl,mn,jlm->ikn',self.M[i][site+1],self.W(site+1)[:,:,i,j],self.M[j][site+1],self.L[site])
+                    tmp_array += np.einsum('ji,kl,mn,jlm->ikn',self.M[i][site],self.W(site)[:,:,i,j],self.M[j][site],self.L[site])
         if len(self.L) <= site+1:
             self.L.insert(len(self.L),tmp_array)
         else:
@@ -134,17 +123,14 @@ class HeisMPS:
             # Sweep Right ###########################################
             for i in range(self.nsite-1):
                 # Solve eigenvalue problem
-                if i == 0:
-                    H = np.einsum('ijk,mno,pmq->nipokq',self.L[i],self.W(i),self.R[i+1])
-                else:
-                    H = np.einsum('ijk,lmno,pmq->nipokq',self.L[i],self.W(i),self.R[i+1])
+                H = np.einsum('ijk,lmno,pmq->nipokq',self.L[i],self.W(i),self.R[i+1])
                 H = self.reshape_hamiltonian(H)
                 w,v = np.linalg.eig(H)
                 w = np.sort(w)
                 v = v[:,w.argsort()]
                 self.shape_m(i,v[:,0])
                 # Left-normalize and distribute matrices
-                (U,S,V) = np.linalg.svd(self.make_m_2d(i))
+                (U,S,V) = np.linalg.svd(self.make_m_2d(i),full_matrices=0)
                 self.convert_u2a(i,U)
                 for j in range(self.d):
                     self.M[j][i+1] = np.einsum('i,ij,jk->ik',S,V,self.M[j][i+1])
