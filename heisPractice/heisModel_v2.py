@@ -119,9 +119,13 @@ class HeisMPS:
         self.create_initial_guess()
         self.calc_all_lr()
         converged = False
+        sweep_cnt = 0
         while not converged:
+            print('Beginning Sweep Set {}'.format(sweep_cnt))
             # Sweep Right ###########################################
+            print('\tRight Sweep')
             for i in range(self.nsite-1):
+                print('\t\tSite {}'.format(i))
                 # Solve eigenvalue problem
                 H = np.einsum('ijk,lmno,pmq->nipokq',self.L[i],self.W(i),self.R[i+1])
                 H = self.reshape_hamiltonian(H)
@@ -136,16 +140,23 @@ class HeisMPS:
                     self.M[j][i+1] = np.einsum('i,ij,jk->ik',S,V,self.M[j][i+1])
                 # Update L-expression
                 self.update_L(i)
-                print(i)
-            # Sweep Left ############################################
-            for i in range(self.nsite-1,1,-1):
+            # Sweep Left 
+            print('\tLeft Sweep')
+            for i in range(self.nsite-1,0,-1):
+                print('\t\tSite {}'.format(i))
                 # Solve eigenvalue problem
+                H = np.einsum('ijk,lmno,pmq->nipokq',self.L[i],self.W(i),self.R[i+1]) # Indices may be incorrect
+                H = self.reshape_hamiltonian(H)
+                w,v = np.linalg.eig(H)
+                w = np.sort(w)
+                v= v[:,w.argsort()]
                 # Left-normalize and distribute matrices
-                print(i)
+            print('\tResulting Energy:\t')
             # Check for Convergence #################################
-
-            converged = True
-
+            if sweep_cnt == 3:
+                converged = True
+                print('Energy Converged at:\t')
+            sweep_cnt += 1
 if __name__ == "__main__":
     x = HeisMPS(6)
     x.calc_ground_state()
