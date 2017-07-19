@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 class HeisMPS:
     def __init__(self,nsite):
@@ -7,6 +8,11 @@ class HeisMPS:
         self.d = 2 # Dimension of local state space
         self.h = 1 # First interaction parameter
         self.J = 1 # Second interaction parameter
+        # Optimization Parameters ######################
+        self.tol = 1e-5 # Optimization Tolerance
+        self.plot_option = True # Not Operational
+        self.plot_cnt = 0 # Count plot updates
+        self.max_iter = 100 # Maximum number of iterations
         # Store MPO ####################################
         # Key Matrices
         s_hat = np.array([[[0,1],  [1,0]],
@@ -20,7 +26,9 @@ class HeisMPS:
                               [s_hat[1,:,:],         zero_mat,               zero_mat,               zero_mat,               zero_mat],
                               [s_hat[2,:,:],         zero_mat,               zero_mat,               zero_mat,               zero_mat],
                               [-self.h*s_hat[0,:,:], -self.J/2*s_hat[0,:,:], -self.J/2*s_hat[1,:,:], -self.J/2*s_hat[2,:,:], I       ]])
-        
+        # Construct container for resulting energies
+        self.E = np.zeros(nsite)
+    
     def create_initial_guess(self):
         # Function to create a Right-Canonical MPS as the initial guess
         # Follows the procedure and notation carried out in section 4.1.3.ii of Schollwock (2011)
@@ -124,10 +132,36 @@ class HeisMPS:
         for i in range(self.d):
             for j in range(self.d):
                 if i+j == 0:
-                    tmp_array = np.einsum('->',self.M[i][site],self.W(site)[:,:,i,j],self.M[j][site],self.R[site])
+                    tmp_array = np.einsum('ji,kl,mn,iln->jkm',self.M[i][site],self.W(site)[:,:,i,j],self.M[j][site],self.R[site+1])
                 else:
-                    tmp_array += np.einsum('->',self.M[i][site],self.W(site)[:,:,i,j],self.M[j][site],self.R[site])
+                    tmp_array += np.einsum('ji,kl,mn,iln->jkm',self.M[i][site],self.W(site)[:,:,i,j],self.M[j][site],self.R[site+1])
         self.R[site] = tmp_array
+
+    def eval_energy(self):
+        totalE = 0
+        for i in range(len(self.E)):
+            totalE += self.E[i]
+        return -totalE
+
+    def update_plot(self,new_entry):
+        if self.plot_option:
+            if self.plot_cnt == 0:
+                plt.style.use('ggplot')
+                plt.ion()
+                self.fig = plt.figure()
+                self.ax = self.fig.add_subplot(111)
+                self.conv_xdat = [self.plot_cnt]
+                self.conv_ydat = [new_entry]
+                self.ax.plot(self.conv_xdat,self.conv_ydat,'b-')
+                plt.xlabel('Iteration')
+                plt.ylabel('Energy')
+                self.fig.canvas.draw()
+            else:
+                self.conv_xdat.insert(len(self.conv_xdat),self.plot_cnt)
+                self.conv_ydat.insert(len(self.conv_ydat),new_entry)
+                self.ax.plot(self.conv_xdat,self.conv_ydat,'b-')
+                self.fig.canvas.draw()
+            self.plot_cnt += 1
 
     def calc_ground_state(self):
         # Run the DMRG optimization to calculate the system's ground state
@@ -136,6 +170,7 @@ class HeisMPS:
         self.calc_all_lr()
         converged = False
         sweep_cnt = 0
+        currE = 0
         while not converged:
             print('Beginning Sweep Set {}'.format(sweep_cnt))
             # Sweep Right ###########################################
@@ -156,6 +191,8 @@ class HeisMPS:
                     self.M[j][i+1] = np.einsum('i,ij,jk->ik',S,V,self.M[j][i+1])
                 # Update L-expression
                 self.update_L(i)
+                # Save Resulting energies
+                self.E[i] = w[0]
             # Sweep Left 
             print('\tLeft Sweep')
             for i in range(self.nsite-1,0,-1):
@@ -174,11 +211,19 @@ class HeisMPS:
                     self.M[j][i] = np.einsum('i,ij,jk->ik',S,U,self.M[j][i])
                 # Update R-expression
                 self.update_R(i)
-            print('\tResulting Energy:\t')
+                # Save Resulting Energies
+                self.E[i] = w[0]
             # Check for Convergence #################################
-            if sweep_cnt == 3:
+            prevE = currE
+            currE = self.eval_energy()
+            print('\tResulting Energy:\t{}'.format(currE))
+            self.update_plot(currE)
+            if np.abs(prevE-currE) < self.tol:
                 converged = True
-                print('Energy Converged at:\t')
+                print('Energy Converged at:\t{}'.format(currE))
+            elif sweep_cnt > self.max_iter:
+                converged = True
+                print('Maximum number of iterations exceeded before convergence')
             sweep_cnt += 1
 
 if __name__ == "__main__":
