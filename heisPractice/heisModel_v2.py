@@ -9,6 +9,7 @@ class HeisMPS:
         self.h = 1 # First interaction parameter
         self.J = 1 # Second interaction parameter
         # Optimization Parameters ######################
+        self.init_guess_type = 'rand' # 'rand' or 'hf'
         self.tol = 1e-5 # Optimization Tolerance
         self.plot_option = True # Not Operational
         self.plot_cnt = 0 # Count plot updates
@@ -35,8 +36,13 @@ class HeisMPS:
         L = self.nsite
         for i in range(L):
             if i == 0:
-                psi = np.zeros([self.d**(L-1),self.d])
-                psi[0,0] = 1
+                if self.init_guess_type is 'rand':
+                    psi = np.random.rand(self.d**(L-1),self.d)
+                elif self.init_guess_type is 'hf':
+                    psi = np.zeros([self.d**(L-1),self.d])
+                    psi[0,0] = 1
+                else:
+                    raise ValueError('Indicated initial guess type is not available')
                 B = [[] for x in range(self.d)]
                 a_prev = 1
             else:
@@ -107,7 +113,6 @@ class HeisMPS:
         else:
             raise ValueError('Sweep Direction must be L or R')
 
-
     def convert_u2a(self,site,U):
         (aim,ai) = self.M[0][site].shape
         u_3d = U.reshape(self.d,aim,ai)
@@ -162,6 +167,105 @@ class HeisMPS:
                 self.ax.plot(self.conv_xdat,self.conv_ydat,'b-')
                 self.fig.canvas.draw()
             self.plot_cnt += 1
+    
+    
+    def create_all_occ_strs_a(self,final_site,curr_str):
+        if len(curr_str) == final_site:
+            if self.occ_strs_a is None:
+                self.occ_strs_a = np.array([curr_str])
+            else:
+                self.occ_strs_a = np.append(self.occ_strs_a,np.array([curr_str]),axis=0)
+        else:
+            for i in range(self.d):
+                self.create_all_occ_strs_a(final_site,np.append(curr_str,[i]))
+
+    def create_all_occ_strs_b(self,final_site,curr_str):
+        if len(curr_str) == final_site:
+            if self.occ_strs_b is None:
+                self.occ_strs_b = np.array([curr_str])
+            else:
+                self.occ_strs_b = np.append(self.occ_strs_b,np.array([curr_str]),axis=0)
+        else:
+            for i in range(self.d):
+                self.create_all_occ_strs_b(final_site,np.append(curr_str,[i]))
+
+    def psi_a_multiply_m(self,curr_site,final_site,current_result,first_iter,occ_str_ind,direction):
+        if curr_site == final_site and not first_iter:
+            return current_result
+        else:
+            d_val = self.occ_strs_a[occ_str_ind,curr_site]
+            if direction is 'd':
+                current_result = np.einsum('ij,jk->ik',current_result,np.transpose(self.M[int(d_val)][curr_site]))
+            else:
+                current_result = np.einsum('ij,jk->ik',current_result,self.M[int(d_val)][curr_site])
+            if direction is 'd':
+                if curr_site == 0:
+                    next_site = 0
+                    direction = 'u'
+                else:
+                    curr_site -= 1
+            else:
+                curr_site += 1
+            return self.psi_a_multiply_m(curr_site,final_site,current_result,False,occ_str_ind,direction)
+
+    def psi_b_multiply_m(self,curr_site,final_site,current_result,first_iter,occ_str_ind,direction,site):
+        print('{},{}'.format(curr_site,final_site))
+        if curr_site == final_site and not first_iter:
+            return current_result
+        else:
+            d_val = self.occ_strs_b[occ_str_ind,curr_site+site]
+            if direction is 'u':
+                current_result = np.einsum('ij,jk->ik',current_result,self.M[int(d_val)][curr_site+site])
+            else:
+                current_result = np.einsum('ij,jk->ik',current_result,np.transpose(self.M[int(d_val)][curr_site+site]))
+            if direction is 'u':
+                if curr_site == self.nsite-1:
+                    next_site = curr_site
+                    direction = 'd'
+                else:
+                    curr_site += 1
+            else:
+                curr_site -= 1
+            return self.psi_b_multiply_m(curr_site,final_site,current_result,False,occ_str_ind,direction,site)
+
+    def calc_psi_a(self,site):
+        if site is 0:
+            return np.array([[1]])
+        # Create occupation strings
+        self.occ_strs_a = None
+        self.create_all_occ_strs_a(site-1,np.array([]))
+        ns,_ = self.occ_strs_a.shape
+        for i in range(ns):
+            if i == 0:
+                psi_a = self.psi_a_multiply_m(site-1,site-1,np.array([[1]]),True,i,'d')
+            else:
+                psi_a += self.psi_a_multiply_m(site-1,site-1,np.array([[1]]),True,i,'d')
+        return psi_a
+
+    def calc_psi_b(self,site):
+        if site is self.nsite-1:
+            return np.array([[1]])
+        self.occ_strs_b = None
+        self.create_all_occ_strs_b(self.nsite-site,np.array([]))
+        ns,_ = self.occ_strs_b.shape
+        for i in range(ns):
+            if i == 0:
+                psi_b = self.psi_b_multiply_m(site+1,site+1,np.array([[1]]),True,i,'u',site)
+            else:
+                psi_b += self.psi_b_multiply_m(site+1,site+1,np.array([[1]]),True,i,'u',site)
+        return psi_b
+
+    def calc_energy(self,site):
+        # Calculates the energy of a given state using the hamilonian operators
+        # Done according section 6 of Schollwock (2011)
+        psi_a = self.calc_psi_a(site)
+        psi_b = self.calc_psi_b(site)
+        # Calc E
+        for i in range(self.d):
+            for j in range(self.d):
+                numerator = np.einsum('ijk,lmjn,opn,oi,->',self.L[site],self.W[site],self.R[site+1],self.M[i][site],self.M[i][site])
+                denominator = np.einsum('->',)
+        return numerator/denominator
 
     def calc_ground_state(self):
         # Run the DMRG optimization to calculate the system's ground state
@@ -192,7 +296,7 @@ class HeisMPS:
                 # Update L-expression
                 self.update_L(i)
                 # Save Resulting energies
-                self.E[i] = w[0]
+                self.E[i] = self.calc_energy(i)
             # Sweep Left 
             print('\tLeft Sweep')
             for i in range(self.nsite-1,0,-1):
@@ -212,7 +316,7 @@ class HeisMPS:
                 # Update R-expression
                 self.update_R(i)
                 # Save Resulting Energies
-                self.E[i] = w[0]
+                self.E[i] = self.calc_energy(i)
             # Check for Convergence #################################
             prevE = currE
             currE = self.eval_energy()
