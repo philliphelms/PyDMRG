@@ -9,11 +9,11 @@ class HeisMPS:
         self.h = 1 # First interaction parameter
         self.J = 1 # Second interaction parameter
         # Optimization Parameters ######################
-        self.init_guess_type = 'rand' # 'rand' or 'hf'
-        self.tol = 1e-5 # Optimization Tolerance
-        self.plot_option = True # Not Operational
+        self.init_guess_type = 'hf' # 'rand' or 'hf'
+        self.tol = 1e-5 # Optimization tolerance
+        self.plot_option = True # Plot convergence
         self.plot_cnt = 0 # Count plot updates
-        self.max_iter = 100 # Maximum number of iterations
+        self.max_iter = 10 # Maximum number of iterations
         # Store MPO ####################################
         # Key Matrices
         s_hat = np.array([[[0,1],  [1,0]],
@@ -168,7 +168,6 @@ class HeisMPS:
                 self.fig.canvas.draw()
             self.plot_cnt += 1
     
-    
     def create_all_occ_strs_a(self,final_site,curr_str):
         if len(curr_str) == final_site:
             if self.occ_strs_a is None:
@@ -189,57 +188,34 @@ class HeisMPS:
             for i in range(self.d):
                 self.create_all_occ_strs_b(final_site,np.append(curr_str,[i]))
 
-    def psi_a_multiply_m(self,curr_site,final_site,current_result,first_iter,occ_str_ind,direction):
-        if curr_site == final_site and not first_iter:
+    def psi_a_multiply_m(self,curr_site,final_site,current_result,occ_str_ind):
+        d_val = self.occ_strs_a[occ_str_ind,curr_site]
+        current_result = np.einsum('ji,jj,jk->ik',self.M[int(d_val)][curr_site],current_result,self.M[int(d_val)][curr_site])
+        if curr_site == final_site:
             return current_result
         else:
-            d_val = self.occ_strs_a[occ_str_ind,curr_site]
-            if direction is 'd':
-                current_result = np.einsum('ij,jk->ik',current_result,np.transpose(self.M[int(d_val)][curr_site]))
-            else:
-                current_result = np.einsum('ij,jk->ik',current_result,self.M[int(d_val)][curr_site])
-            if direction is 'd':
-                if curr_site == 0:
-                    next_site = 0
-                    direction = 'u'
-                else:
-                    curr_site -= 1
-            else:
-                curr_site += 1
-            return self.psi_a_multiply_m(curr_site,final_site,current_result,False,occ_str_ind,direction)
+            return self.psi_a_multiply_m(curr_site+1,final_site,current_result,occ_str_ind)
 
-    def psi_b_multiply_m(self,curr_site,final_site,current_result,first_iter,occ_str_ind,direction,site):
-        print('{},{}'.format(curr_site,final_site))
-        if curr_site == final_site and not first_iter:
+    def psi_b_multiply_m(self,curr_site,final_site,current_result,occ_str_ind,site):
+        d_val = self.occ_strs_b[occ_str_ind,curr_site-site]
+        current_result = np.einsum('ij,jj,kj->ik',self.M[int(d_val)][curr_site],current_result,self.M[int(d_val)][curr_site])
+        if curr_site == final_site:
             return current_result
         else:
-            d_val = self.occ_strs_b[occ_str_ind,curr_site+site]
-            if direction is 'u':
-                current_result = np.einsum('ij,jk->ik',current_result,self.M[int(d_val)][curr_site+site])
-            else:
-                current_result = np.einsum('ij,jk->ik',current_result,np.transpose(self.M[int(d_val)][curr_site+site]))
-            if direction is 'u':
-                if curr_site == self.nsite-1:
-                    next_site = curr_site
-                    direction = 'd'
-                else:
-                    curr_site += 1
-            else:
-                curr_site -= 1
-            return self.psi_b_multiply_m(curr_site,final_site,current_result,False,occ_str_ind,direction,site)
+            return self.psi_b_multiply_m(curr_site-1,final_site,current_result,occ_str_ind,site)
 
     def calc_psi_a(self,site):
         if site is 0:
             return np.array([[1]])
         # Create occupation strings
         self.occ_strs_a = None
-        self.create_all_occ_strs_a(site-1,np.array([]))
+        self.create_all_occ_strs_a(site,np.array([]))
         ns,_ = self.occ_strs_a.shape
         for i in range(ns):
             if i == 0:
-                psi_a = self.psi_a_multiply_m(site-1,site-1,np.array([[1]]),True,i,'d')
+                psi_a = self.psi_a_multiply_m(0,site-1,np.array([[1]]),i)
             else:
-                psi_a += self.psi_a_multiply_m(site-1,site-1,np.array([[1]]),True,i,'d')
+                psi_a += self.psi_a_multiply_m(0,site-1,np.array([[1]]),i)
         return psi_a
 
     def calc_psi_b(self,site):
@@ -250,9 +226,9 @@ class HeisMPS:
         ns,_ = self.occ_strs_b.shape
         for i in range(ns):
             if i == 0:
-                psi_b = self.psi_b_multiply_m(site+1,site+1,np.array([[1]]),True,i,'u',site)
+                psi_b = self.psi_b_multiply_m(self.nsite-1,site+1,np.array([[1]]),i,site)
             else:
-                psi_b += self.psi_b_multiply_m(site+1,site+1,np.array([[1]]),True,i,'u',site)
+                psi_b += self.psi_b_multiply_m(self.nsite-1,site+1,np.array([[1]]),i,site)
         return psi_b
 
     def calc_energy(self,site):
@@ -263,8 +239,14 @@ class HeisMPS:
         # Calc E
         for i in range(self.d):
             for j in range(self.d):
-                numerator = np.einsum('ijk,lmjn,opn,oi,->',self.L[site],self.W[site],self.R[site+1],self.M[i][site],self.M[i][site])
-                denominator = np.einsum('->',)
+                if i+j == 0:
+                    numerator = np.einsum('ijk,jl,olp,io,kp->',self.L[site],self.W(site)[:,:,i,j],self.R[site+1],np.conjugate(self.M[i][site]),self.M[i][site])
+                else: 
+                    numerator += np.einsum('ijk,jl,olp,io,kp->',self.L[site],self.W(site)[:,:,i,j],self.R[site+1],np.conjugate(self.M[i][site]),self.M[i][site])
+            if i == 0:
+                denominator = np.einsum('ij,ik,jl,kl->',psi_a,np.conjugate(self.M[i][site]),self.M[i][site],psi_b)
+            else:
+                denominator += np.einsum('ij,ik,jl,kl->',psi_a,np.conjugate(self.M[i][site]),self.M[i][site],psi_b)
         return numerator/denominator
 
     def calc_ground_state(self):
@@ -297,6 +279,7 @@ class HeisMPS:
                 self.update_L(i)
                 # Save Resulting energies
                 self.E[i] = self.calc_energy(i)
+                self.update_plot(self.E[i])
             # Sweep Left 
             print('\tLeft Sweep')
             for i in range(self.nsite-1,0,-1):
@@ -317,6 +300,7 @@ class HeisMPS:
                 self.update_R(i)
                 # Save Resulting Energies
                 self.E[i] = self.calc_energy(i)
+                self.update_plot(self.E[i])
             # Check for Convergence #################################
             prevE = currE
             currE = self.eval_energy()
@@ -331,5 +315,5 @@ class HeisMPS:
             sweep_cnt += 1
 
 if __name__ == "__main__":
-    x = HeisMPS(6)
+    x = HeisMPS(4)
     x.calc_ground_state()
