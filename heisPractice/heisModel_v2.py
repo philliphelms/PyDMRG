@@ -9,11 +9,11 @@ class HeisMPS:
         self.h = 1 # First interaction parameter
         self.J = 1 # Second interaction parameter
         # Optimization Parameters ######################
-        self.init_guess_type = 'rand' # 'rand' or 'hf'
+        self.init_guess_type = 'hf' # 'rand' or 'hf'
         self.tol = 1e-5 # Optimization tolerance
         self.plot_option = True # Plot convergence
         self.plot_cnt = 0 # Count plot updates
-        self.max_iter = 10 # Maximum number of iterations
+        self.max_iter = 100 # Maximum number of iterations
         # Store MPO ####################################
         # Key Matrices
         s_hat = np.array([[[0,1],  [1,0]],
@@ -124,13 +124,13 @@ class HeisMPS:
         for i in range(self.d):
              for j in range(self.d):
                 if i+j == 0:
-                    tmp_array = np.einsum('ij,kl,mn,jln->ikm',np.conjugate(self.M[i][site]),self.W(site)[:,:,i,j],self.M[j][site],self.L[site-1])
+                    tmp_array = np.einsum('ij,kl,mn,ikm->jln',np.conjugate(self.M[i][site]),self.W(site)[:,:,i,j],self.M[j][site],self.L[site])
                 else:
-                    tmp_array += np.einsum('ij,kl,mn,jln->ikm',np.conjugate(self.M[i][site]),self.W(site)[:,:,i,j],self.M[j][site],self.L[site-1])
+                    tmp_array += np.einsum('ij,kl,mn,ikm->jln',np.conjugate(self.M[i][site]),self.W(site)[:,:,i,j],self.M[j][site],self.L[site])
         if len(self.L) <= site+1:
             self.L.insert(len(self.L),tmp_array)
         else:
-            self.L[site] = tmp_array
+            self.L[site+1] = tmp_array
 
     def update_R(self,site):
         # Update R-expression associated with the partition occuring at site
@@ -258,7 +258,7 @@ class HeisMPS:
             for i in range(self.nsite-1):
                 print('\t\tSite {}'.format(i))
                 # Solve eigenvalue problem
-                H = np.einsum('ijk,lmno,pmq->nipokq',self.L[i],self.W(i),self.R[i+1])
+                H = np.einsum('ijk,jlmn,olp->mionkp',self.L[i],self.W(i),self.R[i+1])
                 H = self.reshape_hamiltonian(H)
                 w,v = np.linalg.eig(H)
                 w = np.sort(w)
@@ -270,7 +270,7 @@ class HeisMPS:
                 for j in range(self.d):
                     self.M[j][i+1] = np.einsum('i,ij,jk->ik',S,V,self.M[j][i+1])
                 # Update L-expression
-                self.update_L(i+1)
+                self.update_L(i)
                 # Save Resulting energies
                 self.E[i] = self.calc_energy(i)
                 self.update_plot(self.E[i])
@@ -279,7 +279,7 @@ class HeisMPS:
             for i in range(self.nsite-1,0,-1):
                 print('\t\tSite {}'.format(i))
                 # Solve eigenvalue problem
-                H = np.einsum('ijk,lmno,pmq->nipokq',self.L[i],self.W(i),self.R[i+1]) # Indices should be correct
+                H = np.einsum('ijk,jlmn,olp->mionkp',self.L[i],self.W(i),self.R[i+1]) # Indices should be correct
                 H = self.reshape_hamiltonian(H)
                 w,v = np.linalg.eig(H)
                 w = np.sort(w)
@@ -309,5 +309,5 @@ class HeisMPS:
             sweep_cnt += 1
 
 if __name__ == "__main__":
-    x = HeisMPS(2)
+    x = HeisMPS(4)
     x.calc_ground_state()
