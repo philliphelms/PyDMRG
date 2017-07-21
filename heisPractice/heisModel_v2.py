@@ -9,7 +9,7 @@ class HeisMPS:
         self.h = 1 # First interaction parameter
         self.J = 1 # Second interaction parameter
         # Optimization Parameters ######################
-        self.init_guess_type = 'hf' # 'rand' or 'hf'
+        self.init_guess_type = 'rand' # 'rand' or 'hf'
         self.tol = 1e-5 # Optimization tolerance
         self.plot_option = True # Plot convergence
         self.plot_cnt = 0 # Count plot updates
@@ -28,7 +28,7 @@ class HeisMPS:
                               [s_hat[2,:,:],         zero_mat,               zero_mat,               zero_mat,               zero_mat],
                               [-self.h*s_hat[0,:,:], -self.J/2*s_hat[0,:,:], -self.J/2*s_hat[1,:,:], -self.J/2*s_hat[2,:,:], I       ]])
         # Construct container for resulting energies
-        self.E = np.zeros(nsite)
+        self.E = np.zeros(nsite,dtype=np.complex128)
     
     def create_initial_guess(self):
         # Function to create a Right-Canonical MPS as the initial guess
@@ -64,9 +64,9 @@ class HeisMPS:
         # Simple function that acts as an index for the MPO matrices W. 
         # Returns correct vectors for first and last site and the full matrix for all intermediate sites
         if ind == 0:
-            return np.array([self.w_arr[-1,:]])
+            return np.expand_dims(self.w_arr[-1,:],0)
         elif ind == self.nsite-1:
-            return np.array([self.w_arr[:,0]])
+            return np.expand_dims(self.w_arr[:,0],1)
         else:
             return self.w_arr
 
@@ -85,9 +85,9 @@ class HeisMPS:
                         tmp_array = np.array([[[1]]])
                     else:
                         if i+j == 0:
-                            tmp_array = np.einsum('ji,kl,mn,iln->jkm',self.M[i][out_cnt],self.W(out_cnt)[:,:,i,j],self.M[j][out_cnt],self.R[0])
+                            tmp_array = np.einsum('ij,kl,mn,jln->ikm',np.conjugate(self.M[i][out_cnt]),self.W(out_cnt)[:,:,i,j],self.M[j][out_cnt],self.R[0])
                         else:
-                            tmp_array += np.einsum('ji,kl,mn,iln->jkm',self.M[i][out_cnt],self.W(out_cnt)[:,:,i,j],self.M[j][out_cnt],self.R[0])
+                            tmp_array += np.einsum('ij,kl,mn,jln->ikm',np.conjugate(self.M[i][out_cnt]),self.W(out_cnt)[:,:,i,j],self.M[j][out_cnt],self.R[0])
             self.R.insert(0,tmp_array)
     
     def reshape_hamiltonian(self,H):
@@ -124,29 +124,23 @@ class HeisMPS:
         for i in range(self.d):
              for j in range(self.d):
                 if i+j == 0:
-                    tmp_array = np.einsum('ji,kl,mn,jlm->ikn',self.M[i][site],self.W(site)[:,:,i,j],self.M[j][site],self.L[site])
+                    tmp_array = np.einsum('ij,kl,mn,jln->ikm',np.conjugate(self.M[i][site]),self.W(site)[:,:,i,j],self.M[j][site],self.L[site-1])
                 else:
-                    tmp_array += np.einsum('ji,kl,mn,jlm->ikn',self.M[i][site],self.W(site)[:,:,i,j],self.M[j][site],self.L[site])
+                    tmp_array += np.einsum('ij,kl,mn,jln->ikm',np.conjugate(self.M[i][site]),self.W(site)[:,:,i,j],self.M[j][site],self.L[site-1])
         if len(self.L) <= site+1:
             self.L.insert(len(self.L),tmp_array)
         else:
-            self.L[site+1] = tmp_array
+            self.L[site] = tmp_array
 
     def update_R(self,site):
         # Update R-expression associated with the partition occuring at site
         for i in range(self.d):
             for j in range(self.d):
                 if i+j == 0:
-                    tmp_array = np.einsum('ji,kl,mn,iln->jkm',self.M[i][site],self.W(site)[:,:,i,j],self.M[j][site],self.R[site+1])
+                    tmp_array = np.einsum('ij,kl,mn,jln->ikm',np.conjugate(self.M[i][site]),self.W(site)[:,:,i,j],self.M[j][site],self.R[site+1])
                 else:
-                    tmp_array += np.einsum('ji,kl,mn,iln->jkm',self.M[i][site],self.W(site)[:,:,i,j],self.M[j][site],self.R[site+1])
+                    tmp_array += np.einsum('ij,kl,mn,jln->ikm',np.conjugate(self.M[i][site]),self.W(site)[:,:,i,j],self.M[j][site],self.R[site+1])
         self.R[site] = tmp_array
-
-    def eval_energy(self):
-        totalE = 0
-        for i in range(len(self.E)):
-            totalE += self.E[i]
-        return -totalE
 
     def update_plot(self,new_entry):
         if self.plot_option:
@@ -276,7 +270,7 @@ class HeisMPS:
                 for j in range(self.d):
                     self.M[j][i+1] = np.einsum('i,ij,jk->ik',S,V,self.M[j][i+1])
                 # Update L-expression
-                self.update_L(i)
+                self.update_L(i+1)
                 # Save Resulting energies
                 self.E[i] = self.calc_energy(i)
                 self.update_plot(self.E[i])
@@ -303,7 +297,7 @@ class HeisMPS:
                 self.update_plot(self.E[i])
             # Check for Convergence #################################
             prevE = currE
-            currE = self.eval_energy()
+            currE = self.calc_energy(1)
             print('\tResulting Energy:\t{}'.format(currE))
             self.update_plot(currE)
             if np.abs(prevE-currE) < self.tol:
@@ -315,5 +309,5 @@ class HeisMPS:
             sweep_cnt += 1
 
 if __name__ == "__main__":
-    x = HeisMPS(4)
+    x = HeisMPS(2)
     x.calc_ground_state()
