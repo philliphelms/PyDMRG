@@ -6,19 +6,21 @@ class HeisMPS:
         # Basic Model Information ######################
         self.nsite = nsite
         self.d = 2 # Dimension of local state space
-        self.h = 1 # First interaction parameter
+        self.h = 0 # First interaction parameter
         self.J = 1 # Second interaction parameter
         # Optimization Parameters ######################
-        self.init_guess_type = 'hf' # 'rand' or 'hf'
+        self.init_guess_type = 'gs' # 'rand' or 'hf' ('gs' available for nsite = {2,4})
         self.tol = 1e-5 # Optimization tolerance
         self.plot_option = True # Plot convergence
         self.plot_cnt = 0 # Count plot updates
-        self.max_iter = 100 # Maximum number of iterations
+        self.max_iter = 10 # Maximum number of iterations
+        self.verbose = False # Write results frequently
+        np.set_printoptions(precision=2) # Precision of verbose printing
         # Store MPO ####################################
         # Key Matrices
         s_hat = np.array([[[0,1],  [1,0]],
-                                   [[0,-1j],[1j,0]],
-                                   [[1,0],  [0,-1]]])
+                           [[0,-1j],[1j,0]],
+                           [[1,0],  [0,-1]]])
         zero_mat = np.zeros([2,2])
         I = np.eye(2)
         # Construct MPO
@@ -41,6 +43,19 @@ class HeisMPS:
                 elif self.init_guess_type is 'hf':
                     psi = np.zeros([self.d**(L-1),self.d])
                     psi[0,0] = 1
+                elif self.init_guess_type is 'gs':
+                    if self.nsite == 4:
+                        psi = np.array([[ -2.33807217e-16,  -3.13227746e-15,  -2.95241364e-15,   1.49429245e-01],
+                                        [ -2.64596902e-15,   4.08248290e-01,  -5.57677536e-01,   7.68051068e-16],
+                                        [  4.35097968e-17,  -5.57677536e-01,   4.08248290e-01,   1.28519114e-15],
+                                        [  1.49429245e-01,   6.39650363e-16,   9.36163055e-17,  -2.17952587e-16]])
+                        psi = psi.reshape(self.d**(L-1),self.d)
+                    elif self.nsite == 2:
+                        psi = np.array([[ -5.90750001e-17,  -7.07106781e-01],
+                                        [  7.07106781e-01,  -6.55904148e-17]])
+                        psi = psi.reshape(self.d**(L-1),self.d)
+                    else:
+                        raise ValueError('Ground State initial guess is not available for more than four sites')
                 else:
                     raise ValueError('Indicated initial guess type is not available')
                 B = [[] for x in range(self.d)]
@@ -59,6 +74,15 @@ class HeisMPS:
                     v = v.reshape(-1,a_curr*self.d)
                     B[j].insert(0,v[:,j*a_curr:(j+1)*a_curr])
         self.M = B
+        if self.verbose:
+            print('==================== Initial Guess ========================')
+            for i in range(self.nsite):
+                print('site {}'.format(i))
+                for j in range(self.d):
+                    nx,ny = B[j][i].shape
+                    print('\tOccupation {}'.format(j))
+                    for k in range(nx):
+                        print('\t\t{}'.format(B[j][i][k,:]))
 
     def W(self,ind):
         # Simple function that acts as an index for the MPO matrices W. 
@@ -85,11 +109,19 @@ class HeisMPS:
                         tmp_array = np.array([[[1]]])
                     else:
                         if i+j == 0:
-                            tmp_array = np.einsum('ij,kl,mn,jln->ikm',np.conjugate(self.M[i][out_cnt]),self.W(out_cnt)[:,:,i,j],self.M[j][out_cnt],self.R[0])
+                            tmp_array = np.einsum('ij,kl,mn,jln->ikm',np.conjugate(self.M[i][out_cnt]),self.W(out_cnt)[:,:,i,j],self.M[j][out_cnt],self.R[0]) #tranpose other M ????
                         else:
                             tmp_array += np.einsum('ij,kl,mn,jln->ikm',np.conjugate(self.M[i][out_cnt]),self.W(out_cnt)[:,:,i,j],self.M[j][out_cnt],self.R[0])
             self.R.insert(0,tmp_array)
-    
+        if self.verbose:
+            print('=================== Initial R-Expressions ===================')
+            for i in range(len(self.R)):
+                print('site {}'.format(i))
+                nx,ny,nz = self.R[i].shape
+                for j in range(nx):
+                    for k in range(ny):
+                        print('\t{}'.format(self.R[i][j,k,:]))
+
     def reshape_hamiltonian(self,H):
         # Function to reshape H array from six dimensional to correct 2D matrix
         sl,alm,al,slp,almp,alp = H.shape
@@ -101,6 +133,13 @@ class HeisMPS:
         v = v.reshape(self.d,ai,aim)
         for i in range(self.d):
             self.M[i][site] = v[i,:,:]
+        if self.verbose:
+            print('\t\t\tResulting M')
+            for i in range(self.d):
+                print('\t\t\t\tOccupation {}'.format(self.d))
+                nx,ny = self.M[i][site].shape
+                for j in range(nx):
+                    print('\t\t\t\t\t{}'.format(self.M[i][site][j,:]))
 
     def make_m_2d(self,site,sweep_dir):
         # 
@@ -118,6 +157,13 @@ class HeisMPS:
         u_3d = U.reshape(self.d,aim,ai)
         for i in range(self.d):
             self.M[i][site] = u_3d[i,:,:]
+        if self.verbose:
+            print('\t\t\tLeft-Normalized M')
+            for i in range(self.d):
+                print('\t\t\t\tOccupation {}'.format(i))
+                nx,ny = self.M[i][site].shape
+                for j in range(nx):
+                    print('\t\t\t\t\t{}'.format(self.M[i][site][j,:]))
 
     def update_L(self,site):
         # Update L array associated with the partition occuring at site
@@ -173,7 +219,7 @@ class HeisMPS:
                 self.create_all_occ_strs_a(final_site,np.append(curr_str,[i]))
 
     def create_all_occ_strs_b(self,final_site,curr_str):
-        if len(curr_str) == final_site:
+        if len(curr_str) == final_site-1:
             if self.occ_strs_b is None:
                 self.occ_strs_b = np.array([curr_str])
             else:
@@ -184,15 +230,15 @@ class HeisMPS:
 
     def psi_a_multiply_m(self,curr_site,final_site,current_result,occ_str_ind):
         d_val = self.occ_strs_a[occ_str_ind,curr_site]
-        current_result = np.einsum('ji,jj,jk->ik',self.M[int(d_val)][curr_site],current_result,self.M[int(d_val)][curr_site])
+        current_result = np.einsum('ji,jj,jk->ik',np.conjugate(self.M[int(d_val)][curr_site]),current_result,self.M[int(d_val)][curr_site])
         if curr_site == final_site:
             return current_result
         else:
             return self.psi_a_multiply_m(curr_site+1,final_site,current_result,occ_str_ind)
 
     def psi_b_multiply_m(self,curr_site,final_site,current_result,occ_str_ind,site):
-        d_val = self.occ_strs_b[occ_str_ind,curr_site-site]
-        current_result = np.einsum('ij,jj,kj->ik',self.M[int(d_val)][curr_site],current_result,self.M[int(d_val)][curr_site])
+        d_val = self.occ_strs_b[occ_str_ind,curr_site-site-1]
+        current_result = np.einsum('ij,jj,kj->ik',self.M[int(d_val)][curr_site],current_result,np.conjugate(self.M[int(d_val)][curr_site]))
         if curr_site == final_site:
             return current_result
         else:
@@ -237,20 +283,26 @@ class HeisMPS:
                     numerator = np.einsum('ijk,jl,olp,io,kp->',self.L[site],self.W(site)[:,:,i,j],self.R[site+1],np.conjugate(self.M[i][site]),self.M[i][site])
                 else: 
                     numerator += np.einsum('ijk,jl,olp,io,kp->',self.L[site],self.W(site)[:,:,i,j],self.R[site+1],np.conjugate(self.M[i][site]),self.M[i][site])
-            if i == 0:
+            if i == 0: # Denominator should always be 1 since our system is properly normalized
                 denominator = np.einsum('ij,ik,jl,kl->',psi_a,np.conjugate(self.M[i][site]),self.M[i][site],psi_b)
             else:
                 denominator += np.einsum('ij,ik,jl,kl->',psi_a,np.conjugate(self.M[i][site]),self.M[i][site],psi_b)
+        print('#######################')
+        print('{}'.format(denominator))
+        print('#######################')
         return numerator/denominator
 
     def calc_ground_state(self):
         # Run the DMRG optimization to calculate the system's ground state
         # Follows the procedure and notation outlined in section 6.3 of Schollwock (2011)
         self.create_initial_guess()
+        # self.convert_mps_to_single_tensor() # Optional function that might be informative
         self.calc_all_lr()
         converged = False
         sweep_cnt = 0
-        currE = 0
+        currE = self.calc_energy(0)
+        self.update_plot(currE)
+        print('Initial Energy: {}'.format(currE))
         while not converged:
             print('Beginning Sweep Set {}'.format(sweep_cnt))
             # Sweep Right ###########################################
@@ -260,6 +312,11 @@ class HeisMPS:
                 # Solve eigenvalue problem
                 H = np.einsum('ijk,jlmn,olp->mionkp',self.L[i],self.W(i),self.R[i+1])
                 H = self.reshape_hamiltonian(H)
+                if self.verbose:
+                    print('\t\t\tReshaped Hamiltonian')
+                    nx,ny = H.shape
+                    for j in range(nx):
+                        print('\t\t\t\t{}'.format(H[j,:]))
                 w,v = np.linalg.eig(H)
                 w = np.sort(w)
                 v = v[:,w.argsort()]
@@ -269,6 +326,8 @@ class HeisMPS:
                 self.convert_u2a(i,U)
                 for j in range(self.d):
                     self.M[j][i+1] = np.einsum('i,ij,jk->ik',S,V,self.M[j][i+1])
+                if self.verbose:
+                    print('\t\t\t')
                 # Update L-expression
                 self.update_L(i)
                 # Save Resulting energies
@@ -298,11 +357,11 @@ class HeisMPS:
             # Check for Convergence #################################
             prevE = currE
             currE = self.calc_energy(1)
-            print('\tResulting Energy:\t{}'.format(currE))
+            print('\tResulting Energy: {}'.format(currE))
             self.update_plot(currE)
             if np.abs(prevE-currE) < self.tol:
                 converged = True
-                print('Energy Converged at:\t{}'.format(currE))
+                print('Energy Converged at: {}'.format(currE))
             elif sweep_cnt > self.max_iter:
                 converged = True
                 print('Maximum number of iterations exceeded before convergence')
