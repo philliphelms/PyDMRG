@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jul 26 09:49:38 2017
+
+@author: philliphelms
+"""
+
 import numpy as np
 
 class HeisMPO:

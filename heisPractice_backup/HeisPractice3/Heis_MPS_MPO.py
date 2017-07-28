@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jul 26 09:45:00 2017
+
+@author: philliphelms
+"""
+
 import numpy as np
 from HeisMPO import *
 from HeisMPS import *
@@ -14,10 +22,10 @@ class Heis_MPS_MPO:
         self.d = 2
         self.D = 100
         # Optimization Parameters
-        self.init_guess_type = 'rand'
+        self.init_guess_type = 'gs'
         self.tol = 1e-5
-        self.max_sweep_cnt = 10
-        self.verbose = 2 # 0,1,2,3
+        self.max_sweep_cnt = 20
+        self.verbose = 0 # 0,1,2
         self.plot_option = True
         self.plot_cnt = 0
         np.set_printoptions(precision=2) # Precision of verbose printing
@@ -35,5 +43,5 @@ class Heis_MPS_MPO:
         self.dmrg.run_optimization()
     
 if __name__ == "__main__":
-    x = Heis_MPS_MPO(6)
+    x = Heis_MPS_MPO(4)
     x.calc_ground_state()

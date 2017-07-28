@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jul 26 12:19:37 2017
+
+@author: philliphelms
+"""
+
 import numpy as np
 import scipy.linalg as la
 import matplotlib.pyplot as plt
@@ -28,24 +36,8 @@ class HeisDMRG:
             ns,_ = self.mps.M[site][i,:,:].shape
             for j in range(ns):
                 print(('\t'*ntabs+'\t\t\t{}').format(self.mps.M[site][i,j,:]))
-    
-    def print_mmt(self,i,ntabs):
-        print(('\t'*ntabs+'\tSite {}').format(i))
-        result = np.dot(self.mps.M[i][0,:,:],np.transpose(self.mps.M[i][0,:,:]))+\
-                 np.dot(self.mps.M[i][1,:,:],np.transpose(self.mps.M[i][1,:,:]))
-        nx,_ = result.shape
-        for j in range(nx):
-            print(('\t'*ntabs+'\t\t{}').format(result[j,:]))
         
-    def print_mtm(self,i,ntabs):
-        print(('\t'*ntabs+'\tSite {}').format(i))
-        result = np.dot(np.transpose(self.mps.M[i][0,:,:]),self.mps.M[i][0,:,:])+\
-                 np.dot(np.transpose(self.mps.M[i][1,:,:]),self.mps.M[i][1,:,:])
-        nx,_ = result.shape
-        for j in range(nx):
-            print(('\t'*ntabs+'\t\t{}').format(result[j,:]))
-        
-    def update_plot(self,new_entry,end_sweep):
+    def update_plot(self,new_entry):
         # Create a plot that shows the energy as a function of the number 
         # of optimizations performed
         if self.plot_option:
@@ -56,26 +48,14 @@ class HeisDMRG:
                 self.ax = self.fig.add_subplot(111)
                 self.conv_xdat = [self.plot_cnt]
                 self.conv_ydat = [new_entry]
-                if end_sweep:
-                    self.conv_xdat_end_swp = [self.plot_cnt]
-                    self.conv_ydat_end_swp = [new_entry]
                 self.ax.plot(self.conv_xdat,self.conv_ydat,'b-')
-                self.ax.hold(True)
-                self.ax.plot(self.conv_xdat_end_swp,self.conv_ydat_end_swp,'ro',linestyle=':',linewidth=3)
-                self.ax.hold(False)
                 plt.xlabel('Iteration')
                 plt.ylabel('Energy')
                 self.fig.canvas.draw()
             else:
                 self.conv_xdat.insert(len(self.conv_xdat),self.plot_cnt)
                 self.conv_ydat.insert(len(self.conv_ydat),new_entry)
-                if end_sweep:
-                    self.conv_xdat_end_swp.insert(len(self.conv_xdat_end_swp),self.plot_cnt)
-                    self.conv_ydat_end_swp.insert(len(self.conv_xdat_end_swp),new_entry)
                 self.ax.plot(self.conv_xdat,self.conv_ydat,'b-')
-                self.ax.hold(True)
-                self.ax.plot(self.conv_xdat_end_swp,self.conv_ydat_end_swp,'ro',linestyle=':',linewidth=3)
-                self.ax.hold(False)
                 self.fig.canvas.draw()
             self.plot_cnt += 1
             
@@ -90,7 +70,7 @@ class HeisDMRG:
             H = np.einsum('ijk,jlmn,olp->mionkp',self.mps.L_array[site],self.mpo.W(site),self.mps.R_array[site+1])
             sl,alm,al,slp,almp,alp = H.shape
             H = H.reshape(sl*alm*al,sl*alm*al) 
-            if self.verbose > 3:
+            if self.verbose > 1:
                 print('\t'*2+'\tInitial Reshaped H for Optimization:')
                 self.print_h(H,2)
             w,v = np.linalg.eig(H)
@@ -108,7 +88,7 @@ class HeisDMRG:
             H = np.einsum('ijk,jlmn,olp->ikmnop',self.mps.L_array[site],self.mpo.W(site),self.mps.R_array[site+1])
             alm,almp,sl,slp,al,alp = H.shape
             H = H.reshape(sl*alm*al,sl*alm*al) # WE NEED TO EXCHANGE INDICES BEFORE DOING ThIS!!!!!!!!!
-            if self.verbose > 3:
+            if self.verbose:
                 print('\t'*2+'\tInitial Reshaped H for Optimization:')
                 self.print_h(H,2)
             [w,v] = la.eigh(H)
@@ -129,7 +109,7 @@ class HeisDMRG:
         # value documentation, then multiply the remaining matrices into 
         # the next site in the sweep.
         si,aim,ai = self.mps.M[site].shape
-        trySwapping = True
+        trySwapping = False
         if trySwapping: # This is possibly a fix to a problem, but I don't know yet........
             M_swapped_inds = np.swapaxes(self.mps.M[site],0,1)
         if direction == 'right':
@@ -147,9 +127,6 @@ class HeisDMRG:
                 self.print_m(site,2)
                 print('\t'*2+'\tNew Matrix at site + 1:')
                 self.print_m(site+1,2)
-                if self.verbose > 1:
-                    print('\t'*2+'\tProof of Normalization:')
-                    self.print_mtm(site,2)
         elif direction == 'left':
             M_2d = self.mps.M[site].reshape(aim,si*ai)
             (U,S,V) = np.linalg.svd(M_2d,full_matrices=0)
@@ -165,19 +142,15 @@ class HeisDMRG:
                 self.print_m(site,2)
                 print('\t'*2+'\tNew Matrix at site - 1:')
                 self.print_m(site-1,2)
-                if self.verbose > 1:
-                    print('\t'*2+'\tProof of Normalization:')
-                    self.print_mmt(site,2)
         else:
             raise ValueError('Sweep Direction must be left or right')
         
     
     def run_optimization(self):
         converged = False
-        calculate_energy_separately = False
+        calculate_energy_separately = True
         sweep_cnt = 0
         energy_prev = 0
-        self.update_plot(0,True)
         while not converged:
             if self.verbose:
                 print('#'*68)
@@ -192,7 +165,7 @@ class HeisDMRG:
                 self.mps.update_lr(site,'right',self.mpo.W)
                 if calculate_energy_separately:
                     energy_curr = self.mps.calc_energy(site,self.mpo.W)
-                self.update_plot(energy_curr,False)
+                self.update_plot(energy_curr)
             print('\tLeft Sweep')
             for site in range(self.mps.L-1,0,-1):
                 if self.verbose:
@@ -201,20 +174,17 @@ class HeisDMRG:
                 energy_curr = self.H_opt(site)
                 self.normalize(site,'left')
                 self.mps.update_lr(site,'left',self.mpo.W)
-                print(site)
                 if calculate_energy_separately:
                     energy_curr = self.mps.calc_energy(site,self.mpo.W)
-                if site == 1:
-                    self.update_plot(energy_curr,True)
-                else:
-                    self.update_plot(energy_curr,False)
+                self.update_plot(energy_curr)
+            
             if np.abs(energy_prev-energy_curr) < self.tol:
                 converged = True
                 print('#'*68)
                 print('System has converged at:')
                 print('E = {}'.format(energy_curr))
                 print('#'*68)
-            elif sweep_cnt >= self.max_sweep_cnt-1:
+            elif sweep_cnt > self.max_sweep_cnt:
                 converged = True
                 print('Maximum number of sweeps exceeded - system not converged')
             else:
