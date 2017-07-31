@@ -99,7 +99,8 @@ class HeisDMRG:
             if self.verbose:
                 print('\t'*2+'\tInitial Matrix M:')
                 self.print_m(site,2)
-            self.mps.M[site] = v[0,:].reshape(sl, alm, al)
+            # self.mps.M[site] = v[:,0].reshape(sl, alm, al)
+            self.mps.M[site] = np.reshape(v[:,0],(sl,alm,al),order='F')
             if self.verbose:
                 print('\t'*2+'\tCompleted Matrix M:')
                 self.print_m(site,2)
@@ -119,7 +120,8 @@ class HeisDMRG:
             if self.verbose:
                 print('\t'*2+'\tInitial Matrix M:')
                 self.print_m(site,2)
-            self.mps.M[site] = v[0,:].reshape(sl, alm, al)
+            # self.mps.M[site] = v[:,0].reshape(sl, alm, al) # THIS IS THE POSSIBLE PROBLEM LINE!!!!!!!!!!!!
+            self.mps.M[site] = np.reshape(v[:,0],(sl,alm,al),order='F')
             if self.verbose:
                 print('\t'*2+'\tCompleted Matrix M:')
                 self.print_m(site,2)
