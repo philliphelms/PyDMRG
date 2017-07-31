@@ -100,7 +100,7 @@ class HeisDMRG:
                 print('\t'*2+'\tInitial Matrix M:')
                 self.print_m(site,2)
             # self.mps.M[site] = v[:,0].reshape(sl, alm, al)
-            self.mps.M[site] = np.reshape(v[:,0],(sl,alm,al),order='F')
+            self.mps.M[site] = np.reshape(v[:,0],(sl,alm,al),order='C')
             if self.verbose:
                 print('\t'*2+'\tCompleted Matrix M:')
                 self.print_m(site,2)

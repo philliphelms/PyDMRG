@@ -14,7 +14,7 @@ class Heis_MPS_MPO:
         self.d = 2
         self.D = 100
         # Optimization Parameters
-        self.init_guess_type = 'gs'
+        self.init_guess_type = 'hf'
         self.tol = 1e-5
         self.max_sweep_cnt = 10
         self.verbose = 2 # 0,1,2,3
@@ -35,5 +35,5 @@ class Heis_MPS_MPO:
         self.dmrg.run_optimization()
     
 if __name__ == "__main__":
-    x = Heis_MPS_MPO(2)
+    x = Heis_MPS_MPO(4)
     x.calc_ground_state()
