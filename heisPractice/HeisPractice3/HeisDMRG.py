@@ -104,6 +104,8 @@ class HeisDMRG:
                 print('\t'*2+'\tCompleted Matrix M:')
                 self.print_m(site,2)
             energy = w[0]
+            if self.verbose > 1:
+                print(('\t'*2+'\tEnergy for optimization at site {}: {}').format(site,energy))
         else:
             H = np.einsum('ijk,jlmn,olp->ikmnop',self.mps.L_array[site],self.mpo.W(site),self.mps.R_array[site+1])
             alm,almp,sl,slp,al,alp = H.shape
@@ -122,6 +124,8 @@ class HeisDMRG:
                 print('\t'*2+'\tCompleted Matrix M:')
                 self.print_m(site,2)
             energy = w[0]
+            if self.verbose > 1:
+                print(('\t'*2+'\tEnergy for optimization at site {}: {}').format(site,energy))
         return energy
     
     def normalize(self,site,direction):

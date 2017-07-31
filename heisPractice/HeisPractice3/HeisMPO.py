@@ -11,11 +11,11 @@ class HeisMPO:
         self.J = J
         self.L = L
         S_p = np.array([[0,1],
-                        [0,0]])
+                        [0,0]])/2
         S_m = np.array([[0,0],
-                        [1,0]])
+                        [1,0]])/2
         S_z = np.array([[1,0],
-                        [0,-1]])
+                        [0,-1]])/2
         zero_mat = np.zeros([2,2])
         I = np.eye(2)
         # Construct MPO
