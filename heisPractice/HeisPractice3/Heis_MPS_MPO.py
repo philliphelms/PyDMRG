@@ -14,7 +14,7 @@ class Heis_MPS_MPO:
         self.d = 2
         self.D = 100
         # Optimization Parameters
-        self.init_guess_type = 'hf'
+        self.init_guess_type = 'gs'
         self.tol = 1e-5
         self.max_sweep_cnt = 10
         self.verbose = 2 # 0,1,2,3

@@ -99,7 +99,6 @@ class HeisDMRG:
             if self.verbose:
                 print('\t'*2+'\tInitial Matrix M:')
                 self.print_m(site,2)
-            # self.mps.M[site] = v[:,0].reshape(sl, alm, al)
             self.mps.M[site] = np.reshape(v[:,0],(sl,alm,al),order='C')
             if self.verbose:
                 print('\t'*2+'\tCompleted Matrix M:')
@@ -120,8 +119,7 @@ class HeisDMRG:
             if self.verbose:
                 print('\t'*2+'\tInitial Matrix M:')
                 self.print_m(site,2)
-            # self.mps.M[site] = v[:,0].reshape(sl, alm, al) # THIS IS THE POSSIBLE PROBLEM LINE!!!!!!!!!!!!
-            self.mps.M[site] = np.reshape(v[:,0],(sl,alm,al),order='F')
+            self.mps.M[site] = np.reshape(v[:,0],(sl,alm,al),order='C')
             if self.verbose:
                 print('\t'*2+'\tCompleted Matrix M:')
                 self.print_m(site,2)
@@ -136,8 +134,6 @@ class HeisDMRG:
         # the next site in the sweep.
         si,aim,ai = self.mps.M[site].shape
         trySwapping = True
-        if trySwapping: # This is possibly a fix to a problem, but I don't know yet........
-            M_swapped_inds = np.swapaxes(self.mps.M[site],0,1)
         if direction == 'right':
             M_2d = self.mps.M[site].reshape(aim*si,ai)
             (U,S,V) = np.linalg.svd(M_2d,full_matrices=0)

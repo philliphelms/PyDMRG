@@ -155,8 +155,14 @@ class HeisMPS:
     def update_lr(self,site,swp_dir,W):
         if swp_dir == 'right': 
             # We update the L expressions
-            tmp_array = np.einsum('ijk,lmin,nop,jlo->kmp',\
+            if True:
+                tmp_array = np.einsum('ijk,lmin,nop,jlo->kmp',\
                                   np.conjugate(self.M[site]),W(site),self.M[site],self.L_array[site])
+            else:
+                LA = np.einsum('ijk,lkm->ijlm',self.L_array[site],self.M[site])
+                WLA = np.einsum('jnol,ijlm->imno',W(site),LA)
+                tmp_array = np.einsum('oip,imno->pnm',self.M[site],WLA)
+            print(np.abs(tmp_array-tmp_array2))
             if len(self.L_array) <= site+1:
                 self.L_array.insert(len(self.L_array),tmp_array)
             else:
