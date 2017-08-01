@@ -11,10 +11,10 @@ class Heis_MPS_MPO:
         self.J = 1
         self.d = 2
         self.D = 100
-        self.init_guess_type = 'hf' # (gs, hf, eye, rand)
+        self.init_guess_type = 'rand' # (gs, hf, eye, rand)
         self.tol = 1e-5
         self.max_sweep_cnt = 10
-        self.reshape_order = "C"
+        self.reshape_order = "F"
         self.mpo = HeisMPO(self.h,self.J,self.L)
         self.mps = HeisMPS(self.L,self.init_guess_type,self.d,self.reshape_order)
         
@@ -25,5 +25,5 @@ class Heis_MPS_MPO:
         self.dmrg.run_optimization()
     
 if __name__ == "__main__":
-    x = Heis_MPS_MPO(6)
+    x = Heis_MPS_MPO(4)
     x.calc_ground_state()

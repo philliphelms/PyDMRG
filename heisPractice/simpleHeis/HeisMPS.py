@@ -42,22 +42,20 @@ class HeisMPS:
             else:
                 psi = np.einsum('ij,j->ij',u,s)
                 nx,ny = u.shape
-                psi = np.reshape(psi,(int(nx/self.d),int(ny*self.d)),order=self.reshape_order)
+                psi = np.reshape(psi,(int(nx/self.d),int(ny*self.d)),order=self.reshape_order) # PROBLEM???
                 a_prev = a_curr
             (u,s,v) = np.linalg.svd(psi,full_matrices=0)
             a_curr = min(self.d**(i+1),self.d**(L-(i)))
             if a_curr > a_prev:
-                v = np.reshape(v,(self.d,a_curr,-1),order=self.reshape_order)
+                v = np.swapaxes(np.reshape(v,(a_curr,self.d,-1),order=self.reshape_order),0,1)
                 B.insert(0,v)
             else:
-                v = np.reshape(v,(self.d,-1,a_curr),order=self.reshape_order)
+                v = np.swapaxes(np.reshape(v,(-1,self.d,a_curr),order=self.reshape_order),0,1)
                 B.insert(0,v)
         self.M = B
         # QUICK CHECK SHOULD BE REMOVED!!!
-        print(np.dot(self.M[0][0,:,:],np.transpose(self.M[0][0,:,:]))+np.dot(self.M[0][1,:,:],np.transpose(self.M[0][1,:,:])))
-        print(np.dot(self.M[1][0,:,:],np.transpose(self.M[1][0,:,:]))+np.dot(self.M[1][1,:,:],np.transpose(self.M[1][1,:,:])))
-        print(np.dot(self.M[2][0,:,:],np.transpose(self.M[2][0,:,:]))+np.dot(self.M[2][1,:,:],np.transpose(self.M[2][1,:,:])))
-        print(np.dot(self.M[3][0,:,:],np.transpose(self.M[3][0,:,:]))+np.dot(self.M[3][1,:,:],np.transpose(self.M[3][1,:,:])))
+        for i in range(len(self.M)):
+            print(np.dot(self.M[i][0,:,:],np.transpose(self.M[i][0,:,:]))+np.dot(self.M[i][1,:,:],np.transpose(self.M[i][1,:,:])))
         
     def initialize_r(self,W):
         self.R_array = []
