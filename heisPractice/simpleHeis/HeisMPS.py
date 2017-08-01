@@ -53,9 +53,6 @@ class HeisMPS:
                 v = np.swapaxes(np.reshape(v,(-1,self.d,a_curr),order=self.reshape_order),0,1)
                 B.insert(0,v)
         self.M = B
-        # QUICK CHECK SHOULD BE REMOVED!!!
-        for i in range(len(self.M)):
-            print(np.dot(self.M[i][0,:,:],np.transpose(self.M[i][0,:,:]))+np.dot(self.M[i][1,:,:],np.transpose(self.M[i][1,:,:])))
         
     def initialize_r(self,W):
         self.R_array = []

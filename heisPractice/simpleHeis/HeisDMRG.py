@@ -33,8 +33,8 @@ class HeisDMRG:
         elif direction == 'left':
             M_2d = np.reshape(self.mps.M[site],(aim,si*ai),order=self.reshape_order)
             (U,S,V) = np.linalg.svd(M_2d,full_matrices=0)
-            self.mps.M[site] = np.reshape(V,(si,aim,ai),order=self.reshape_order)
-            self.mps.M[site-1] = np.einsum('ijk,kl,l->ijl',self.mps.M[site-1],U,S)       
+            self.mps.M[site] = np.swapaxes(np.reshape(V,(aim,si,ai),order=self.reshape_order),0,1)
+            self.mps.M[site-1] = np.einsum('ijk,kl,l->ijl',self.mps.M[site-1],U,S)
     
     def run_optimization(self):
         converged = False
