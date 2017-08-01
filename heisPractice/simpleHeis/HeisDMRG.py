@@ -29,7 +29,7 @@ class HeisDMRG:
             M_2d = np.reshape(self.mps.M[site],(si*aim,ai),order=self.reshape_order)
             (U,S,V) = np.linalg.svd(M_2d,full_matrices=0)
             self.mps.M[site] = np.reshape(U,(si,aim,ai),order=self.reshape_order)  
-            self.mps.M[site+1] = np.einsum('i,ij,kjl->kil',S,V,self.mps.M[site+1])
+            self.mps.M[site+1] = np.einsum('i,ji,kjl->kil',S,V,self.mps.M[site+1])
         elif direction == 'left':
             M_3d_swapped = np.swapaxes(self.mps.M[site],0,1)
             M_2d = np.reshape(M_3d_swapped,(aim,si*ai),order=self.reshape_order)
