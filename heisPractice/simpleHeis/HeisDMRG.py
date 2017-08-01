@@ -36,7 +36,7 @@ class HeisDMRG:
             (U,S,V) = np.linalg.svd(M_2d,full_matrices=0)
             self.mps.M[site] = np.swapaxes(np.reshape(V,(aim,si,ai),order=self.reshape_order),0,1)
             # self.mps.M[site-1] = np.einsum('ijk,kl,l->ijl',self.mps.M[site-1],U,S)
-            self.mps.M[site-1] = np.einsum('ijk,lk,k->ijl',self.mps.M[site-1],U,S)
+            self.mps.M[site-1] = np.einsum('ijk,lk,l->ijl',self.mps.M[site-1],U,S)
             
     
     def run_optimization(self):
