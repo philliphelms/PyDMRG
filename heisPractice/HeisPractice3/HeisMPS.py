@@ -78,6 +78,9 @@ class HeisMPS:
                         psi = psi.reshape(self.d**(L-1),self.d)
                     else:
                         raise ValueError('Ground State initial guess is not available for more than four sites')
+                elif self.init_guess_type is 'eye':
+                    psi = np.eye(self.L)
+                    psi = psi.reshape(self.d**(L-1),self.d)
                 else:
                     raise ValueError('Indicated initial guess type is not available')
                 B = []
@@ -162,7 +165,6 @@ class HeisMPS:
                 LA = np.einsum('ijk,lkm->ijlm',self.L_array[site],self.M[site])
                 WLA = np.einsum('jnol,ijlm->imno',W(site),LA)
                 tmp_array = np.einsum('oip,imno->pnm',self.M[site],WLA)
-            print(np.abs(tmp_array-tmp_array2))
             if len(self.L_array) <= site+1:
                 self.L_array.insert(len(self.L_array),tmp_array)
             else:
@@ -183,12 +185,14 @@ class HeisMPS:
     def calc_energy(self,site,W):
         # Calculates the energy of a given state using the hamilonian operators
         # Done according section 6 of Schollwock (2011)
+        print(site)
         numerator = np.einsum('ijk,jlmn,olp,mio,nkp->',\
                               self.L_array[site],W(site),self.R_array[site+1],np.conjugate(self.M[site]),self.M[site])
         si,aim,ai = self.M[site].shape
-        psi_a = np.eye(aim)
-        psi_b = np.eye(ai)
         denominator = np.einsum('ij,kil,kjm,lm->',\
-                                psi_a,np.conjugate(self.M[site]),self.M[site],psi_b)
+                                np.eye(aim),np.conjugate(self.M[site]),self.M[site],np.eye(ai))
+        if self.verbose > 2:
+            print('\t'*3+'Energy Calculation:')
+            print(('\t'*4+'{}/{}={}').format(numerator,denominator,numerator/denominator))
         energy = numerator / denominator
         return energy

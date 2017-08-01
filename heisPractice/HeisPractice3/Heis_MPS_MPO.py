@@ -14,10 +14,10 @@ class Heis_MPS_MPO:
         self.d = 2
         self.D = 100
         # Optimization Parameters
-        self.init_guess_type = 'gs'
+        self.init_guess_type = 'eye' # (gs, hf, eye, rand)
         self.tol = 1e-5
         self.max_sweep_cnt = 10
-        self.verbose = 2 # 0,1,2,3
+        self.verbose = 4 # 0,1,2,3,4
         self.plot_option = True
         self.plot_cnt = 0
         np.set_printoptions(precision=2) # Precision of verbose printing

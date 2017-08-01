@@ -8,6 +8,12 @@ class HeisDMRG:
     # Functions:
     #   
     def __init__(self,mpo,mps,D,tol,max_sweep_cnt,verbose,plot_option,plot_cnt):
+        # Key variable parameters
+        self.calculate_energy_separately = False
+        self.trySwapping = False
+        self.match_dmrg101 = False
+        self.reshape_order = "C"
+        # Other class members
         self.mpo = mpo
         self.mps = mps
         self.D = D
@@ -85,11 +91,11 @@ class HeisDMRG:
         #
         # Arguments:
         #   site - indicates which site we are at.
-        if True:
+        if not self.match_dmrg101:
             # My Way
             H = np.einsum('ijk,jlmn,olp->mionkp',self.mps.L_array[site],self.mpo.W(site),self.mps.R_array[site+1])
             sl,alm,al,slp,almp,alp = H.shape
-            H = H.reshape(sl*alm*al,sl*alm*al) 
+            H = np.reshape(H,(sl*alm*al,sl*alm*al),order=self.reshape_order)
             if self.verbose > 3:
                 print('\t'*2+'\tInitial Reshaped H for Optimization:')
                 self.print_h(H,2)
@@ -99,7 +105,7 @@ class HeisDMRG:
             if self.verbose:
                 print('\t'*2+'\tInitial Matrix M:')
                 self.print_m(site,2)
-            self.mps.M[site] = np.reshape(v[:,0],(sl,alm,al),order='C')
+            self.mps.M[site] = np.reshape(v[:,0],(sl,alm,al),order=self.reshape_order)
             if self.verbose:
                 print('\t'*2+'\tCompleted Matrix M:')
                 self.print_m(site,2)
@@ -109,7 +115,11 @@ class HeisDMRG:
         else:
             H = np.einsum('ijk,jlmn,olp->ikmnop',self.mps.L_array[site],self.mpo.W(site),self.mps.R_array[site+1])
             alm,almp,sl,slp,al,alp = H.shape
-            H = H.reshape(sl*alm*al,sl*alm*al) # WE NEED TO EXCHANGE INDICES BEFORE DOING ThIS!!!!!!!!!
+            if self.trySwapping:
+                H = np.swapaxes(H,0,2) # sl,almp,alm,slp,al,alp
+                H = np.swapaxes(H,1,2) # sl,alm,almp,slp,al,alp
+                H = np.swapaxes(H,2,4) # sl,alm,al,slp,almp,slp
+            H = np.reshape(H,(sl*alm*al,sl*alm*al),order=self.reshape_order)
             if self.verbose > 3:
                 print('\t'*2+'\tInitial Reshaped H for Optimization:')
                 self.print_h(H,2)
@@ -119,7 +129,11 @@ class HeisDMRG:
             if self.verbose:
                 print('\t'*2+'\tInitial Matrix M:')
                 self.print_m(site,2)
-            self.mps.M[site] = np.reshape(v[:,0],(sl,alm,al),order='C')
+            if self.trySwapping:
+                # THERE IS THE POSSIBILITY THAT WE NEED TO DO SOME SWAPPING OF AXES HERE!!!
+                self.mps.M[site] = np.reshape(v[:,0],(sl,alm,al),order=self.reshape_order)
+            else:
+                self.mps.M[site] = np.reshape(v[:,0],(sl,alm,al),order=self.reshape_order)
             if self.verbose:
                 print('\t'*2+'\tCompleted Matrix M:')
                 self.print_m(site,2)
@@ -133,16 +147,15 @@ class HeisDMRG:
         # value documentation, then multiply the remaining matrices into 
         # the next site in the sweep.
         si,aim,ai = self.mps.M[site].shape
-        trySwapping = True
         if direction == 'right':
-            M_2d = self.mps.M[site].reshape(aim*si,ai)
+            M_2d = np.reshape(self.mps.M[site],(aim*si,ai),order=self.reshape_order)
             (U,S,V) = np.linalg.svd(M_2d,full_matrices=0)
-            if trySwapping:
-                U_3d = U.reshape(aim,si,ai)
+            if self.trySwapping:
+                U_3d = np.reshape(U,(aim,si,ai),order=self.reshape_order)
                 U_3d = np.swapaxes(U_3d,0,1)
                 self.mps.M[site] = U_3d
             else:
-                self.mps.M[site] = U.reshape(si,aim,ai)    
+                self.mps.M[site] = np.reshape(U,(si,aim,ai),order=self.reshape_order)  
             self.mps.M[site+1] = np.einsum('i,ij,kjl->kil',S,V,self.mps.M[site+1])
             if self.verbose:
                 print('\t'*2+'\tNormalized Matrix M:')
@@ -153,14 +166,14 @@ class HeisDMRG:
                     print('\t'*2+'\tProof of Normalization:')
                     self.print_mtm(site,2)
         elif direction == 'left':
-            M_2d = self.mps.M[site].reshape(aim,si*ai)
+            M_2d = np.reshape(self.mps.M[site],(aim,si*ai),order=self.reshape_order)
             (U,S,V) = np.linalg.svd(M_2d,full_matrices=0)
-            if trySwapping:
-                V_3d = V.reshape(aim,si,ai)
+            if self.trySwapping:
+                V_3d = np.reshape(V,(aim,si,ai),order=self.reshape_order)
                 V_3d = np.swapaxes(V_3d,0,1)
                 self.mps.M[site] = V_3d
             else:
-                self.mps.M[site] = V.reshape(si,aim,ai)
+                self.mps.M[site] = np.reshape(V,(si,aim,ai),order=self.reshape_order)
             self.mps.M[site-1] = np.einsum('ijk,kl,l->ijl',self.mps.M[site-1],U,S)
             if self.verbose:
                 print('\t'*2+'\tNormalized Matrix M:')
@@ -176,7 +189,6 @@ class HeisDMRG:
     
     def run_optimization(self):
         converged = False
-        calculate_energy_separately = False
         sweep_cnt = 0
         energy_prev = 0
         self.update_plot(0,True)
@@ -192,7 +204,7 @@ class HeisDMRG:
                 energy_curr = self.H_opt(site)
                 self.normalize(site,'right')
                 self.mps.update_lr(site,'right',self.mpo.W)
-                if calculate_energy_separately:
+                if self.calculate_energy_separately:
                     energy_curr = self.mps.calc_energy(site,self.mpo.W)
                 self.update_plot(energy_curr,False)
             print('\tLeft Sweep')
@@ -203,8 +215,7 @@ class HeisDMRG:
                 energy_curr = self.H_opt(site)
                 self.normalize(site,'left')
                 self.mps.update_lr(site,'left',self.mpo.W)
-                print(site)
-                if calculate_energy_separately:
+                if self.calculate_energy_separately:
                     energy_curr = self.mps.calc_energy(site,self.mpo.W)
                 if site == 1:
                     self.update_plot(energy_curr,True)
