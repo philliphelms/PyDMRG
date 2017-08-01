@@ -25,5 +25,5 @@ class Heis_MPS_MPO:
         self.dmrg.run_optimization()
     
 if __name__ == "__main__":
-    x = Heis_MPS_MPO(6)
+    x = Heis_MPS_MPO(10)
     x.calc_ground_state()

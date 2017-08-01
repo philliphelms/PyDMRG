@@ -26,15 +26,18 @@ class HeisDMRG:
     def normalize(self,site,direction):
         si,aim,ai = self.mps.M[site].shape
         if direction == 'right':
-            M_2d = np.reshape(self.mps.M[site],(aim*si,ai),order=self.reshape_order)
+            M_2d = np.reshape(self.mps.M[site],(si*aim,ai),order=self.reshape_order)
             (U,S,V) = np.linalg.svd(M_2d,full_matrices=0)
             self.mps.M[site] = np.reshape(U,(si,aim,ai),order=self.reshape_order)  
             self.mps.M[site+1] = np.einsum('i,ij,kjl->kil',S,V,self.mps.M[site+1])
         elif direction == 'left':
-            M_2d = np.reshape(self.mps.M[site],(aim,si*ai),order=self.reshape_order)
+            M_3d_swapped = np.swapaxes(self.mps.M[site],0,1)
+            M_2d = np.reshape(M_3d_swapped,(aim,si*ai),order=self.reshape_order)
             (U,S,V) = np.linalg.svd(M_2d,full_matrices=0)
             self.mps.M[site] = np.swapaxes(np.reshape(V,(aim,si,ai),order=self.reshape_order),0,1)
-            self.mps.M[site-1] = np.einsum('ijk,kl,l->ijl',self.mps.M[site-1],U,S)
+            # self.mps.M[site-1] = np.einsum('ijk,kl,l->ijl',self.mps.M[site-1],U,S)
+            self.mps.M[site-1] = np.einsum('ijk,lk,k->ijl',self.mps.M[site-1],U,S)
+            
     
     def run_optimization(self):
         converged = False
@@ -47,13 +50,13 @@ class HeisDMRG:
                 energy_curr = self.H_opt(site)
                 self.normalize(site,'right')
                 self.mps.update_lr(site,'right',self.mpo.W)
-                print('\t\tOptimizing Site {}: {}'.format(site,energy_curr))
+                print('\t\tCompleted Site {}: {}'.format(site,energy_curr))
             print('\tLeft Sweep')
             for site in range(self.mps.L-1,0,-1):
                 energy_curr = self.H_opt(site)
                 self.normalize(site,'left')
                 self.mps.update_lr(site,'left',self.mpo.W)
-                print('\t\tOptimizing Site {}: {}'.format(site,energy_curr))
+                print('\t\tCompleted Site {}: {}'.format(site,energy_curr))
             
             
             
