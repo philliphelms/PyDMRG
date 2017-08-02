@@ -44,8 +44,8 @@ class Heis_MPS_MPO:
         self.h = 0
         self.J = 1
         self.d = 2
-        self.D = 10
-        self.init_guess_type = 'rand' # (gs, hf, eye, rand)
+        self.D = 8
+        self.init_guess_type = 'hf' # (gs, hf, eye, rand)
         self.tol = 1e-5
         self.max_sweep_cnt = 10
         self.reshape_order = "F"  
@@ -71,5 +71,5 @@ class Heis_MPS_MPO:
         self.dmrg.run_optimization()
     
 if __name__ == "__main__":
-    x = Heis_MPS_MPO(10)
+    x = Heis_MPS_MPO(25)
     x.calc_ground_state()
