@@ -45,7 +45,7 @@ class HeisMPS:
         self.reshape_order = reshape_order
         self.M = None
     
-    def create_initial_guess_quickly(self):
+    def create_initial_guess(self):
         print('Generating Initial MPS Guess')
         L = self.L
         if self.init_guess_type is 'default':
@@ -66,18 +66,19 @@ class HeisMPS:
                 max_ind_curr = min([a_curr,self.D])
                 max_ind_prev = min([a_prev,self.D])
                 if going_up:
-                    newMat = np.random.rand(self.d,max_ind_curr,max_ind_prev)
+                    newMat = np.zeros([self.d,max_ind_curr,max_ind_prev])
                 else:
-                    newMat = np.random.rand(self.d,max_ind_curr,max_ind_prev)
+                    newMat = np.zeros([self.d,max_ind_curr,max_ind_prev])
+                newMat[0,0,0] = 1
                 self.M.insert(0,newMat)
                 a_prev = a_curr
             # Normalize the MPS
             for i in range(len(self.M))[::-1]:
                 self.normalize(i,'left')
         else: 
-            create_initial_guess(self)
+            create_initial_guess_special(self)
         
-    def create_initial_guess(self):
+    def create_initial_guess_special(self):
         print('Generating Initial MPS Guess')
         L = self.L
         for i in range(L):

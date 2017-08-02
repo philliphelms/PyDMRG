@@ -27,6 +27,9 @@ class Heis_MPS_MPO:
                                  be set at "F", indicating Fortran ordering.
         > self.mpo             - The heisenberg model matrix product operator object
         > self.mps             - The heisenberg model matrix product state object
+        > self.plot_option     - If true, then generate matplotlib plots showing convergence.
+                                 Note that the plotting slows calculations significantly.
+        > self.plot_cnt        - Keeps track of the number of times the plot's been updated
     
     Key Functions:
         1) Heis_MPS_MPO(L)     - Create the Heis_MPS_MPO object with the length of
@@ -45,10 +48,11 @@ class Heis_MPS_MPO:
         self.J = 1
         self.d = 2
         self.D = 8
-        self.init_guess_type = 'default' # (gs, hf, eye, rand)
-        self.tol = 1e-5
+        self.init_guess_type = 'default' # (default, gs, hf, rand)
+        self.tol = 1e-3
         self.max_sweep_cnt = 10
         self.reshape_order = "F"  
+        self.plot_option = True
     
     def check_params(self):
         waiting = True
@@ -65,9 +69,11 @@ class Heis_MPS_MPO:
         self.check_params()
         self.mpo = HeisMPO(self.h,self.J,self.L)
         self.mps = HeisMPS(self.L,self.init_guess_type,self.d,self.reshape_order,self.D)
-        self.mps.create_initial_guess_quickly()
+        self.mps.create_initial_guess()
         self.mps.initialize_r(self.mpo.W)
-        self.dmrg = HeisDMRG(self.mpo,self.mps,self.tol,self.max_sweep_cnt,self.reshape_order)
+        self.dmrg = HeisDMRG(self.mpo,self.mps,self.tol,
+                             self.max_sweep_cnt,
+                             self.reshape_order,self.plot_option)
         self.dmrg.run_optimization()
     
 if __name__ == "__main__":
