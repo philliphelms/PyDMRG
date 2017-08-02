@@ -66,14 +66,16 @@ class HeisMPS:
                 max_ind_curr = min([a_curr,self.D])
                 max_ind_prev = min([a_prev,self.D])
                 if going_up:
-                    newMat = np.zeros([self.d,max_ind_curr,max_ind_prev])
+                    # newMat = np.zeros([self.d,max_ind_curr,max_ind_prev])
+                    newMat = np.random.rand(self.d,max_ind_curr,max_ind_prev)
                 else:
-                    newMat = np.zeros([self.d,max_ind_curr,max_ind_prev])
-                newMat[0,0,0] = 1
+                    # newMat = np.zeros([self.d,max_ind_curr,max_ind_prev])
+                    newMat = np.random.rand(self.d,max_ind_curr,max_ind_prev)
+                # newMat[0,0,0] = 1
                 self.M.insert(0,newMat)
                 a_prev = a_curr
             # Normalize the MPS
-            for i in range(len(self.M))[::-1]:
+            for i in range(1,len(self.M))[::-1]:
                 self.normalize(i,'left')
         else: 
             create_initial_guess_special(self)
@@ -136,13 +138,11 @@ class HeisMPS:
             M_2d = np.reshape(self.M[site],(si*aim,ai),order=self.reshape_order)
             (U,S,V) = np.linalg.svd(M_2d,full_matrices=0)
             self.M[site] = np.reshape(U,(si,aim,ai),order=self.reshape_order)  
-            self.M[site+1] = np.einsum('i,ji,kjl->kil',S,V,self.M[site+1])
         elif direction == 'left':
             M_3d_swapped = np.swapaxes(self.M[site],0,1)
             M_2d = np.reshape(M_3d_swapped,(aim,si*ai),order=self.reshape_order)
             (U,S,V) = np.linalg.svd(M_2d,full_matrices=0)
             self.M[site] = np.swapaxes(np.reshape(V,(aim,si,ai),order=self.reshape_order),0,1)
-            self.M[site-1] = np.einsum('ijk,lk,l->ijl',self.M[site-1],U,S)
     
     def initialize_r(self,W):
         self.R_array = []
