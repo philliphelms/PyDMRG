@@ -3,11 +3,39 @@ import scipy.linalg as la
 import matplotlib.pyplot as plt
 
 class HeisDMRG:
-
-    def __init__(self,mpo,mps,D,tol,max_sweep_cnt,reshape_order):
+    """
+    Description:
+        An object containing all of the information and functions to run the DMRG
+        algorithm to calculate the ground state of the 1D Heisenberg Model for a
+        chain of length L.
+        
+    Class Members:
+        > self.mpo             - The heisenberg model matrix product operator object
+        > self.mps             - The heisenberg model matrix product state object
+        > self.tol             - Tolerance for energy convergence criteria
+        > self.max_sweep_cnt   - The maximum number of sweeps to be performed before
+                                 cancelling the calculation
+        > self.reshape_order   - The ordering for reshaping of matrices, should always
+                                 be set at "F", indicating Fortran ordering.
+    
+    Key Functions:
+        1) H_opt(site)         - A function that forms and solves the eigenvalue problem
+                                 associated with minimizing the systems energy at the given
+                                 site, then places the resulting eigenvector back into the 
+                                 MPS. Done according to Equations 34-36 of the accompanying
+                                 theoretical description.
+        2) normalize(site,dir) - A function that uses singular value decomposition to put 
+                                 the resulting MPS in the correct mixed-canonical form. This
+                                 is performed at the given site and done according to whether
+                                 the sweep direction is 'left' or 'right'. Done according to 
+                                 Equations 37-39 of the accompanying description.
+        3) run_optimization()  - A simple driver that carries out each sweep and runs the 
+                                 functions associated with the optimization and normalization
+                                 of the MPS at each step of the algorithm.
+    """
+    def __init__(self,mpo,mps,tol,max_sweep_cnt,reshape_order):
         self.mpo = mpo
         self.mps = mps
-        self.D = D
         self.tol = tol
         self.max_sweep_cnt = max_sweep_cnt
         self.reshape_order = reshape_order

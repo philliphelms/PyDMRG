@@ -1,7 +1,24 @@
 import numpy as np
 
 class HeisMPO:
-
+    """
+    Description:
+        An object containing the MPO for the heisenberg hamiltonian with a single
+        function that returns the MPO associated with each site in the spin chain.
+        
+    Class Members:
+        > self.L               - The number of sites for the system
+        > self.h               - The strength of the orienting force
+        > self.J               - The interaction strenght between neighboring spins
+        > self.w_arr           - The full four-dimensional numpy array containing the 
+                                 MPO for the heisenberg model hamiltonian.
+    
+    Key Functions:
+        1) W(ind)              - Simply returns the correct MPO for the given site (ind).
+                                 Main job is to return a column vector on the left boundary,
+                                 a row vector on the right boundary and the full matrix on
+                                 all others.
+    """
     def __init__(self,h,J,L):
         self.h = h
         self.J = J

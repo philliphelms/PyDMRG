@@ -1,11 +1,42 @@
 import numpy as np
 
 class HeisMPS:
-
-    def __init__(self,L,init_guess_type,d,reshape_order):
+    """
+    Description:
+        An object containing all information pertaining to the matrix product state
+        associated with the heisenberg spin model of length L. 
+        
+    Class Members:
+        > self.L               - The number of sites for the system
+        > self.d               - The local state-space dimension
+        > self.D               - The cut-off for the state-space dimension of each 
+                                 matrix product state. This limits the size of the 
+                                 calculations using the Schmidt Decomposition.
+        > self.reshape_order   - The ordering for reshaping of matrices, should always
+                                 be set at "F", indicating Fortran ordering.
+        > self.M               - A list containing the total MPS. At each site is an
+                                 accompanying numpy array.
+    
+    Key Functions:
+        1) create_initial_guess() - Generates the initial MPS such that it is in 
+                                    'right-canonical' form. Allows for generation 
+                                    of random matrices ('rand'), matrices such that the 
+                                    initial guess for psi is a zero matrix with the 
+                                    first element set to one ('hf'), or a matrix such 
+                                    that the initial guess is the ground state as 
+                                    estimated by an alternative calculation ('gs').
+        2) initialize_r()         - A function that calculates all of the R-expressions
+                                    associated with the initial MPS. Performed according to 
+                                    Equations 40-43 of the accompanying text.
+        2) update_lr()            - A function that calculates the L- and R-expressions
+                                    for a given site such. Performed according to Equations
+                                    40-43 of the accompanying text.
+    """
+    def __init__(self,L,init_guess_type,d,reshape_order,D):
         self.L = L
         self.init_guess_type = init_guess_type
         self.d = d
+        self.D = D
         self.reshape_order = reshape_order
         self.M = None
     
