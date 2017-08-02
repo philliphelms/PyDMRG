@@ -77,12 +77,26 @@ class HeisMPS:
                 a_prev = a_curr
             (u,s,v) = np.linalg.svd(psi,full_matrices=0)
             a_curr = min(self.d**(i+1),self.d**(L-(i)))
+            max_ind = min([a_curr,self.D])
             if a_curr > a_prev:
-                v = np.swapaxes(np.reshape(v,(a_curr,self.d,-1),order=self.reshape_order),0,1)
+                print(a_curr)
+                print(max_ind)
+                v = v[:max_ind,:] # Truncation
+                v = np.reshape(v,(max_ind,self.d,-1),order=self.reshape_order)
+                v = np.swapaxes(v,0,1)
                 B.insert(0,v)
             else:
-                v = np.swapaxes(np.reshape(v,(-1,self.d,a_curr),order=self.reshape_order),0,1)
+                print(a_curr)
+                print(max_ind)
+                print(v.shape)
+                v = v[:max_ind,:] # Truncation (needs work)
+                print(v.shape)
+                v = np.reshape(v,(-1,self.d,max_ind),order=self.reshape_order)
+                v = np.swapaxes(v,0,1)
                 B.insert(0,v)
+            print(v.shape)
+            s = s[:max_ind] # Truncation
+            u = u[:,:max_ind] # Truncations
         self.M = B
         
     def initialize_r(self,W):
