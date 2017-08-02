@@ -19,16 +19,21 @@ class HeisMPS:
     
     Key Functions:
         1) create_initial_guess() - Generates the initial MPS such that it is in 
-                                    'right-canonical' form. Allows for generation 
-                                    of random matrices ('rand'), matrices such that the 
-                                    initial guess for psi is a zero matrix with the 
-                                    first element set to one ('hf'), or a matrix such 
-                                    that the initial guess is the ground state as 
-                                    estimated by an alternative calculation ('gs').
-        2) initialize_r()         - A function that calculates all of the R-expressions
+                                    right-canonical form. If init_guess_type is set
+                                    as 'default', then this will generate a random MPS
+                                    then put it into right-canonical form.
+        2) create_initial_guess_special() - If a special initial guess such as the previously
+                                    calculated ground state or the hartree fock state is 
+                                    desired, create_initial_guess() will pass to this function.
+        2) normalize(site,dir)    - A function that uses singular value decomposition to put 
+                                    the resulting MPS in the correct mixed-canonical form. This
+                                    is performed at the given site and done according to whether
+                                    the sweep direction is 'left' or 'right'. Done according to 
+                                    Equations 37-39 of the accompanying description.
+        3) initialize_r()         - A function that calculates all of the R-expressions
                                     associated with the initial MPS. Performed according to 
                                     Equations 40-43 of the accompanying text.
-        2) update_lr()            - A function that calculates the L- and R-expressions
+        4) update_lr()            - A function that calculates the L- and R-expressions
                                     for a given site such. Performed according to Equations
                                     40-43 of the accompanying text.
     """
@@ -40,6 +45,38 @@ class HeisMPS:
         self.reshape_order = reshape_order
         self.M = None
     
+    def create_initial_guess_quickly(self):
+        print('Generating Initial MPS Guess')
+        L = self.L
+        if self.init_guess_type is 'default':
+            # Create random MPS
+            self.M = []
+            a_prev = 1
+            going_up = True
+            for i in range(L):
+                if going_up:
+                    a_curr = min(self.d**(i+1),self.d**(L-(i)))
+                    if a_curr <= a_prev:
+                        going_up = False
+                        a_curr = self.d**(L-(i+1))
+                        a_prev = self.d**(L-(i))
+                else:
+                    a_curr = self.d**(L-(i+1))
+                    a_prev = self.d**(L-(i))
+                max_ind_curr = min([a_curr,self.D])
+                max_ind_prev = min([a_prev,self.D])
+                if going_up:
+                    newMat = np.random.rand(self.d,max_ind_curr,max_ind_prev)
+                else:
+                    newMat = np.random.rand(self.d,max_ind_curr,max_ind_prev)
+                self.M.insert(0,newMat)
+                a_prev = a_curr
+            # Normalize the MPS
+            for i in range(len(self.M))[::-1]:
+                self.normalize(i,'left')
+        else: 
+            create_initial_guess(self)
+        
     def create_initial_guess(self):
         print('Generating Initial MPS Guess')
         L = self.L
@@ -92,6 +129,20 @@ class HeisMPS:
             u = u[:,:max_ind]
         self.M = B
         
+    def normalize(self,site,direction):
+        si,aim,ai = self.M[site].shape
+        if direction == 'right':
+            M_2d = np.reshape(self.M[site],(si*aim,ai),order=self.reshape_order)
+            (U,S,V) = np.linalg.svd(M_2d,full_matrices=0)
+            self.M[site] = np.reshape(U,(si,aim,ai),order=self.reshape_order)  
+            self.M[site+1] = np.einsum('i,ji,kjl->kil',S,V,self.M[site+1])
+        elif direction == 'left':
+            M_3d_swapped = np.swapaxes(self.M[site],0,1)
+            M_2d = np.reshape(M_3d_swapped,(aim,si*ai),order=self.reshape_order)
+            (U,S,V) = np.linalg.svd(M_2d,full_matrices=0)
+            self.M[site] = np.swapaxes(np.reshape(V,(aim,si,ai),order=self.reshape_order),0,1)
+            self.M[site-1] = np.einsum('ijk,lk,l->ijl',self.M[site-1],U,S)
+    
     def initialize_r(self,W):
         self.R_array = []
         self.L_array = []
