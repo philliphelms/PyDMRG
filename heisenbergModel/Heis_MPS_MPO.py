@@ -44,7 +44,7 @@ class Heis_MPS_MPO:
     """
     def __init__(self,L):
         self.L = L
-        self.h = 0
+        self.h = 1
         self.J = 1
         self.d = 2
         self.D = 8
@@ -77,6 +77,6 @@ class Heis_MPS_MPO:
         self.dmrg.run_optimization()
     
 if __name__ == "__main__":
-    x = Heis_MPS_MPO(6)
+    x = Heis_MPS_MPO(10)
     x.calc_ground_state()
     x.mps.write_all_c('heisenberg_occupation_calc.xlsx')

@@ -135,9 +135,10 @@ class HeisMPS:
     def normalize(self,site,direction):
         si,aim,ai = self.M[site].shape
         if direction == 'right':
-            M_2d = np.reshape(self.M[site],(si*aim,ai),order=self.reshape_order)
+            M_3d_swapped = np.swapaxes(self.M[site],0,1)
+            M_2d = np.reshape(M_3d_swapped,(aim*si,ai),order=self.reshape_order)
             (U,S,V) = np.linalg.svd(M_2d,full_matrices=0)
-            self.M[site] = np.reshape(U,(si,aim,ai),order=self.reshape_order)
+            self.M[site] = np.swapaxes(np.reshape(U,(aim,si,ai),order=self.reshape_order),0,1)
             self.M[site+1] = np.einsum('i,ji,kjl->kil',S,V,self.M[site+1])
         elif direction == 'left':
             M_3d_swapped = np.swapaxes(self.M[site],0,1)
