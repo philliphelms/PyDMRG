@@ -77,5 +77,6 @@ class Heis_MPS_MPO:
         self.dmrg.run_optimization()
     
 if __name__ == "__main__":
-    x = Heis_MPS_MPO(100)
+    x = Heis_MPS_MPO(6)
     x.calc_ground_state()
+    x.mps.write_all_c('heisenberg_occupation_calc.xlsx')

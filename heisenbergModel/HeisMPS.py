@@ -137,12 +137,14 @@ class HeisMPS:
         if direction == 'right':
             M_2d = np.reshape(self.M[site],(si*aim,ai),order=self.reshape_order)
             (U,S,V) = np.linalg.svd(M_2d,full_matrices=0)
-            self.M[site] = np.reshape(U,(si,aim,ai),order=self.reshape_order)  
+            self.M[site] = np.reshape(U,(si,aim,ai),order=self.reshape_order)
+            self.M[site+1] = np.einsum('i,ji,kjl->kil',S,V,self.M[site+1])
         elif direction == 'left':
             M_3d_swapped = np.swapaxes(self.M[site],0,1)
             M_2d = np.reshape(M_3d_swapped,(aim,si*ai),order=self.reshape_order)
             (U,S,V) = np.linalg.svd(M_2d,full_matrices=0)
             self.M[site] = np.swapaxes(np.reshape(V,(aim,si,ai),order=self.reshape_order),0,1)
+            self.M[site-1] = np.einsum('ijk,lk,l->ijl',self.M[site-1],U,S)
     
     def initialize_r(self,W):
         self.R_array = []
@@ -170,3 +172,31 @@ class HeisMPS:
             # We update the R expressions
             self.R_array[site] = np.einsum('ijk,lmin,nop,kmp->jlo',\
                                            np.conjugate(self.M[site]),W(site),self.M[site],self.R_array[site+1])
+
+    def calc_c(self,sigma_vec):
+        c = np.array([[1]])
+        for i in range(len(self.M)):
+            c = np.dot(c,self.M[i][sigma_vec[i],:,:])
+        return c
+
+    def write_all_c(self,name):
+        import xlsxwriter
+        workbook = xlsxwriter.Workbook(name)
+        worksheet = workbook.add_worksheet()
+        worksheet.write(0,0,"C")
+        worksheet.write(0,1,"C^2")
+        for i in range(self.L):
+            worksheet.write(0,i+2,"Site {}".format(i))
+        for i in range(2 ** self.L):
+            bin_str = '{0:b}'.format(i).rjust(self.L, '0')
+            sigma_vec = np.fromstring(bin_str,'u1') - ord('0')
+            c_val = self.calc_c(sigma_vec)
+            col = 0
+            worksheet.write(i+1,col,c_val[0,0])
+            col += 1
+            worksheet.write(i+1,col,(c_val[0,0]**2))
+            col += 1
+            for j in range(len(sigma_vec)):
+                worksheet.write(i+1,col,sigma_vec[j])
+                col += 1
+        workbook.close()
