@@ -138,14 +138,22 @@ class HeisMPS:
             M_3d_swapped = np.swapaxes(self.M[site],0,1)
             M_2d = np.reshape(M_3d_swapped,(aim*si,ai),order=self.reshape_order)
             (U,S,V) = np.linalg.svd(M_2d,full_matrices=0)
+            # prevProd = np.dot(self.M[site],self.M[site+1])
             self.M[site] = np.swapaxes(np.reshape(U,(aim,si,ai),order=self.reshape_order),0,1)
-            self.M[site+1] = np.einsum('i,ji,kjl->kil',S,V,self.M[site+1])
+            self.M[site+1] = np.einsum('i,ij,kjl->kil',S,V,self.M[site+1])
+            # newProd = np.dot(self.M[site],self.M[site+1])
+            # print('Right - Difference between initial and final products: {:f}'.format(np.sum(prevProd-newProd,axis=(0,1,2,3))))
+            # print('Check for normalization:\n{}'.format(np.einsum('ijk,ikl->jl',np.transpose(self.M[site],(0,2,1)),self.M[site])))
         elif direction == 'left':
             M_3d_swapped = np.swapaxes(self.M[site],0,1)
             M_2d = np.reshape(M_3d_swapped,(aim,si*ai),order=self.reshape_order)
             (U,S,V) = np.linalg.svd(M_2d,full_matrices=0)
+            # prevProd = np.dot(self.M[site-1],self.M[site])
             self.M[site] = np.swapaxes(np.reshape(V,(aim,si,ai),order=self.reshape_order),0,1)
-            self.M[site-1] = np.einsum('ijk,lk,l->ijl',self.M[site-1],U,S)
+            self.M[site-1] = np.einsum('ijk,kl,l->ijl',self.M[site-1],U,S)
+            # newProd = np.dot(self.M[site-1],self.M[site])
+            # print('Left - Difference between initial and final products: {:f}'.format(np.sum(prevProd-newProd,axis=(0,1,2,3))))
+            # print('Check for normalization:\n{}'.format(np.einsum('ijk,ikl->jl',self.M[site],np.transpose(self.M[site],(0,2,1)))))
     
     def initialize_r(self,W):
         self.R_array = []
