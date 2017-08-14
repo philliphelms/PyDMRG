@@ -75,14 +75,34 @@ class HeisDMRG:
             self.plot_cnt += 1
             
     def H_opt(self,site):
-        H = np.einsum('ijk,jlmn,olp->mionkp',self.mps.L_array[site],self.mpo.W(site),self.mps.R_array[site+1])
-        sl,alm,al,slp,almp,alp = H.shape
-        H = np.reshape(H,(sl*alm*al,sl*alm*al),order=self.reshape_order)
-        w,v = np.linalg.eig(H)
-        w = np.sort(w)
-        v = v[:,w.argsort()]
-        self.mps.M[site] = np.reshape(v[:,0],(sl,alm,al),order=self.reshape_order)
-        energy = w[0]
+        if False:
+            #print('\t\t\tL array shape: {}'.format(self.mps.L_array[site].shape))
+            #print('\t\t\tR array shape: {}'.format(self.mps.R_array[site+1].shape))
+            H = np.einsum('ijk,jlmn,olp->mionkp',self.mps.L_array[site],self.mpo.W(site),self.mps.R_array[site+1])
+            sl,alm,al,slp,almp,alp = H.shape
+            H = np.reshape(H,(sl*alm*al,sl*alm*al),order=self.reshape_order)
+            w,v = np.linalg.eig(H)
+            w = np.sort(w)
+            v = v[:,w.argsort()]
+            #print('\t\t\tInitial M size: {}'.format(self.mps.M[site].shape))
+            self.mps.M[site] = np.reshape(v[:,0],(sl,alm,al),order=self.reshape_order)
+            #print('\t\t\tFinal M size: {}'.format(self.mps.M[site].shape))
+            energy = w[0]
+        else:
+            #print('\t\t\tL array shape: {}'.format(self.mps.L_array[site].shape))
+            #print('\t\t\tR array shape: {}'.format(self.mps.R_array[site+1].shape))
+            H = np.einsum('ijk,jlmn,olp->mionkp',self.mps.L_array[site],self.mpo.W(site),self.mps.R_array[site+1])
+            H = np.swapaxes(H,0,1) # alm,sl,al,slp,almp,alp
+            H = np.swapaxes(H,3,4) # alm,sl,al,almp,slp,alp
+            alm,sl,al,almp,slp,alp = H.shape
+            H= np.reshape(H,(alm*sl*al,almp*slp*alp),order=self.reshape_order)
+            w,v = np.linalg.eig(H)
+            w = np.sort(w)
+            v = v[:,w.argsort()]
+            #print('\t\t\tInitial M size: {}'.format(self.mps.M[site].shape))
+            self.mps.M[site] = np.swapaxes(np.reshape(v[:,0],(alm,sl,al),order=self.reshape_order),0,1)
+            #print('\t\t\tFinal M size: {}'.format(self.mps.M[site].shape))
+            energy = w[0]
         return energy
     
     def run_optimization(self):

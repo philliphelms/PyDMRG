@@ -2,6 +2,7 @@ import numpy as np
 from HeisMPO import *
 from HeisMPS import *
 from HeisDMRG import *
+import time
 
 class Heis_MPS_MPO:
     """
@@ -50,8 +51,8 @@ class Heis_MPS_MPO:
         self.D = 8
         self.init_guess_type = 'default' # (default, gs, hf, rand)
         self.tol = 1e-3
-        self.max_sweep_cnt = 10
-        self.reshape_order = "F"  
+        self.max_sweep_cnt = 3
+        self.reshape_order = "C" 
         self.plot_option = True
     
     def check_params(self):
@@ -77,8 +78,11 @@ class Heis_MPS_MPO:
         self.dmrg.run_optimization()
     
 if __name__ == "__main__":
+    t0 = time.time()
     np.set_printoptions(suppress=True)
     np.set_printoptions(precision=2)
-    x = Heis_MPS_MPO(10)
+    x = Heis_MPS_MPO(20)
     x.calc_ground_state()
-    x.mps.write_all_c('heisenberg_occupation_calc.xlsx')
+    # x.mps.write_all_c('heisenberg_occupation_calc.xlsx')
+    t1 = time.time()
+    print(('#'*75+'\nTotal Time: {}\n'+'#'*75).format(t1-t0))

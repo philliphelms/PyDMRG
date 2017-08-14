@@ -37,6 +37,7 @@ class HeisMPO:
                                [S_m,         zero_mat,      zero_mat,      zero_mat,   zero_mat],
                                [S_z,         zero_mat,      zero_mat,      zero_mat,   zero_mat],
                                [-self.h*S_z, self.J/2.*S_m, self.J/2.*S_p, self.J*S_z, I       ]])
+        # self.w_arr = np.swapaxes(self.w_arr,2,3)
     
     def W(self,ind):
         if ind == 0:
