@@ -117,7 +117,7 @@ class simpleHeisDMRG:
                 energy_vec_all.insert(len(energy_vec_all),self.h_optimization(site,'right'))
                 self.normalize(site,'right')
                 self.update_f(site,'right')
-                print('\t\tOptimized site {}: \t{}'.format(site,energy_vec_all[-1]))
+                print('\t\tOptimized site {}: {}'.format(site,energy_vec_all[-1]))
             print('\tBeginning Left Sweep')
             for site in range(1,self.L)[::-1]:
                 energy_vec_all.insert(len(energy_vec_all),self.h_optimization(site,'right'))
