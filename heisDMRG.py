@@ -118,14 +118,12 @@ class simpleHeisDMRG:
                 self.normalize(site,'right')
                 self.update_f(site,'right')
                 print('\t\tOptimized site {}: \t{}'.format(site,energy_vec_all[-1]))
-                print('\t\t\tUsed F[{}], W[{}],F[{}],M[{}],M''[{}]'.format(site,site,site+1,site,site))
             print('\tBeginning Left Sweep')
             for site in range(1,self.L)[::-1]:
                 energy_vec_all.insert(len(energy_vec_all),self.h_optimization(site,'right'))
                 self.normalize(site,'left')
                 self.update_f(site,'left')
                 print('\t\tOptimized site {}: {}'.format(site,energy_vec_all[-1]))
-                print('\t\t\tUsed F[{}], W[{}],F[{}],M[{}],M''[{}]'.format(site,site,site+1,site,site))
             energy_vec.insert(len(energy_vec),energy_vec_all[-1])
             if np.abs(energy_vec[-1]-energy_vec[-2]) < self.tol:
                 converged = True
