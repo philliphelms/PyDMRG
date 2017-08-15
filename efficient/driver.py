@@ -3,13 +3,13 @@ import time
 import mps_dmrg
 
 # Settings
-N = 40
+N = 14
 d = 2
-D = 2
-tol = 1e-5
+D = 8
+tol = 1e-3
 max_sweep_cnt = 20
 ham_type = "heis"
-ham_params = (1,0)
+ham_params = (-1,0)
 # Run Ground State Calculations
 t0 = time.time()
 np.set_printoptions(suppress=True)

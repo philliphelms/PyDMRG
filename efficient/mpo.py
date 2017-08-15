@@ -17,8 +17,12 @@ class MPO:
                              [0,0]])
         self.S_m = np.array([[0,0],
                              [1,0]])
-        self. S_z = np.array([[0.5,0],
-                              [0,-0.5]])
+        self.S_z = np.array([[0.5,0],
+                             [0,-0.5]])
+        self.S_x = np.array([[0,0.5],
+                             [0.5,0]])
+        self.S_y = 1/(2j)*np.array([[0,1],
+                                     [-1,0]])
         self.v = np.array([[0,0],
                            [0,1]])
         self.n = np.array([[1,0],

@@ -2,17 +2,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import mpo
+from mpl_toolkits.mplot3d import axes3d
 
 class MPS_DMRG:
     
     def __init__(self, L=6, d=2, D=8, tol=1e-3, max_sweep_cnt=3,
-                 ham_type="heis", ham_params=(1,1)):
+                 ham_type="heis", ham_params=(1,0), plot = True):
         # Input Parameters
         self.L = L
         self.d = d
         self.D = D
         self.tol = tol
         self.max_sweep_cnt = max_sweep_cnt
+        self.plot = plot
+        self.plot_cnt = 0
         # Generate MPO
         self.mpo = mpo.MPO(ham_type,ham_params,L) 
         # MPS
@@ -39,6 +42,10 @@ class MPS_DMRG:
             a_prev = a_curr
         for i in range(1,len(self.M))[::-1]:
             self.normalize(i,'left')
+        # Some Containers
+        self.calc_spin_x = [None]*L
+        self.calc_spin_y = [None]*L
+        self.calc_spin_z = [None]*L
     
     def initialize_f(self):
         self.F = []
@@ -83,35 +90,76 @@ class MPS_DMRG:
     def calc_observables(self,site):
         self.energy_calc = np.einsum('ijk,jlmn,olp,mio,nkp->',\
                               self.F[site],self.mpo.W(site),self.F[site+1],np.conjugate(self.M[site]),self.M[site])
+        self.calc_spin_x[site] = np.einsum('ijk,il,ljk',self.M[site].conj(),self.mpo.S_x,self.M[site]).real
+        self.calc_spin_y[site] = np.einsum('ijk,il,ljk',self.M[site].conj(),self.mpo.S_y,self.M[site]).real
+        self.calc_spin_z[site] = np.einsum('ijk,il,ljk',self.M[site].conj(),self.mpo.S_z,self.M[site]).real
         return(self.energy_calc)
     
+    def show_plot(self):
+        plt.style.use('ggplot')
+        plt.figure()
+        plt.rc('text', usetex=True)
+        plt.rcParams['text.latex.preamble'] = [r'\boldmath']
+        plt.rc('font', family='serif')
+        plt.subplot(3,1,1)
+        plt.quiver(range(1,self.L),np.zeros(self.L-1),np.zeros(self.L-1),self.calc_spin_x[1:])
+        frame1 = plt.gca()
+        frame1.axes.yaxis.set_ticklabels([])
+        frame1.axes.xaxis.set_ticklabels([])
+        plt.ylabel('$S_x$',fontsize=20)
+        plt.subplot(3,1,2)
+        plt.quiver(range(1,self.L),np.zeros(self.L-1),np.zeros(self.L-1),self.calc_spin_y[1:])
+        frame2 = plt.gca()
+        frame2.axes.yaxis.set_ticklabels([])
+        frame2.axes.xaxis.set_ticklabels([])
+        plt.ylabel('$S_y$',fontsize=20)
+        plt.subplot(3,1,3)
+        plt.quiver(range(1,self.L),np.zeros(self.L-1),np.zeros(self.L-1),self.calc_spin_z[1:])
+        frame3 = plt.gca()
+        frame3.axes.yaxis.set_ticklabels([])
+        plt.xlabel('Site',fontsize=20)
+        plt.ylabel('$S_z$',fontsize=20)
+        plt.show()
+        # Create 2D quiver plot
+        if False:
+            plt.figure()
+            plt.title('XZ Orientation')
+            print(self.calc_spin_x)
+            print(self.calc_spin_z)
+            Q = plt.quiver(range(self.L), np.zeros(self.L), self.calc_spin_x, self.calc_spin_z, scale_units='width', pivot='middle')
+            Q.axes.yaxis.set_ticklabels([])
+            plt.show()
+
     def run_optimization(self):
         converged = False
         sweep_cnt = 0
-        energy_vec = [0]
-        energy_vec_all = [0]
+        self.energy_vec = [0]
+        self.energy_vec_all = [0]
         while not converged:
             print('Beginning Sweep Set {}'.format(sweep_cnt))
             print('\tBeginning Right Sweep')
             for site in range(self.L-1):
-                energy_vec_all.insert(len(energy_vec_all),self.h_optimization(site,'right'))
+                self.energy_vec_all.insert(len(self.energy_vec_all),self.h_optimization(site,'right'))
+                self.calc_observables(site)
                 self.normalize(site,'right')
                 self.update_f(site,'right')
-                print('\t\tOptimized site {}: {}'.format(site,energy_vec_all[-1]))
+                print('\t\tOptimized site {}: {}'.format(site,self.energy_vec_all[-1]))
             print('\tBeginning Left Sweep')
             for site in range(1,self.L)[::-1]:
-                energy_vec_all.insert(len(energy_vec_all),self.h_optimization(site,'right'))
+                self.energy_vec_all.insert(len(self.energy_vec_all),self.h_optimization(site,'right'))
+                self.calc_observables(site)
                 self.normalize(site,'left')
                 self.update_f(site,'left')
-                print('\t\tOptimized site {}: {}'.format(site,energy_vec_all[-1]))
-            energy_vec.insert(len(energy_vec),energy_vec_all[-1])
-            if np.abs(energy_vec[-1]-energy_vec[-2]) < self.tol:
+                print('\t\tOptimized site {}: {}'.format(site,self.energy_vec_all[-1]))
+            self.energy_vec.insert(len(self.energy_vec),self.energy_vec_all[-1])
+            if np.abs(self.energy_vec[-1]-self.energy_vec[-2]) < self.tol:
                 converged = True
-                print(('#'*75+'\nGround state energy: {}\n'+'#'*75).format(energy_vec[-1]))
+                self.show_plot()
+                print(('#'*75+'\nGround state energy: {}\n'+'#'*75).format(self.energy_vec[-1]))
             elif sweep_cnt > self.max_sweep_cnt:
                 converged = True
                 print('Total number of iterations exceeded limit')
-                print('Resulting calculated energy: {}'.format(energy_vec[-1]))
+                print('Resulting calculated energy: {}'.format(self.energy_vec[-1]))
             else:
                 sweep_cnt += 1
     
@@ -126,4 +174,4 @@ if __name__ == "__main__":
     x = simpleHeisDMRG()
     x.calc_ground_state()
     t1 = time.time()
-    print(('#'*75+'\nTotal Time: {}\n'+'#'*75).format(t1-t0))
+    print(('#'*75+'\nTotal Time: {}\n'+'#'*75).ormat(t1-t0))
