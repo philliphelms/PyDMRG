@@ -4,15 +4,15 @@ import time
 
 class simpleHeisDMRG:
     
-    def __init__(self,L):
+    def __init__(self, L=6, d=2, D=8, tol=1e-3, max_sweep_cnt=3, h=1, J=1):
         # Input Parameters
         self.L = L
-        self.d = 2
-        self.D = 8
-        self.h = 1
-        self.J = 1
-        self.tol = 1e-3
-        self.max_sweep_cnt = 3
+        self.d = d
+        self.D = D
+        self.h = h
+        self.J = J
+        self.tol = tol
+        self.max_sweep_cnt = max_sweep_cnt
         # MPO
         S_p = np.array([[0,1],
                         [0,0]])
@@ -143,7 +143,7 @@ if __name__ == "__main__":
     t0 = time.time()
     np.set_printoptions(suppress=True)
     np.set_printoptions(precision=2)
-    x = simpleHeisDMRG(10)
+    x = simpleHeisDMRG(L=10)
     x.calc_ground_state()
     t1 = time.time()
     print(('#'*75+'\nTotal Time: {}\n'+'#'*75).format(t1-t0))
