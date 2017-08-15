@@ -12,7 +12,7 @@ This code is currently
 ## Running the Calculations
 ### *simple*
 To run the simple code, navigate into the *simple* directory and do the following in python:
-'''python
+```python
 import numpy as np
 import simple_dmrg
 x = simple_dmrg.simpleHeisDMRG(L=20, 
@@ -23,7 +23,7 @@ x = simple_dmrg.simpleHeisDMRG(L=20,
                                J=1, 
                                h=0)
 x.calculate_ground_state()
-'''
+```
 
 ### *efficient*
 I will update this section as the efficient calculation is developed further
