@@ -14,7 +14,7 @@ class MPS_DMRG:
         self.D = D
         self.tol = tol
         self.max_sweep_cnt = max_sweep_cnt
-        self.plot = plot
+        self.plot_option = plot
         self.plot_cnt = 0
         # Generate MPO
         self.mpo = mpo.MPO(ham_type,ham_params,L) 
@@ -46,6 +46,8 @@ class MPS_DMRG:
         self.calc_spin_x = [None]*L
         self.calc_spin_y = [None]*L
         self.calc_spin_z = [None]*L
+        self.calc_empty = [None]*L
+        self.calc_full = [None]*L
     
     def initialize_f(self):
         self.F = []
@@ -56,13 +58,17 @@ class MPS_DMRG:
         self.F.insert(0,np.array([[[1]]]))
     
     def h_optimization(self,site,dir):
+        if self.mpo.ham_type is "heis":
+            pick_ind = 0
+        else:
+            pick_ind = -1
         h = np.einsum('ijk,jlmn,olp->mionkp',self.F[site],self.mpo.W(site),self.F[site+1]) 
         si,aim,ai,sip,aimp,aip = h.shape
         h = np.reshape(h,(si*aim*ai,sip*aimp*aip))
         w,v = np.linalg.eig(h) 
-        e = w[(w).argsort()][0]
-        v = v[:,(w).argsort()]
-        self.M[site] = np.reshape(v[:,0],(si,aim,ai))
+        e = w[(w.real).argsort()][pick_ind]
+        v = v[:,(w.real).argsort()]
+        self.M[site] = np.reshape(v[:,pick_ind],(si,aim,ai))
         return e
     
     def normalize(self,site,dir):
@@ -90,36 +96,47 @@ class MPS_DMRG:
     def calc_observables(self,site):
         self.energy_calc = np.einsum('ijk,jlmn,olp,mio,nkp->',\
                               self.F[site],self.mpo.W(site),self.F[site+1],np.conjugate(self.M[site]),self.M[site])
-        self.calc_spin_x[site] = np.einsum('ijk,il,ljk',self.M[site].conj(),self.mpo.S_x,self.M[site]).real
-        self.calc_spin_y[site] = np.einsum('ijk,il,ljk',self.M[site].conj(),self.mpo.S_y,self.M[site]).real
-        self.calc_spin_z[site] = np.einsum('ijk,il,ljk',self.M[site].conj(),self.mpo.S_z,self.M[site]).real
+        self.calc_spin_x[site] = np.einsum('ijk,il,ljk->',self.M[site].conj(),self.mpo.S_x,self.M[site]).real
+        self.calc_spin_y[site] = np.einsum('ijk,il,ljk->',self.M[site].conj(),self.mpo.S_y,self.M[site]).real
+        self.calc_spin_z[site] = np.einsum('ijk,il,ljk->',self.M[site].conj(),self.mpo.S_z,self.M[site]).real
+        self.calc_empty[site] = np.einsum('ijk,il,ljk->',self.M[site].conj(),self.mpo.v,self.M[site]).real
+        self.calc_full[site] = np.einsum('ijk,il,ljk->',self.M[site].conj(),self.mpo.n,self.M[site]).real
         return(self.energy_calc)
     
     def show_plot(self):
-        plt.style.use('ggplot')
-        plt.figure()
-        plt.rc('text', usetex=True)
-        plt.rcParams['text.latex.preamble'] = [r'\boldmath']
-        plt.rc('font', family='serif')
-        plt.subplot(3,1,1)
-        plt.quiver(range(1,self.L),np.zeros(self.L-1),np.zeros(self.L-1),self.calc_spin_x[1:])
-        frame1 = plt.gca()
-        frame1.axes.yaxis.set_ticklabels([])
-        frame1.axes.xaxis.set_ticklabels([])
-        plt.ylabel('$S_x$',fontsize=20)
-        plt.subplot(3,1,2)
-        plt.quiver(range(1,self.L),np.zeros(self.L-1),np.zeros(self.L-1),self.calc_spin_y[1:])
-        frame2 = plt.gca()
-        frame2.axes.yaxis.set_ticklabels([])
-        frame2.axes.xaxis.set_ticklabels([])
-        plt.ylabel('$S_y$',fontsize=20)
-        plt.subplot(3,1,3)
-        plt.quiver(range(1,self.L),np.zeros(self.L-1),np.zeros(self.L-1),self.calc_spin_z[1:])
-        frame3 = plt.gca()
-        frame3.axes.yaxis.set_ticklabels([])
-        plt.xlabel('Site',fontsize=20)
-        plt.ylabel('$S_z$',fontsize=20)
-        plt.show()
+        if self.plot_option:
+            plt.style.use('ggplot')
+            plt.figure()
+            plt.rc('text', usetex=True)
+            plt.rcParams['text.latex.preamble'] = [r'\boldmath']
+            plt.rc('font', family='serif')
+            if self.mpo.ham_type is "heis":
+                plt.subplot(3,1,1)
+                plt.quiver(range(1,self.L),np.zeros(self.L-1),np.zeros(self.L-1),self.calc_spin_x[1:])
+                frame1 = plt.gca()
+                frame1.axes.yaxis.set_ticklabels([])
+                frame1.axes.xaxis.set_ticklabels([])
+                plt.ylabel('$S_x$',fontsize=20)
+                plt.subplot(3,1,2)
+                plt.quiver(range(1,self.L),np.zeros(self.L-1),np.zeros(self.L-1),self.calc_spin_y[1:])
+                frame2 = plt.gca()
+                frame2.axes.yaxis.set_ticklabels([])
+                frame2.axes.xaxis.set_ticklabels([])
+                plt.ylabel('$S_y$',fontsize=20)
+                plt.subplot(3,1,3)
+                plt.quiver(range(1,self.L),np.zeros(self.L-1),np.zeros(self.L-1),self.calc_spin_z[1:])
+                frame3 = plt.gca()
+                frame3.axes.yaxis.set_ticklabels([])
+                plt.xlabel('Site',fontsize=20)
+                plt.ylabel('$S_z$',fontsize=20)
+                plt.show()
+            elif self.mpo.ham_type is "tasep":
+                plt.plot(np.linspace(0,self.L-1,num=self.L),self.calc_empty)
+                plt.ylabel('Probability',fontsize=20)
+                plt.xlabel('Site',fontsize=20)
+                plt.hold(True)
+                plt.plot(np.linspace(0,self.L-1,num=self.L),self.calc_full)
+                plt.show()
         # Create 2D quiver plot
         if False:
             plt.figure()
@@ -132,11 +149,14 @@ class MPS_DMRG:
 
     def run_optimization(self):
         converged = False
-        sweep_cnt = 0
+        sweep_cnt = -1e99
         self.energy_vec = [0]
         self.energy_vec_all = [0]
+        self.minimum_energy = 0
+        self.prev_minimum_energy = 0
         while not converged:
             print('Beginning Sweep Set {}'.format(sweep_cnt))
+            print('Current Minimum Energy: {}'.format(self.minimum_energy))
             print('\tBeginning Right Sweep')
             for site in range(self.L-1):
                 self.energy_vec_all.insert(len(self.energy_vec_all),self.h_optimization(site,'right'))
@@ -144,6 +164,10 @@ class MPS_DMRG:
                 self.normalize(site,'right')
                 self.update_f(site,'right')
                 print('\t\tOptimized site {}: {}'.format(site,self.energy_vec_all[-1]))
+                if np.argmax(self.energy_vec_all) == len(self.energy_vec_all)-1:
+                    self.prev_minimum_energy = self.minimum_energy
+                    self.minimum_energy = self.energy_vec_all[-1]
+                    self.minimum_M = self.M
             print('\tBeginning Left Sweep')
             for site in range(1,self.L)[::-1]:
                 self.energy_vec_all.insert(len(self.energy_vec_all),self.h_optimization(site,'right'))
@@ -151,27 +175,33 @@ class MPS_DMRG:
                 self.normalize(site,'left')
                 self.update_f(site,'left')
                 print('\t\tOptimized site {}: {}'.format(site,self.energy_vec_all[-1]))
-            self.energy_vec.insert(len(self.energy_vec),self.energy_vec_all[-1])
+                if np.argmax(self.energy_vec_all) == len(self.energy_vec_all)-1:
+                    self.prev_minimum_energy = self.minimum_energy
+                    self.minimum_energy = self.energy_vec_all[-1]
+                    self.minimum_M = self.M
+            self.energy_vec.insert(len(self.energy_vec),self.minimum_energy)
             if np.abs(self.energy_vec[-1]-self.energy_vec[-2]) < self.tol:
                 converged = True
                 self.show_plot()
-                print(('#'*75+'\nGround state energy: {}\n'+'#'*75).format(self.energy_vec[-1]))
+                print(('#'*75+'\nGround state energy: {}\n'+'#'*75).format(self.minimum_energy))
+                return self.minimum_energy
             elif sweep_cnt > self.max_sweep_cnt:
                 converged = True
                 print('Total number of iterations exceeded limit')
-                print('Resulting calculated energy: {}'.format(self.energy_vec[-1]))
+                print('Resulting calculated energy: {}'.format(self.minimum_energy))
+                return self.minimum_energy
             else:
                 sweep_cnt += 1
     
     def calc_ground_state(self):
         self.initialize_f()
-        self.run_optimization()
+        return self.run_optimization()
 
 if __name__ == "__main__":
     t0 = time.time()
     np.set_printoptions(suppress=True)
     np.set_printoptions(precision=2)
     x = simpleHeisDMRG()
-    x.calc_ground_state()
+    E = x.calc_ground_state()
     t1 = time.time()
     print(('#'*75+'\nTotal Time: {}\n'+'#'*75).ormat(t1-t0))
