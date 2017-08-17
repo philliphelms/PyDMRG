@@ -2,12 +2,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import mpo
-from mpl_toolkits.mplot3d import axes3d
+import warnings
 
 class MPS_DMRG:
     
     def __init__(self, L=6, d=2, D=8, tol=1e-3, max_sweep_cnt=3,
-                 ham_type="heis", ham_params=(1,0), plot = True):
+                 ham_type="heis", ham_params=(1,0), plot = True,
+                 verbose = 1, fileName=False):
         # Input Parameters
         self.L = L
         self.d = d
@@ -16,6 +17,8 @@ class MPS_DMRG:
         self.max_sweep_cnt = max_sweep_cnt
         self.plot_option = plot
         self.plot_cnt = 0
+        self.verbose = verbose
+        self.save_name = fileName
         # Generate MPO
         self.mpo = mpo.MPO(ham_type,ham_params,L) 
         # MPS
@@ -66,8 +69,8 @@ class MPS_DMRG:
         si,aim,ai,sip,aimp,aip = h.shape
         h = np.reshape(h,(si*aim*ai,sip*aimp*aip))
         w,v = np.linalg.eig(h) 
-        e = w[(w.real).argsort()][pick_ind]
-        v = v[:,(w.real).argsort()]
+        e = w[(w).argsort()][pick_ind]
+        v = v[:,(w).argsort()]
         self.M[site] = np.reshape(v[:,pick_ind],(si,aim,ai))
         return e
     
@@ -137,59 +140,62 @@ class MPS_DMRG:
                 plt.hold(True)
                 plt.plot(np.linspace(0,self.L-1,num=self.L),self.calc_full)
                 plt.show()
-        # Create 2D quiver plot
-        if False:
-            plt.figure()
-            plt.title('XZ Orientation')
-            print(self.calc_spin_x)
-            print(self.calc_spin_z)
-            Q = plt.quiver(range(self.L), np.zeros(self.L), self.calc_spin_x, self.calc_spin_z, scale_units='width', pivot='middle')
-            Q.axes.yaxis.set_ticklabels([])
-            plt.show()
 
     def run_optimization(self):
         converged = False
-        sweep_cnt = -1e99
+        sweep_cnt = 0
         self.energy_vec = [0]
         self.energy_vec_all = [0]
-        self.minimum_energy = 0
-        self.prev_minimum_energy = 0
+        self.energy_vec.insert(0,0)
         while not converged:
-            print('Beginning Sweep Set {}'.format(sweep_cnt))
-            print('Current Minimum Energy: {}'.format(self.minimum_energy))
-            print('\tBeginning Right Sweep')
+            if self.verbose > 0:
+                print('Beginning Sweep Set {}'.format(sweep_cnt))
+            if self.verbose > 1:
+                print('\tBeginning Right Sweep')
+            self.sweep_energy_vec = []
             for site in range(self.L-1):
                 self.energy_vec_all.insert(len(self.energy_vec_all),self.h_optimization(site,'right'))
-                self.calc_observables(site)
+                if self.verbose > 4:
+                    print(self.calc_observables(site))
+                else:
+                    self.calc_observables
                 self.normalize(site,'right')
                 self.update_f(site,'right')
-                print('\t\tOptimized site {}: {}'.format(site,self.energy_vec_all[-1]))
-                if np.argmax(self.energy_vec_all) == len(self.energy_vec_all)-1:
-                    self.prev_minimum_energy = self.minimum_energy
-                    self.minimum_energy = self.energy_vec_all[-1]
-                    self.minimum_M = self.M
-            print('\tBeginning Left Sweep')
+                if self.verbose > 2:
+                    print('\t\tOptimized site {}: {}'.format(site,self.energy_vec_all[-1]))
+                self.sweep_energy_vec.insert(len(self.sweep_energy_vec),self.energy_vec_all[-1])
+            if self.verbose > 1:
+                print('\tBeginning Left Sweep')
             for site in range(1,self.L)[::-1]:
                 self.energy_vec_all.insert(len(self.energy_vec_all),self.h_optimization(site,'right'))
-                self.calc_observables(site)
+                if self.verbose > 4:
+                    print(self.calc_observables(site))
+                else:
+                    self.calc_observables
                 self.normalize(site,'left')
                 self.update_f(site,'left')
-                print('\t\tOptimized site {}: {}'.format(site,self.energy_vec_all[-1]))
-                if np.argmax(self.energy_vec_all) == len(self.energy_vec_all)-1:
-                    self.prev_minimum_energy = self.minimum_energy
-                    self.minimum_energy = self.energy_vec_all[-1]
-                    self.minimum_M = self.M
-            self.energy_vec.insert(len(self.energy_vec),self.minimum_energy)
-            if np.abs(self.energy_vec[-1]-self.energy_vec[-2]) < self.tol:
+                if self.verbose > 2:
+                    print('\t\tOptimized site {}: {}'.format(site,self.energy_vec_all[-1]))
+                self.sweep_energy_vec.insert(len(self.sweep_energy_vec),self.energy_vec_all[-1])
+            self.energy_vec.insert(len(self.energy_vec),np.max(self.sweep_energy_vec).real)
+            print(self.energy_vec[-1])
+            print(self.energy_vec[-3])
+            if np.abs(self.energy_vec[-1]-self.energy_vec[-3]) < self.tol:
                 converged = True
                 self.show_plot()
-                print(('#'*75+'\nGround state energy: {}\n'+'#'*75).format(self.minimum_energy))
-                return self.minimum_energy
+                if self.verbose > 0:
+                    print(('#'*75+'\nGround state energy: {}\n'+'#'*75).format(self.energy_vec[-1]))
+                if self.save_name:
+                    np.savez(self.save_name,L=self.L,E=self.energy_vec,allE=self.energy_vec_all,Empty=self.calc_empty,Full=self.calc_full)
+                return self.energy_vec[-1]
             elif sweep_cnt > self.max_sweep_cnt:
                 converged = True
-                print('Total number of iterations exceeded limit')
-                print('Resulting calculated energy: {}'.format(self.minimum_energy))
-                return self.minimum_energy
+                warnings.warn('Total number of iterations exceeded limit')
+                if self.verbose > 0:
+                    print('Resulting calculated energy: {}'.format(self.energy_vec[-1]))
+                if self.save_name:
+                    np.savez(self.save_name,L=self.L,E=self.energy_vec,allE=self.energy_vec_all,Empty=self.calc_empty,Full=self.calc_full)
+                return self.energy_vec[-1]
             else:
                 sweep_cnt += 1
     

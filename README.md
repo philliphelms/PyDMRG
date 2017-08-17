@@ -36,3 +36,10 @@ I will update this section as the efficient calculation is developed further
     * Globally
 * Implement infinite algorithm
 * Begin implementation of 2D DMRG algorithm 
+
+## Known Issues
+* For applications of DMRG that involve non-hermitian operators, there are two key problems:
+    * 
+    * The left and right eigenvectors are not identical.
+        * I have not yet learned how to deal with this issue.
+        * DMRG has been dome for systems with non-hermitian hamiltonians in the classical formulation of DMRG, but it seems that it is difficult to translate this to the MPS formalism.

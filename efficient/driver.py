@@ -28,38 +28,46 @@ if False:
     print(('#'*75+'\nTotal Time: {}\n'+'#'*75).format(t1-t0))
 
 if True:
-    N_vec = np.array([10]) #np.array([10,20,30,40,50,60,70,80,90,100])
-    s_vec = np.linspace(-1,1,20)
+    N_vec = np.array([100])
+    s_vec = np.array([0])
+    #s_vec = np.array([-1,-0.8,-0.6,-0.4,-0.2,-0.1,-0.05,-0.005,0,0.005,0.05,0.1,0.2,0.4,0.6,0.8,1.0])
     plt.figure(1)
     plt.figure(2)
     for j in range(len(N_vec)):
         N = N_vec[j]
+        print('Running Calcs for N={}'.format(N))
         Evec = np.zeros_like(s_vec)
         Evec_adj = np.zeros_like(s_vec)
         Evec_adj2 = np.zeros_like(s_vec)
         for i in range(len(s_vec)):
+            print('\tRunning Calcs for s={}'.format(s_vec[i]))
             t0 = time.time()
             np.set_printoptions(suppress=True)
             np.set_printoptions(precision=2)
             x = mps_dmrg.MPS_DMRG(L = N,
                                   d = 2,
                                   D = 8,
-                                  tol = 1e-3,
+                                  tol = 1e-4,
                                   max_sweep_cnt = 100,
                                   plot = False,
                                   ham_type = "tasep",
-                                  ham_params = (0.35,s_vec[i],2/3))
+                                  verbose = 3,
+                                  fileName = ('data/Results_'+str(N)+'_'+str(i)+'.npz'),
+                                  ham_params = (1,s_vec[i],0))
             Evec[i] = x.calc_ground_state()
-            Evec_adj[i] = x.calc_ground_state()/(N+1)
-            Evec_adj2[i] = Evec[i]/(N+1)
+            Evec_adj[i] = Evec[i]/(N+1)
             t1 = time.time()
-            print(('#'*75+'\nTotal Time: {}\n'+'#'*75).format(t1-t0))
+        Ediff = Evec[1:]-Evec[:len(Evec)-1]
+        Sdiff = s_vec[1:]-s_vec[:len(s_vec)-1]
+        slope = -Ediff/(Sdiff*(N+1))
         plt.figure(1)
-        plt.plot(s_vec,Evec,'bo:')
+        plt.plot(s_vec,Evec,'o:')
         plt.hold(True)
         plt.figure(2)
-        plt.plot(s_vec,Evec_adj,'bo:')
+        plt.plot(s_vec,Evec_adj,'o:')
         plt.hold(True)
+        plt.figure(3)
+        plt.plot(s_vec[1:],slope,'o:')
     plt.show()
 
 

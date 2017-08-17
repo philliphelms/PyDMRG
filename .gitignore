@@ -5,3 +5,5 @@ sepModel/*
 *.swp
 simple/__pycache__/*
 efficient/__pycache__/*
+efficient/figures/*
+efficient/data/*
