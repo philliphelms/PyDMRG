@@ -3,36 +3,79 @@ import time
 import mps_dmrg
 import matplotlib.pyplot as plt
 
+# Set Plotting parameters
+plt.rc('text', usetex=True)
+plt.rcParams['text.latex.preamble'] = [r'\boldmath']
+plt.rc('font', family='serif')
+np.set_printoptions(suppress=True)
+np.set_printoptions(precision=2)
+plt.style.use('ggplot')
 if False:
-    # Settings
-    N = 14
-    d = 2
-    D = 8
-    tol = 1e-3
-    max_sweep_cnt = 20
-    ham_type = "heis"
-    ham_params = (-1,0)
-    # Run Ground State Calculations
-    t0 = time.time()
-    np.set_printoptions(suppress=True)
-    np.set_printoptions(precision=2)
-    x = mps_dmrg.MPS_DMRG(L = N,
-                          d = d,
-                          D = D,
-                          tol = tol,
-                          max_sweep_cnt = max_sweep_cnt,
-                          ham_type = ham_type,
-                          ham_params = ham_params)
+    # Run Heisenberg Calculation
+    x = mps_dmrg.MPS_DMRG(L = 100,
+                          ham_type = 'heis',
+                          ham_params = (-1,0))
     x.calc_ground_state()
-    t1 = time.time()
-    print(('#'*75+'\nTotal Time: {}\n'+'#'*75).format(t1-t0))
+
+if False:
+    # Run single TASEP calculation
+    x = mps_dmrg.MPS_DMRG(L = 12,
+                          ham_type = "tasep",
+                          ham_params = (0.35,-1,2/3))
+    x.calc_ground_state()
+
+if False:
+    # Calculate 
+    alpha = 0.5
+    beta = 0.5
+    x = mps_dmrg.MPS_DMRG(L=50,
+                          max_sweep_cnt = 20,
+                          ham_type = "tasep",
+                          fileName = ('profileResults.npz'),
+                          ham_params = (alpha,0,beta),
+                          verbose = 10)
+    x.calc_ground_state()
+    plt.figure(1)
+    plt.plot(range(0,x.L,2),x.calc_full[0::2],'r:',linewidth=5)
+    plt.xlabel('Site',fontsize=20)
+    plt.ylabel('Expected Occupancy',fontsize=20)
+    frame1 = plt.gca()
+    #frame1.axes.get_xaxis().set_ticks([])
+    #frame1.axes.get_yaxis().set_ticks([])
+    plt.setp(frame1.get_xticklabels(), fontsize=14)
+    plt.setp(frame1.get_yticklabels(), fontsize=14)
+    plt.show()
+
+if False:
+    # Calculate Average Occupancies for range of alpha and beta values
+    alpha_vec = np.array([0.2,0.8])
+    beta_vec = np.array([0.2,0.8])
+    for i in range(len(alpha_vec)):
+        for j in range(len(beta_vec)):
+            x = mps_dmrg.MPS_DMRG(L=20,
+                                  max_sweep_cnt = 20,
+                                  ham_type = "tasep",
+                                  ham_params = (alpha_vec[i],0,beta_vec[j]),
+                                  verbose = 10)
+            x.calc_ground_state()
+            plt.figure(1)
+            #plt.plot(range(1,x.L),x.calc_full[1:],':')
+            plt.plot(range(0,x.L,2),x.calc_full[0::2],'r:',linewidth=5)
+            plt.xlabel('Site',fontsize=20)
+            plt.ylabel('Expected Occupancy',fontsize=20)
+            frame1=plt.gca()
+            plt.setp(frame1.get_xticklabels(), fontsize=14)
+            plt.setp(frame1.get_yticklabels(), fontsize=14)
+    plt.show()
 
 if True:
-    N_vec = np.array([100])
-    s_vec = np.array([0])
+    # Run TASEP Current Calculations
+    N_vec = np.array([20])
+    s_vec = np.linspace(-1,1,20)
     #s_vec = np.array([-1,-0.8,-0.6,-0.4,-0.2,-0.1,-0.05,-0.005,0,0.005,0.05,0.1,0.2,0.4,0.6,0.8,1.0])
     plt.figure(1)
     plt.figure(2)
+    col_vec = ['r','r','y','g','b','c']
     for j in range(len(N_vec)):
         N = N_vec[j]
         print('Running Calcs for N={}'.format(N))
@@ -45,15 +88,10 @@ if True:
             np.set_printoptions(suppress=True)
             np.set_printoptions(precision=2)
             x = mps_dmrg.MPS_DMRG(L = N,
-                                  d = 2,
-                                  D = 8,
-                                  tol = 1e-4,
-                                  max_sweep_cnt = 100,
-                                  plot = False,
+                                  max_sweep_cnt = 5,
                                   ham_type = "tasep",
-                                  verbose = 3,
                                   fileName = ('data/Results_'+str(N)+'_'+str(i)+'.npz'),
-                                  ham_params = (1,s_vec[i],0))
+                                  ham_params = (0.35,s_vec[i],2/3))
             Evec[i] = x.calc_ground_state()
             Evec_adj[i] = Evec[i]/(N+1)
             t1 = time.time()
@@ -61,51 +99,18 @@ if True:
         Sdiff = s_vec[1:]-s_vec[:len(s_vec)-1]
         slope = -Ediff/(Sdiff*(N+1))
         plt.figure(1)
-        plt.plot(s_vec,Evec,'o:')
+        plt.plot(s_vec,Evec,col_vec[j]+'o-')
         plt.hold(True)
+        plt.xlabel('$s$',fontsize=20)
+        plt.ylabel('$\mu$',fontsize=20)
         plt.figure(2)
-        plt.plot(s_vec,Evec_adj,'o:')
+        plt.plot(s_vec,Evec_adj,col_vec[j]+'o-')
         plt.hold(True)
+        plt.xlabel('$s$',fontsize=20)
+        plt.ylabel('$\mu/(N+1)$',fontsize=20)
         plt.figure(3)
-        plt.plot(s_vec[1:],slope,'o:')
-    plt.show()
-
-
-
-if False:
-    N_vec = np.array([10,20,30,40,50,60])
-    gap = 0.01
-    s_vec = np.array([-gap/2,gap/2])
-    plt.figure()
-    slope = np.zeros(len(N_vec))
-    for j in range(len(N_vec)):
-        N = N_vec[j]
-        Evec = np.zeros_like(s_vec)
-        t0 = time.time()
-        np.set_printoptions(suppress=True)
-        np.set_printoptions(precision=2)
-        x = mps_dmrg.MPS_DMRG(L = N,
-                              d = 2,
-                              D = 8,
-                              tol = 1e-3,
-                              max_sweep_cnt = 100,
-                              plot = False,
-                              ham_type = "tasep",
-                              ham_params = (0.35,s_vec[0],2/3))
-        Evec[0] = x.calc_ground_state()
-        x = mps_dmrg.MPS_DMRG(L = N,
-                              d = 2,
-                              D = 8,
-                              tol = 1e-3,
-                              max_sweep_cnt = 100,
-                              plot = False,
-                              ham_type = "tasep",
-                              ham_params = (0.35,s_vec[1],2/3))
-        Evec[1] = x.calc_ground_state()
-        slope[j] = (Evec[1]-Evec[0])/gap
-        t1 = time.time()
-        print('({} - {})/{} = {}'.format(Evec[1],Evec[0],gap,(Evec[1]-Evec[0])/gap))
-        print(slope[j])
-        print(('#'*75+'\nTotal Time: {}\n'+'#'*75).format(t1-t0))
-    plt.plot(N_vec,slope)
+        plt.plot(s_vec[1:],slope,col_vec[j]+'o-')
+        plt.xlabel('$s$',fontsize=20)
+        plt.ylabel('$\partial_s\mu/(N+1)$',fontsize=20)
+        plt.hold(True)
     plt.show()

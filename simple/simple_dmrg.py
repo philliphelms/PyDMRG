@@ -143,7 +143,7 @@ if __name__ == "__main__":
     t0 = time.time()
     np.set_printoptions(suppress=True)
     np.set_printoptions(precision=2)
-    x = simpleHeisDMRG(L=10)
+    x = simpleHeisDMRG(L=50)
     x.calc_ground_state()
     t1 = time.time()
     print(('#'*75+'\nTotal Time: {}\n'+'#'*75).format(t1-t0))
