@@ -1,38 +1,38 @@
 import numpy as np
 import time
-import mps_dmrg
+import mps_dmrg_lr
 import matplotlib.pyplot as plt
 
 # Set Plotting parameters
 plt.rc('text', usetex=True)
 plt.rcParams['text.latex.preamble'] = [r'\boldmath']
 plt.rc('font', family='serif')
-np.set_printoptions(suppress=True)
-np.set_printoptions(precision=2)
+#np.set_printoptions(suppress=True)
+#np.set_printoptions(precision=2)
 plt.style.use('ggplot')
 if False:
     # Run Heisenberg Calculation
-    x = mps_dmrg.MPS_DMRG(L = 50,
+    x = mps_dmrg_lr.MPS_DMRG(L = 8,
                           ham_type = 'heis',
                           ham_params = (1,-1))
     x.calc_ground_state()
 
-if False:
+if True:
     # Run single TASEP calculation
-    x = mps_dmrg.MPS_DMRG(L = 10,
+    x = mps_dmrg_lr.MPS_DMRG(L = 10,
                           ham_type = "tasep",
-                          ham_params = (0.35,0,2/3))
+                          ham_params = (0.35,1,2/3))
     x.calc_ground_state()
 
 if False:
     # Calculate 
-    alpha = 0.35
+    alpha = 3/5
     beta = 2/3
-    x = mps_dmrg.MPS_DMRG(L=30,
-                          max_sweep_cnt = 3,
+    x = mps_dmrg_lr.MPS_DMRG(L=4,
+                          max_sweep_cnt = 10,
                           ham_type = "tasep",
                           fileName = ('profileResults.npz'),
-                          ham_params = (alpha,0,beta),
+                          ham_params = (alpha,1,beta),
                           verbose = 10)
     x.calc_ground_state()
     plt.figure(10)
@@ -50,7 +50,7 @@ if False:
     beta_vec = np.array([0.2,0.8])
     for i in range(len(alpha_vec)):
         for j in range(len(beta_vec)):
-            x = mps_dmrg.MPS_DMRG(L=20,
+            x = mps_dmrg_lr.MPS_DMRG(L=20,
                                   max_sweep_cnt = 20,
                                   ham_type = "tasep",
                                   ham_params = (alpha_vec[i],0,beta_vec[j]),
@@ -68,10 +68,10 @@ if False:
             plt.setp(frame1.get_yticklabels(), fontsize=14)
     plt.show()
 
-if True:
+if False:
     # Run TASEP Current Calculations
-    N_vec = np.array([6])
-    s_vec = np.linspace(-1,1,20)
+    N_vec = np.array([10])
+    s_vec = np.linspace(-1,1,100)
     #s_vec = np.array([-1,-0.8,-0.6,-0.4,-0.2,-0.1,-0.05,-0.005,0,0.005,0.05,0.1,0.2,0.4,0.6,0.8,1.0])
     plt.figure(10)
     plt.figure(20)
@@ -87,8 +87,8 @@ if True:
             t0 = time.time()
             np.set_printoptions(suppress=True)
             np.set_printoptions(precision=2)
-            x = mps_dmrg.MPS_DMRG(L = N,
-                                  max_sweep_cnt = 3,
+            x = mps_dmrg_lr.MPS_DMRG(L = N,
+                                  max_sweep_cnt = 5,
                                   ham_type = "tasep",
                                   fileName = ('data/Results_'+str(N)+'_'+str(i)+'.npz'),
                                   ham_params = (3/5,s_vec[i],2/3))

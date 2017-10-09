@@ -8,7 +8,7 @@ from scipy.sparse.linalg import eigs as arnoldiEig
 
 class MPS_DMRG:
     
-    def __init__(self, L=6, d=2, D=16, tol=1e-10, max_sweep_cnt=10,
+    def __init__(self, L=6, d=2, D=8, tol=1e-5, max_sweep_cnt=10,
                  ham_type="heis", ham_params=(1,0), plotExpVal = True,
                  plotConv = True, verbose = 4, fileName=False, normCheck=False,
                  distribCheck=False):
@@ -57,6 +57,8 @@ class MPS_DMRG:
                 newMat = np.random.rand(self.d,max_ind_curr,max_ind_prev)
             self.M.insert(0,newMat)
             a_prev = a_curr
+        self.Mr = self.M
+        self.Ml = self.M
         for i in range(1,len(self.M))[::-1]:
             self.normalize(i,'left')
         # Observable Containers
@@ -68,106 +70,128 @@ class MPS_DMRG:
     
     def initialize_f(self):
         self.F = []
+        self.Fl = []
+        self.Fr = []
         self.F.insert(0,np.array([[[1]]]))
+        self.Fl.insert(0,np.array([[[1]]]))
+        self.Fr.insert(0,np.array([[[1]]]))
         for site in range(1,self.L)[::-1]:
                 self.F.insert(0,np.einsum('ijk,lmio,opq,kmq->jlp',\
-                                              np.conjugate(self.M[site]),self.mpo.W(site),self.M[site],self.F[0]))
+                                              np.conjugate(self.Ml[site]),self.mpo.W(site),self.Mr[site],self.F[0]))
+                self.Fl.insert(0,np.einsum('ijk,lmio,opq,kmq->jlp',\
+                                              np.conjugate(self.Ml[site]),self.mpo.W(site),self.Ml[site],self.Fl[0]))
+                self.Fr.insert(0,np.einsum('ijk,lmio,opq,kmq->jlp',\
+                                              np.conjugate(self.Mr[site]),self.mpo.W(site),self.Mr[site],self.Fr[0]))
         self.F.insert(0,np.array([[[1]]]))
     
     def h_optimization(self,site,dir):
-        if self.mpo.ham_type is 'heis':
-            if self.eigMethod is 'full':
-                pick_ind = 0
-            elif self.eigMethod is 'arnoldi':
-                pick_ind = 0
-                which = 'SR'
-        else:
-            if self.eigMethod is 'full':
-                pick_ind = -1
-            elif self.eigMethod is 'arnoldi':
-                pick_ind = 0
-                which = 'LR'
+        pick_ind = -1
         h = np.einsum('ijk,jlmn,olp->mionkp',self.F[site],self.mpo.W(site),self.F[site+1]) 
         si,aim,ai,sip,aimp,aip = h.shape
         h = np.reshape(h,(si*aim*ai,sip*aimp*aip))
-        if self.eigMethod is 'full':
-            w,vl,vr = fullEig(h,left=True,right=True)
-            e = w[w.argsort()][pick_ind]
-            if self.mpo.ham_type is 'heis':
-                v = vr[:,w.argsort()]
-            else:
-                if dir is 'left':
-                    #v = vl[:,w.argsort()]
-                    v = vr[:,w.argsort()]
-                if dir is 'right':
-                    #v = vl[:,w.argsort()]
-                    v = vr[:,w.argsort()]
-        elif self.eigMethod is 'arnoldi':
-            w,v = arnoldiEig(h,k=1,which=which,v0=np.reshape(self.M[site],(-1)))
-            e = w
-            e = w[(w).argsort()][pick_ind]
-        if self.compareEigs:
-            w_arnoldi,v_arnoldi = arnoldiEig(h,k=1,which='LR',v0=np.reshape(self.M[site],(-1)))
-            w_full,vl_full,vr_full = fullEig(h,left=True,right=True)
-            print('Difference in eigenvalue = {}'.format(w_arnoldi-w[w_full.argsort()][pick_ind]))
-            print('Sum of differences in from full left eigenvector = {}'.format(np.sum(np.abs(np.imag(v_arnoldi[:,0])-vl_full[:,w_full.argsort()][:,pick_ind]))))
-            print('Sum of differences in from full right eigenvector = {}'.format(np.sum(np.abs(np.imag(v_arnoldi[:,0])-vr_full[:,w_full.argsort()][:,pick_ind]))))
-        self.M[site] = np.reshape(v[:,pick_ind],(si,aim,ai))
+        w,vr,vl = fullEig(h,left=True,right=True)
+        e = w[w.argsort()][pick_ind]
+        vr = vr[:,w.argsort()]
+        vl = vl[:,w.argsort()]
+        self.Ml[site] = np.reshape(vl[:,pick_ind],(si,aim,ai))
+        self.Mr[site] = np.reshape(vr[:,pick_ind],(si,aim,ai))
         return e
     
     def normalize(self,site,dir):
-        si,aim,ai = self.M[site].shape
+        si,aim,ai = self.Ml[site].shape
         if dir == 'right':
-            M_prev = self.M[site]
-            M_prev_p1 = self.M[site+1]
-            M_reduced = np.reshape(self.M[site],(si*aim,ai))
+            M_prev = self.Ml[site]
+            M_prev_p1 = self.Ml[site+1]
+            M_reduced = np.reshape(self.Ml[site],(si*aim,ai))
             (U,S,V) = np.linalg.svd(np.real(M_reduced),full_matrices=0)
             #(U,S,V) = np.linalg.svd(M_reduced,full_matrices=0)
-            self.M[site] = np.reshape(U,(si,aim,ai))
-            self.M[site+1] = np.einsum('i,ij,kjl->kil',S,V,self.M[site+1])
+            self.Ml[site] = np.reshape(U,(si,aim,ai))
+            self.Ml[site+1] = np.einsum('i,ij,kjl->kil',S,V,self.Ml[site+1])
             if self.distribCheck:
-                print('\t\t\tDistribution Check: {}'.format(np.sum(np.abs(np.einsum('ijk,ikl->ijl',M_prev,M_prev_p1)-np.einsum('ijk,ikl->ijl',self.M[site],self.M[site+1])))))
+                print('\t\t\tDistribution Check: {}'.format(np.sum(np.abs(np.einsum('ijk,ikl->ijl',M_prev,M_prev_p1)-np.einsum('ijk,ikl->ijl',self.Ml[site],self.Ml[site+1])))))
             if self.normalizationCheck:
-                print('\t\t\tNormalization Check:\n{}'.format(np.einsum('ijk,ikl->jl',np.transpose(self.M[site],(0,2,1)),self.M[site])))
+                print('\t\t\tNormalization Check:\n{}'.format(np.einsum('ijk,ikl->jl',np.transpose(self.Ml[site],(0,2,1)),self.Ml[site])))
         elif dir == 'left':
-            M_prev = self.M[site-1]
-            M_prev_p1 = self.M[site]
-            M_swapped = np.swapaxes(self.M[site],0,1)
+            M_prev = self.Ml[site-1]
+            M_prev_p1 = self.Ml[site]
+            M_swapped = np.swapaxes(self.Ml[site],0,1)
             M_reduced = np.reshape(M_swapped,(aim,si*ai))
             (U,S,V) = np.linalg.svd(np.real(M_reduced),full_matrices=0)
             #(U,S,V) = np.linalg.svd(M_reduced,full_matrices=0)
-            self.M[site] = np.swapaxes(np.reshape(V,(aim,si,ai)),0,1)
-            self.M[site-1] = np.einsum('ijk,kl,l->ijl',self.M[site-1],U,S)
+            self.Ml[site] = np.swapaxes(np.reshape(V,(aim,si,ai)),0,1)
+            self.Ml[site-1] = np.einsum('ijk,kl,l->ijl',self.Ml[site-1],U,S)
             if self.distribCheck:
-                print('\t\t\tDistribution Check: {}'.format(np.sum(np.abs(np.einsum('ijk,ikl->ijl',M_prev,M_prev_p1)-np.einsum('ijk,ikl->ijl',self.M[site-1],self.M[site])))))
+                print('\t\t\tDistribution Check: {}'.format(np.sum(np.abs(np.einsum('ijk,ikl->ijl',M_prev,M_prev_p1)-np.einsum('ijk,ikl->ijl',self.Ml[site-1],self.Ml[site])))))
             if self.normalizationCheck:
-                print('Check for normalization:\n{}'.format(np.einsum('ijk,ikl->jl',self.M[site],np.transpose(self.M[site],(0,2,1)))))
+                print('Check for normalization:\n{}'.format(np.einsum('ijk,ikl->jl',self.Ml[site],np.transpose(self.Ml[site],(0,2,1)))))
+        si,aim,ai = self.Mr[site].shape
+        if dir == 'right':
+            M_prev = self.Mr[site]
+            M_prev_p1 = self.Mr[site+1]
+            M_reduced = np.reshape(self.Mr[site],(si*aim,ai))
+            (U,S,V) = np.linalg.svd(np.real(M_reduced),full_matrices=0)
+            #(U,S,V) = np.linalg.svd(M_reduced,full_matrices=0)
+            self.Mr[site] = np.reshape(U,(si,aim,ai))
+            self.Mr[site+1] = np.einsum('i,ij,kjl->kil',S,V,self.Mr[site+1])
+            if self.distribCheck:
+                print('\t\t\tDistribution Check: {}'.format(np.sum(np.abs(np.einsum('ijk,ikl->ijl',M_prev,M_prev_p1)-np.einsum('ijk,ikl->ijl',self.Mr[site],self.Mr[site+1])))))
+            if self.normalizationCheck:
+                print('\t\t\tNormalization Check:\n{}'.format(np.einsum('ijk,ikl->jl',np.transpose(self.Mr[site],(0,2,1)),self.Mr[site])))
+        elif dir == 'left':
+            M_prev = self.Mr[site-1]
+            M_prev_p1 = self.Mr[site]
+            M_swapped = np.swapaxes(self.Mr[site],0,1)
+            M_reduced = np.reshape(M_swapped,(aim,si*ai))
+            (U,S,V) = np.linalg.svd(np.real(M_reduced),full_matrices=0)
+            #(U,S,V) = np.linalg.svd(M_reduced,full_matrices=0)
+            self.Mr[site] = np.swapaxes(np.reshape(V,(aim,si,ai)),0,1)
+            self.Mr[site-1] = np.einsum('ijk,kl,l->ijl',self.Mr[site-1],U,S)
+            if self.distribCheck:
+                print('\t\t\tDistribution Check: {}'.format(np.sum(np.abs(np.einsum('ijk,ikl->ijl',M_prev,M_prev_p1)-np.einsum('ijk,ikl->ijl',self.Mr[site-1],self.Mr[site])))))
+            if self.normalizationCheck:
+                print('Check for normalization:\n{}'.format(np.einsum('ijk,ikl->jl',self.Mr[site],np.transpose(self.Mr[site],(0,2,1)))))
         
     def update_f(self,site,dir):
         if dir == 'right':
             self.F[site+1] = np.einsum('ijkl,knm,nip,lpq->mjq',\
-                                     self.mpo.W(site),np.conjugate(self.M[site]),self.F[site],self.M[site])
+                                     self.mpo.W(site),np.conjugate(self.Ml[site]),self.F[site],self.Mr[site])
         elif dir == 'left':
             self.F[site] = np.einsum('ijkl,knm,mjq,lpq->nip',\
-                                     self.mpo.W(site),np.conjugate(self.M[site]),self.F[site+1],self.M[site])
+                                     self.mpo.W(site),np.conjugate(self.Ml[site]),self.F[site+1],self.Mr[site])
+
+    def energy_contraction(self,psi_H_psi,psi_psi,i):
+        psi_H_psi = np.einsum('ijk,jnlm,lio,mkp->onp',psi_H_psi,self.mpo.W(i),np.conj(self.Ml[i]),self.Mr[i])
+        psi_psi = np.einsum('ij,kjl,kim->lm',psi_psi,np.conj(self.Ml[i]),self.Mr[i])
+        if i < self.L-1:
+            self.energy_contraction(psi_H_psi,psi_psi,i+1)
+        else:
+            psi_H_psi = np.einsum('iii->i',psi_H_psi)
+            psi_psi = np.einsum('ii->i',psi_psi)
+            self.energy_via_contraction = psi_H_psi/psi_psi
+                                                                  
+    def full_energy_calculation(self):
+        psi_H_psi = np.array([[[1]]])
+        psi_psi = np.array([[1]])
+        self.energy_contraction(psi_H_psi,psi_psi,0)
+        return(self.energy_via_contraction)
        
     def calc_observables(self,site):
         self.energy_calc = np.einsum('ijk,jlmn,olp,mio,nkp->',\
-                              self.F[site],self.mpo.W(site),self.F[site+1],np.conjugate(self.M[site]),self.M[site])
+                              self.F[site],self.mpo.W(site),self.F[site+1],np.conjugate(self.Ml[site]),self.Mr[site])
         if self.checkEnergyNormalization:
             top_cntr = np.einsum('bac,dce,feg,hgi,jik,lkm->bdfhjl',\
-                       self.M[0],self.M[1],self.M[2],self.M[3],self.M[4],\
-                       self.M[5])#,self.M[6],self.M[7],self.M[8],self.M[9])
+                       self.Mr[0],self.Mr[1],self.Mr[2],self.Mr[3],self.Mr[4],\
+                       self.Mr[5])#,self.M[6],self.M[7],self.M[8],self.M[9])
             bottom_cntr = np.einsum('bac,dce,feg,hgi,jik,lkm->bdfhjl',\
-                       np.conj(self.M[0]),np.conj(self.M[1]),np.conj(self.M[2]),np.conj(self.M[3]),np.conj(self.M[4]),\
-                       np.conj(self.M[5]))#,np.conj(self.M[6]),np.conj(self.M[7]),np.conj(self.M[8]),np.conj(self.M[9]))
+                       np.conj(self.Ml[0]),np.conj(self.Ml[1]),np.conj(self.Ml[2]),np.conj(self.Ml[3]),np.conj(self.Ml[4]),\
+                       np.conj(self.Ml[5]))#,np.conj(self.M[6]),np.conj(self.M[7]),np.conj(self.M[8]),np.conj(self.M[9]))
             norm = np.einsum('bdfhjl,bdfhjl->',top_cntr,bottom_cntr)
             print('\t\tNormalization Factor= {}'.format(norm))
-        self.calc_spin_x[site] = np.einsum('ijk,il,ljk->',self.M[site].conj(),self.mpo.S_x,self.M[site]).real
-        self.calc_spin_y[site] = np.einsum('ijk,il,ljk->',self.M[site].conj(),self.mpo.S_y,self.M[site]).real
-        self.calc_spin_z[site] = np.einsum('ijk,il,ljk->',self.M[site].conj(),self.mpo.S_z,self.M[site]).real
-        self.calc_empty[site] = np.einsum('ijk,il,ljk->',self.M[site].conj(),self.mpo.v,self.M[site]).real
-        self.calc_full[site] = np.einsum('ijk,il,ljk->',self.M[site].conj(),self.mpo.n,self.M[site]).real
+        self.calc_spin_x[site] = np.einsum('ijk,il,ljk->',self.Ml[site].conj(),self.mpo.S_x,self.Mr[site]).real
+        self.calc_spin_y[site] = np.einsum('ijk,il,ljk->',self.Ml[site].conj(),self.mpo.S_y,self.Mr[site]).real
+        self.calc_spin_z[site] = np.einsum('ijk,il,ljk->',self.Ml[site].conj(),self.mpo.S_z,self.Mr[site]).real
+        self.calc_empty[site] = np.einsum('ijk,il,ljk->',self.Ml[site].conj(),self.mpo.v,self.Mr[site]).real
+        self.calc_full[site] = np.einsum('ijk,il,ljk->',self.Ml[site].conj(),self.mpo.n,self.Mr[site]).real
         return(self.energy_calc)
     
     def plot_observables(self):
@@ -252,6 +276,7 @@ class MPS_DMRG:
                 self.update_f(site,'right')
                 if self.verbose > 2:
                     print('\t\tOptimized site {}: {}'.format(site,self.energy_vec_all[-1]))
+                    print('\t\tOptimized site {}: {} (contracted E)'.format(site,self.full_energy_calculation()))
                 self.sweep_energy_vec.insert(len(self.sweep_energy_vec),self.energy_vec_all[-1])
                 self.plot_convergence(site)
                 self.plot_observables()
@@ -267,6 +292,7 @@ class MPS_DMRG:
                 self.update_f(site,'left')
                 if self.verbose > 2:
                     print('\t\tOptimized site {}: {}'.format(site,self.energy_vec_all[-1]))
+                    print('\t\tOptimized site {}: {} (contracted E)'.format(site,self.full_energy_calculation()))
                 self.sweep_energy_vec.insert(len(self.sweep_energy_vec),self.energy_vec_all[-1])
                 self.plot_convergence(site)
                 self.plot_observables()
