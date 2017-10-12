@@ -13,6 +13,7 @@ plt.style.use('ggplot')
 if False:
     # Run Heisenberg Calculation
     x = mps_dmrg_lr.MPS_DMRG(L = 8,
+                          verbose = 10,
                           ham_type = 'heis',
                           ham_params = (1,-1))
     x.calc_ground_state()
@@ -21,7 +22,9 @@ if True:
     # Run single TASEP calculation
     x = mps_dmrg_lr.MPS_DMRG(L = 10,
                           ham_type = "tasep",
-                          ham_params = (0.35,1,2/3))
+                          ham_params = (0.75,0,0.25),
+                          plotExpVal = True,
+                          plotConv = True)
     x.calc_ground_state()
 
 if False:
@@ -46,17 +49,15 @@ if False:
 
 if False:
     # Calculate Average Occupancies for range of alpha and beta values
-    alpha_vec = np.array([0.2,0.8])
-    beta_vec = np.array([0.2,0.8])
+    alpha_vec = np.array([0,0.25,0.75,1])
+    beta_vec = np.array([0,0.25,0.75,1])
     for i in range(len(alpha_vec)):
         for j in range(len(beta_vec)):
-            x = mps_dmrg_lr.MPS_DMRG(L=20,
-                                  max_sweep_cnt = 20,
+            x = mps_dmrg_lr.MPS_DMRG(L=10,
+                                  max_sweep_cnt = 5,
                                   ham_type = "tasep",
                                   ham_params = (alpha_vec[i],0,beta_vec[j]),
-                                  verbose = 10,
-                                  plotConv = True,
-                                  plotExpVal = True)
+                                  verbose = 10)
             x.calc_ground_state()
             plt.figure(10)
             #plt.plot(range(1,x.L),x.calc_full[1:],':')
@@ -70,8 +71,8 @@ if False:
 
 if False:
     # Run TASEP Current Calculations
-    N_vec = np.array([10])
-    s_vec = np.linspace(-1,1,100)
+    N_vec = np.array([6])#,20,30,40,50,60,70,80,100])
+    s_vec = np.linspace(-1,1,25)
     #s_vec = np.array([-1,-0.8,-0.6,-0.4,-0.2,-0.1,-0.05,-0.005,0,0.005,0.05,0.1,0.2,0.4,0.6,0.8,1.0])
     plt.figure(10)
     plt.figure(20)
@@ -88,10 +89,11 @@ if False:
             np.set_printoptions(suppress=True)
             np.set_printoptions(precision=2)
             x = mps_dmrg_lr.MPS_DMRG(L = N,
+                                  D = 8,
                                   max_sweep_cnt = 5,
                                   ham_type = "tasep",
                                   fileName = ('data/Results_'+str(N)+'_'+str(i)+'.npz'),
-                                  ham_params = (3/5,s_vec[i],2/3))
+                                  ham_params = (0.35,s_vec[i],2/3))
             Evec[i] = x.calc_ground_state()
             Evec_adj[i] = Evec[i]/(N+1)
             t1 = time.time()

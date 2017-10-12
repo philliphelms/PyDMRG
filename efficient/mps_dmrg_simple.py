@@ -52,15 +52,13 @@ class MPS_DMRG:
             max_ind_curr = min([a_curr,self.D])
             max_ind_prev = min([a_prev,self.D])
             if going_up:
-                #newMat = np.random.rand(self.d,max_ind_curr,max_ind_prev)
-                newMat = np.ones((self.d,max_ind_curr,max_ind_prev))
+                newMat = np.random.rand(self.d,max_ind_curr,max_ind_prev)
             else:
-                #newMat = np.random.rand(self.d,max_ind_curr,max_ind_prev)
-                newMat = np.ones((self.d,max_ind_curr,max_ind_prev))
+                newMat = np.random.rand(self.d,max_ind_curr,max_ind_prev)
             self.M.insert(0,newMat)
             a_prev = a_curr
-        self.Mr = self.M
-        self.Ml = self.M
+        self.M_top = np.copy(self.M)
+        self.M_bottom = np.copy(self.M)
         for i in range(1,len(self.M))[::-1]:
             self.normalize(i,'left')
         # Observable Containers
@@ -72,86 +70,51 @@ class MPS_DMRG:
     
     def initialize_f(self):
         self.F = []
-        self.Fl = []
-        self.Fr = []
+        self.F_all_top = []
+        self.F_all_bottom = []
         self.F.insert(0,np.array([[[1]]]))
-        self.Fl.insert(0,np.array([[[1]]]))
-        self.Fr.insert(0,np.array([[[1]]]))
+        self.F_all_top.insert(0,np.array([[[1]]]))
+        self.F_all_bottom.insert(0,np.array([[[1]]]))
         for site in range(1,self.L)[::-1]:
                 self.F.insert(0,np.einsum('ijk,lmio,opq,kmq->jlp',\
-                                              np.conjugate(self.Ml[site]),self.mpo.W(site),self.Mr[site],self.F[0]))
-                self.Fl.insert(0,np.einsum('ijk,lmio,opq,kmq->jlp',\
-                                              np.conjugate(self.Ml[site]),self.mpo.W(site),self.Ml[site],self.Fl[0]))
-                self.Fr.insert(0,np.einsum('ijk,lmio,opq,kmq->jlp',\
-                                              np.conjugate(self.Mr[site]),self.mpo.W(site),self.Mr[site],self.Fr[0]))
+                                              np.conjugate(self.M_bottom[site]),self.mpo.W(site),self.M_top[site],self.F[0]))
+                self.F_all_top.insert(0,np.einsum('ijk,lmio,opq,kmq->jlp',\
+                                              np.conjugate(self.M_top[site]),self.mpo.W(site),self.M_top[site],self.F_all_top[0]))
+                self.F_all_bottom.insert(0,np.einsum('ijk,lmio,opq,kmq->jlp',\
+                                              np.conjugate(self.M_bottom[site]),self.mpo.W(site),self.M_bottom[site],self.F_all_bottom[0]))
         self.F.insert(0,np.array([[[1]]]))
     
     def h_optimization(self,site,dir):
-        pick_ind = 0
-        h = np.einsum('ijk,jlmn,olp->mionkp',self.F[site],self.mpo.W(site),self.F[site+1]) 
-        si,aim,ai,sip,aimp,aip = h.shape
-        h = np.reshape(h,(si*aim*ai,sip*aimp*aip))
-        w,vr,vl = fullEig(h,left=True,right=True)
+        pick_ind = -1
+        H = np.einsum('ijk,jlmn,olp->mionkp',self.F[site],self.mpo.W(site),self.F[site+1]) 
+        si,aim,ai,sip,aimp,aip = H.shape
+        H = np.reshape(h,(si*aim*ai,sip*aimp*aip))
+        w,v_top,v_bottom = fullEig(H,left=True,right=True)
         e = w[w.argsort()][pick_ind]
-        vr = vr[:,w.argsort()]
-        vl = vl[:,w.argsort()]
-        self.Ml[site] = np.reshape(vl[:,pick_ind],(si,aim,ai))
-        self.Mr[site] = np.reshape(vr[:,pick_ind],(si,aim,ai))
+        v_top = v_top[:,w.argsort()]
+        v_bottom = v_bottom[:,w.argsort()]
+        self.M_top[site] = np.reshape(v_top[:,pick_ind],(si,aim,ai))
+        self.M_bottom[site] = np.reshape(v_bottom[:,pick_ind],(si,aim,ai))
         return e
     
     def normalize(self,site,dir):
         si,aim,ai = self.Ml[site].shape
         if dir == 'right':
-            M_prev = self.Ml[site]
-            M_prev_p1 = self.Ml[site+1]
-            M_reduced = np.reshape(self.Ml[site],(si*aim,ai))
-            (U,S,V) = np.linalg.svd(np.real(M_reduced),full_matrices=0)
-            #(U,S,V) = np.linalg.svd(M_reduced,full_matrices=0)
-            self.Ml[site] = np.reshape(U,(si,aim,ai))
-            self.Ml[site+1] = np.einsum('i,ij,kjl->kil',S,V,self.Ml[site+1])
-            if self.distribCheck:
-                print('\t\t\tDistribution Check: {}'.format(np.sum(np.abs(np.einsum('ijk,ikl->ijl',M_prev,M_prev_p1)-np.einsum('ijk,ikl->ijl',self.Ml[site],self.Ml[site+1])))))
-            if self.normalizationCheck:
-                print('\t\t\tNormalization Check:\n{}'.format(np.einsum('ijk,ikl->jl',np.transpose(self.Ml[site],(0,2,1)),self.Ml[site])))
+            M_reduced = np.reshape(self.M_top[site],(si*aim,ai))
+            (U,S,V) = np.linalg.svd(np.real(M_reduced),full_matrices=0) # I WONDER IF I SHOULD STOP USING REAL HERE???
+            self.M_top[site+1] = np.einsum('i,ij,kjl->kil',S,V,self.M_top[site+1])
+            # Inverse won't quite work here.....
+            self.M_bottom[site+1] = np.einsum('',np.linalg.inv(U),self.M_bottom[site],self.M_bottom[site+1])
+            self.M_top[site] = np.reshape(U,(si,aim,ai))
+            self.M_bottom[site] = np.reshape(U,(si,aim,ai))
         elif dir == 'left':
             M_prev = self.Ml[site-1]
             M_prev_p1 = self.Ml[site]
             M_swapped = np.swapaxes(self.Ml[site],0,1)
             M_reduced = np.reshape(M_swapped,(aim,si*ai))
             (U,S,V) = np.linalg.svd(np.real(M_reduced),full_matrices=0)
-            #(U,S,V) = np.linalg.svd(M_reduced,full_matrices=0)
             self.Ml[site] = np.swapaxes(np.reshape(V,(aim,si,ai)),0,1)
             self.Ml[site-1] = np.einsum('ijk,kl,l->ijl',self.Ml[site-1],U,S)
-            if self.distribCheck:
-                print('\t\t\tDistribution Check: {}'.format(np.sum(np.abs(np.einsum('ijk,ikl->ijl',M_prev,M_prev_p1)-np.einsum('ijk,ikl->ijl',self.Ml[site-1],self.Ml[site])))))
-            if self.normalizationCheck:
-                print('Check for normalization:\n{}'.format(np.einsum('ijk,ikl->jl',self.Ml[site],np.transpose(self.Ml[site],(0,2,1)))))
-        si,aim,ai = self.Mr[site].shape
-        if dir == 'right':
-            M_prev = self.Mr[site]
-            M_prev_p1 = self.Mr[site+1]
-            M_reduced = np.reshape(self.Mr[site],(si*aim,ai))
-            (U,S,V) = np.linalg.svd(np.real(M_reduced),full_matrices=0)
-            #(U,S,V) = np.linalg.svd(M_reduced,full_matrices=0)
-            self.Mr[site] = np.reshape(U,(si,aim,ai))
-            self.Mr[site+1] = np.einsum('i,ij,kjl->kil',S,V,self.Mr[site+1])
-            if self.distribCheck:
-                print('\t\t\tDistribution Check: {}'.format(np.sum(np.abs(np.einsum('ijk,ikl->ijl',M_prev,M_prev_p1)-np.einsum('ijk,ikl->ijl',self.Mr[site],self.Mr[site+1])))))
-            if self.normalizationCheck:
-                print('\t\t\tNormalization Check:\n{}'.format(np.einsum('ijk,ikl->jl',np.transpose(self.Mr[site],(0,2,1)),self.Mr[site])))
-        elif dir == 'left':
-            M_prev = self.Mr[site-1]
-            M_prev_p1 = self.Mr[site]
-            M_swapped = np.swapaxes(self.Mr[site],0,1)
-            M_reduced = np.reshape(M_swapped,(aim,si*ai))
-            (U,S,V) = np.linalg.svd(np.real(M_reduced),full_matrices=0)
-            #(U,S,V) = np.linalg.svd(M_reduced,full_matrices=0)
-            self.Mr[site] = np.swapaxes(np.reshape(V,(aim,si,ai)),0,1)
-            self.Mr[site-1] = np.einsum('ijk,kl,l->ijl',self.Mr[site-1],U,S)
-            if self.distribCheck:
-                print('\t\t\tDistribution Check: {}'.format(np.sum(np.abs(np.einsum('ijk,ikl->ijl',M_prev,M_prev_p1)-np.einsum('ijk,ikl->ijl',self.Mr[site-1],self.Mr[site])))))
-            if self.normalizationCheck:
-                print('Check for normalization:\n{}'.format(np.einsum('ijk,ikl->jl',self.Mr[site],np.transpose(self.Mr[site],(0,2,1)))))
         
     def update_f(self,site,dir):
         if dir == 'right':
@@ -190,7 +153,7 @@ class MPS_DMRG:
         print(self.Fr[site].shape)
         print(self.mpo.W(site).shape)
         self.energy_calc = np.einsum('ijk,jlmn,olp,mio,nkp->',\
-                              self.F[site],self.mpo.W(site),self.F[site+1],np.conjugate(self.Ml[site]),self.Mr[site])
+                              self.Fl[site],self.mpo.W(site),self.Fr[site+1],np.conjugate(self.Ml[site]),self.Mr[site])
         if self.checkEnergyNormalization:
             top_cntr = np.einsum('bac,dce,feg,hgi,jik,lkm->bdfhjl',\
                        self.Mr[0],self.Mr[1],self.Mr[2],self.Mr[3],self.Mr[4],\
