@@ -17,11 +17,11 @@ if False:
                           ham_params = (1,-1))
     x.calc_ground_state()
 
-if False:
+if True:
     # Run single TASEP calculation
-    x = mps_dmrg.MPS_DMRG(L = 10,
+    x = mps_dmrg.MPS_DMRG(L = 2,
                           ham_type = "tasep",
-                          ham_params = (0.35,0,2/3))
+                          ham_params = (0.35,-1,2/3))
     x.calc_ground_state()
 
 if False:
@@ -68,7 +68,7 @@ if False:
             plt.setp(frame1.get_yticklabels(), fontsize=14)
     plt.show()
 
-if True:
+if False:
     # Run TASEP Current Calculations
     N_vec = np.array([6])
     s_vec = np.linspace(-1,1,20)

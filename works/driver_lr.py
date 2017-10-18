@@ -19,9 +19,9 @@ if False:
 
 if True:
     # Run single TASEP calculation
-    x = mps_dmrg_lr.MPS_DMRG(L = 8,
+    x = mps_dmrg_lr.MPS_DMRG(L = 4,
                              ham_type = "tasep",
-                             ham_params = (0,0,0))
+                             ham_params = (0.35,0,2/3))
     x.calc_ground_state()
 
 if False:

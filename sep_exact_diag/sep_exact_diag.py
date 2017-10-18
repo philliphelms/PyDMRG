@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Number of Sites
-L = 4
+L = 8
 # SEP Parameters
 alpha = 0.35 # Enter at left
 beta = 0  # Enter at right
@@ -10,7 +10,7 @@ delta = 2/3   # Leave at right
 gamma = 0   # Leave at left
 p = 1     # Hop right
 q = 0       # Hop left
-s = 0
+s = -1
 
 # Other useful vars
 s_p = np.array([[0,1],
@@ -38,7 +38,6 @@ for i in range(2**L):
     print('Percent Complete: {}'.format((i*(2**L))/((2**L)*(2**L))*100))
     occVec_i = int2stringVec(i,L)
     for j in range(2**L):
-#        print('Calculating <{}|H|{}>, Percent Complete: {}'.format(i,j,(i*(2**L)+j)/((2**L)*(2**L))*100))
         occVec_j = int2stringVec(j,L)
         # Enter at Left Site:
         H[i,j] += alpha*(np.exp(-s)*s_m[occVec_i[0],occVec_j[0]]-v[occVec_i[0],occVec_j[0]])
@@ -54,14 +53,16 @@ for i in range(2**L):
             H[i,j] += p*(np.exp(-s)*s_p[occVec_i[k],occVec_j[k]]*s_m[occVec_i[k],occVec_j[k]]-n[occVec_i[k],occVec_j[k]]*v[occVec_i[k],occVec_j[k]])
             # Hopping Left
             H[i,j] += q*(np.exp(-s)*s_m[occVec_i[k],occVec_j[k]]*s_p[occVec_i[k],occVec_j[k]]-v[occVec_i[k],occVec_j[k]]*n[occVec_i[k],occVec_j[k]])
+        print('Calculating <{}|H|{}> = {}'.format(occVec_i,occVec_j,H[i,j]))
 
 # Calculate Eigenvalue
+print(H)
 w,v = np.linalg.eig(H)
-pick_ind = 1
+pick_ind = 0#2**L-1
 ind = np.argsort(w)[pick_ind]
 e = w[ind]
 print(np.sort(w)/(L+1))
-print(e)
+print(e/(L+1))
 v = v[:,ind]
 
 # Calculate average occupancy:

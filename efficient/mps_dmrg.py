@@ -52,9 +52,11 @@ class MPS_DMRG:
             max_ind_curr = min([a_curr,self.D])
             max_ind_prev = min([a_prev,self.D])
             if going_up:
-                newMat = np.random.rand(self.d,max_ind_curr,max_ind_prev)
+                #newMat = np.random.rand(self.d,max_ind_curr,max_ind_prev)
+                newMat = np.ones((self.d,max_ind_curr,max_ind_prev))
             else:
-                newMat = np.random.rand(self.d,max_ind_curr,max_ind_prev)
+                #newMat = np.random.rand(self.d,max_ind_curr,max_ind_prev)
+                newMat = np.ones((self.d,max_ind_curr,max_ind_prev))
             self.M.insert(0,newMat)
             a_prev = a_curr
         for i in range(1,len(self.M))[::-1]:

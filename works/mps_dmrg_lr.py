@@ -93,8 +93,13 @@ class MPS_DMRG:
         si,aim,ai,sip,aimp,aip = h.shape
         h = np.reshape(h,(si*aim*ai,sip*aimp*aip))
         w,vr,vl = fullEig(h,left=True,right=True)
-        print(w)
-        e = w[w.argsort()][pick_ind]
+        # Select the correct eigenvalue
+        Val = -100
+        for i in range(len(w)):
+            if (w[i].imag<1.0e-10) and (w[i]>Val):
+                pick_ind = i;
+                Val = w[pick_ind]
+        e = w[w.argsort()[pick_ind]]
         vr = vr[:,w.argsort()]
         vl = vl[:,w.argsort()]
         self.Ml[site] = np.reshape(vl[:,pick_ind],(si,aim,ai))
@@ -166,19 +171,24 @@ class MPS_DMRG:
     def full_energy_calculation(self, psi_H_psi=np.array([[[1]]]), 
                                 psi_psi=np.array([[1]]),i=0):
         #psi_H_psi = np.einsum('ijk,jnlm,lio,mkp->onp',psi_H_psi,self.mpo.W(i),np.conj(self.Ml[i]),self.Mr[i])
-        psi_H_psi = np.einsum('ijk,jnlm,mkq,lip->pnq',psi_H_psi,self.mpo.W(i),np.conj(self.Ml[i]),self.Mr[i])
+        psi_H_psi = np.einsum('ijk,jnml,mkq,lip->pnq',psi_H_psi,self.mpo.W(i),np.conj(self.Ml[i]),self.Mr[i])
         psi_psi = np.einsum('ij,kjl,kim->lm',psi_psi,np.conj(self.Ml[i]),self.Mr[i])
         if i < self.L-1:
             return self.full_energy_calculation(psi_H_psi,psi_psi,i+1)
         else:
+            print(psi_H_psi)
             psi_H_psi = np.einsum('iii->i',psi_H_psi)
+            print(psi_H_psi)
+            print(psi_psi)
             psi_psi = np.einsum('ii->i',psi_psi)
+            print(psi_psi)
             self.energy_via_contraction = psi_H_psi/psi_psi
             return psi_H_psi/psi_psi
     
     def calc_observables(self,site):
-        self.energy_calc = np.einsum('ijk,jlmn,olp,mio,nkp->',\
+        self.energy_calc = np.einsum('ijk,jlnm,olp,mio,nkp->',\
                                  self.F[site],self.mpo.W(site),self.F[site+1],np.conjugate(self.Ml[site]),self.Mr[site])
+        print(self.energy_calc)
         if self.checkEnergyNormalization:
             top_cntr = np.einsum('bac,dce,feg,hgi,jik,lkm->bdfhjl',\
                                   self.Mr[0],self.Mr[1],self.Mr[2],self.Mr[3],self.Mr[4],\
@@ -188,11 +198,11 @@ class MPS_DMRG:
                                       np.conj(self.Ml[5]))#,np.conj(self.M[6]),np.conj(self.M[7]),np.conj(self.M[8]),np.conj(self.M[9]))
             norm = np.einsum('bdfhjl,bdfhjl->',top_cntr,bottom_cntr)
             print('\t\tNormalization Factor= {}'.format(norm))
-        self.calc_spin_x[site] = np.einsum('ijk,il,ljk->',self.Ml[site].conj(),self.mpo.S_x,self.Mr[site]).real
-        self.calc_spin_y[site] = np.einsum('ijk,il,ljk->',self.Ml[site].conj(),self.mpo.S_y,self.Mr[site]).real
-        self.calc_spin_z[site] = np.einsum('ijk,il,ljk->',self.Ml[site].conj(),self.mpo.S_z,self.Mr[site]).real
-        self.calc_empty[site] = np.einsum('ijk,il,ljk->',self.Ml[site].conj(),self.mpo.v,self.Mr[site]).real
-        self.calc_full[site] = np.einsum('ijk,il,ljk->',self.Ml[site].conj(),self.mpo.n,self.Mr[site]).real
+        self.calc_spin_x[site] = np.einsum('ijk,il,ljk->',np.conj(self.Ml[site]),self.mpo.S_x,self.Mr[site]).real
+        self.calc_spin_y[site] = np.einsum('ijk,il,ljk->',np.conj(self.Ml[site]),self.mpo.S_y,self.Mr[site]).real
+        self.calc_spin_z[site] = np.einsum('ijk,il,ljk->',np.conj(self.Ml[site]),self.mpo.S_z,self.Mr[site]).real
+        self.calc_empty[site] = np.einsum('ijk,il,ljk->',np.conj(self.Ml[site]),self.mpo.v,self.Mr[site]).real
+        self.calc_full[site] = np.einsum('ijk,il,ljk->',np.conj(self.Ml[site]),self.mpo.n,self.Mr[site]).real
         return(self.energy_calc)
 
     def plot_observables(self):
@@ -273,6 +283,7 @@ class MPS_DMRG:
                     self.calc_observables(site)
                 else:
                     self.calc_observables(site)
+                print('\t\tOptimized site {}: {} (contracted E)'.format(site,self.full_energy_calculation()))
                 self.normalize(site,'right')
                 self.update_f(site,'right')
                 if self.verbose > 2:
