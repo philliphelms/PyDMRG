@@ -50,27 +50,6 @@ print('Initial Energy = {}'.format(E_prev))
 while not converged:
 # Right Sweep ----------------------------
     # Optimization
-    #H = np.einsum('jlp,lmin,rks,mtru,uqv->ijpnkq',np.array([[[1]]]),W[0],np.conj(M[1]),W[1],M[1])
-    print('\tSite 1')
-    H = np.einsum('ijk,jlmn,olp->mionkp',np.array([[[1]]]),W[0],\
-            np.einsum('ijk,lmio,opq,kmq->jlp',np.conj(M[1]),W[1],M[1],np.array([[[1]]])))
-    H = np.reshape(H,(4,4))
-    u,v = np.linalg.eig(H)
-    # select max eigenvalue
-    max_ind = np.argsort(u)[-1]
-    E = u[max_ind]
-    v = v[:,max_ind]
-    print('\t\tCurrent Energy = {}'.format(E))
-    M[0] = np.reshape(v,(2,1,2)) # Could this be wrong?!?!
-    # Left Normalize
-    print('\t\tCheck Energy = {}'.format(np.einsum('ijk,lmin,npq,rks,mtru,uqv->',np.conj(M[0]),W[0],M[0],np.conj(M[1]),W[1],M[1])))
-    M_reshape = np.reshape(M[0],(2,2))
-    (U,s,V) = np.linalg.svd(M_reshape,full_matrices=True)
-    M[0] = np.reshape(U,(2,1,2))
-    M[1] = np.einsum('i,ij,kjl->kil',s,V,M[1])
-    print('\t\tCheck Energy = {}'.format(np.einsum('ijk,lmin,npq,rks,mtru,uqv->',np.conj(M[0]),W[0],M[0],np.conj(M[1]),W[1],M[1])))
-# Left Sweep -----------------------------
-    # Optimization
     print('\tSite 0')
     H = np.einsum('ijk,lmin,npq,mtru,stv->rkqusv',np.conj(M[0]),W[0],M[0],W[1],np.array([[[1]]]))
     H = np.einsum('ijk,jlmn,olp->mionkp',\
@@ -92,6 +71,26 @@ while not converged:
     M_reshape = np.reshape(V,(2,2,1))
     M[1] = np.swapaxes(M_reshape,0,1)
     M[0] = np.einsum('klj,ji,i->kli',M[0],U,s)
+    print('\t\tCheck Energy = {}'.format(np.einsum('ijk,lmin,npq,rks,mtru,uqv->',np.conj(M[0]),W[0],M[0],np.conj(M[1]),W[1],M[1])))
+# Left Sweep -----------------------------
+    # Optimization
+    print('\tSite 1')
+    H = np.einsum('ijk,jlmn,olp->mionkp',np.array([[[1]]]),W[0],\
+            np.einsum('ijk,lmio,opq,kmq->jlp',np.conj(M[1]),W[1],M[1],np.array([[[1]]])))
+    H = np.reshape(H,(4,4))
+    u,v = np.linalg.eig(H)
+    # select max eigenvalue
+    max_ind = np.argsort(u)[-1]
+    E = u[max_ind]
+    v = v[:,max_ind]
+    print('\t\tCurrent Energy = {}'.format(E))
+    M[0] = np.reshape(v,(2,1,2)) # Could this be wrong?!?!
+    # Left Normalize
+    print('\t\tCheck Energy = {}'.format(np.einsum('ijk,lmin,npq,rks,mtru,uqv->',np.conj(M[0]),W[0],M[0],np.conj(M[1]),W[1],M[1])))
+    M_reshape = np.reshape(M[0],(2,2))
+    (U,s,V) = np.linalg.svd(M_reshape,full_matrices=True)
+    M[0] = np.reshape(U,(2,1,2))
+    M[1] = np.einsum('i,ij,kjl->kil',s,V,M[1])
     print('\t\tCheck Energy = {}'.format(np.einsum('ijk,lmin,npq,rks,mtru,uqv->',np.conj(M[0]),W[0],M[0],np.conj(M[1]),W[1],M[1])))
 # Convergence Test -----------------------
     if np.abs(E-E_prev) < tol:

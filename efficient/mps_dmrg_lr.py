@@ -87,7 +87,7 @@ class MPS_DMRG:
         self.F.insert(0,np.array([[[1]]]))
     
     def h_optimization(self,site,dir):
-        pick_ind = 0
+        pick_ind = -1
         h = np.einsum('ijk,jlmn,olp->mionkp',self.F[site],self.mpo.W(site),self.F[site+1]) 
         si,aim,ai,sip,aimp,aip = h.shape
         h = np.reshape(h,(si*aim*ai,sip*aimp*aip))
