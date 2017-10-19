@@ -1,6 +1,6 @@
 import numpy as np
 import time
-import mps_dmrg
+import mps_opt
 import matplotlib.pyplot as plt
 
 # Set Plotting parameters
@@ -10,19 +10,15 @@ plt.rc('font', family='serif')
 np.set_printoptions(suppress=True)
 np.set_printoptions(precision=2)
 plt.style.use('ggplot')
-if False:
-    # Run Heisenberg Calculation
-    x = mps_dmrg.MPS_DMRG(L = 50,
-                          ham_type = 'heis',
-                          ham_params = (1,-1))
-    x.calc_ground_state()
 
 if True:
     # Run single TASEP calculation
-    x = mps_dmrg.MPS_DMRG(L = 4,
-                          ham_type = "tasep",
-                          ham_params = (0.35,-1,2/3))
-    x.calc_ground_state()
+    x = mps_opt.MPS_OPT(N = 40,
+                        hamType = 'tasep',
+                        plotExpVals = False,
+                        plotConv = False,
+                        hamParams = (0.35,0,2/3))
+    x.kernel()
 
 if False:
     # Calculate 
