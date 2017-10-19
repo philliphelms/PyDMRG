@@ -1,8 +1,8 @@
 import numpy as np
 
 ######## Inputs ##############################
-# Model
-N = 10
+# SEP Model
+N = 200
 alpha = 0.35  # In at left
 beta = 2/3    # Exit at right
 s = -1        # Exponential weighting
@@ -13,15 +13,16 @@ q = 0         # Jump Left
 # Optimization
 tol = 1e-5
 maxIter = 10
+maxBondDim = 8
 ##############################################
 
 ######## Prereqs #############################
 # Create MPS
 M = []
 for i in range(int(N/2)):
-    M.insert(len(M),np.ones((2,2**(i),2**(i+1))))
+    M.insert(len(M),np.ones((2,min(2**(i),maxBondDim),min(2**(i+1),maxBondDim))))
 for i in range(int(N/2))[::-1]:
-    M.insert(len(M),np.ones((2,2**(i+1),2**i)))
+    M.insert(len(M),np.ones((2,min(2**(i+1),maxBondDim),min(2**i,maxBondDim))))
 # Create MPO
 Sp = np.array([[0,1],[0,0]])
 Sm = np.array([[0,0],[1,0]])
@@ -38,9 +39,9 @@ W.insert(len(W),np.array([[I],[Sm],[v],[beta*(np.exp(-s)*Sp-n)]]))
 F = []
 F.insert(len(F),np.array([[[1]]]))
 for i in range(int(N/2)):
-    F.insert(len(F),np.zeros((2**(i+1),4,2**(i+1))))
+    F.insert(len(F),np.zeros((min(2**(i+1),maxBondDim),4,min(2**(i+1),maxBondDim))))
 for i in range(int(N/2)-1,0,-1):
-    F.insert(len(F),np.zeros((2**(i),4,2**i)))
+    F.insert(len(F),np.zeros((min(2**(i),maxBondDim),4,min(2**i,maxBondDim))))
 F.insert(len(F),np.array([[[1]]]))
 ##############################################
 
@@ -68,7 +69,6 @@ while not converged:
 # Right Sweep ----------------------------
     print('Right Sweep {}'.format(iterCnt))
     for i in range(N-1):
-        print('\tSite {}'.format(i))
         H = np.einsum('jlp,lmin,kmq->ijknpq',F[i],W[i],F[i+1])
         (n1,n2,n3,n4,n5,n6) = H.shape
         H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
@@ -77,7 +77,7 @@ while not converged:
         max_ind = np.argsort(u)[-1]
         E = u[max_ind]
         v = v[:,max_ind]
-        print('\t\tCurrent Energy = {}'.format(E))
+        print('\tEnergy at site {}= {}'.format(i,E))
         M[i] = np.reshape(v,(n1,n2,n3))
         # Right Normalize
         M_reshape = np.reshape(M[i],(n1*n2,n3))
@@ -89,7 +89,6 @@ while not converged:
 # Left Sweep -----------------------------
     print('Left Sweep {}'.format(iterCnt))
     for i in range(N-1,0,-1):
-        print('\tSite {}'.format(i))
         H = np.einsum('jlp,lmin,kmq->ijknpq',F[i],W[i],F[i+1])
         (n1,n2,n3,n4,n5,n6) = H.shape
         H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
@@ -98,7 +97,7 @@ while not converged:
         max_ind = np.argsort(u)[-1]
         E = u[max_ind]
         v = v[:,max_ind]
-        print('\t\tCurrent Energy = {}'.format(E))
+        print('\tEnergy at site {}= {}'.format(i,E))
         M[i] = np.reshape(v,(n1,n2,n3))
         # Right Normalize 
         M_reshape = np.swapaxes(M[i],0,1)
