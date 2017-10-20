@@ -10,7 +10,7 @@ class MPS_OPT:
 
     def __init__(self, N=10, d=2, maxBondDim=8, tol=1e-5, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
-                 plotExpVals=True, plotConv=True,\
+                 plotExpVals=False, plotConv=False,\
                  eigMethod='full'):
         # Import parameters
         self.N = N
@@ -25,7 +25,7 @@ class MPS_OPT:
         self.eigMethod = eigMethod
         self.conv_figure = False
         self.exp_val_figure = False
-
+     
         self.calc_spin_x = [0]*self.N
         self.calc_spin_y = [0]*self.N 
         self.calc_spin_z = [0]*self.N
@@ -81,10 +81,13 @@ class MPS_OPT:
         H = np.einsum('jlp,lmin,kmq->ijknpq',self.F[i],self.mpo.W[i],self.F[i+1])
         (n1,n2,n3,n4,n5,n6) = H.shape
         H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
-        u,v = np.linalg.eig(H)
-        max_ind = np.argsort(u)[-1]
-        E = u[max_ind]
-        v = v[:,max_ind]
+        u,v = arnoldiEig(H,1,which='LR')
+        if self.hamType is "tasep":
+            ind = np.argsort(u)[-1]
+        else:
+            ind = np.argsort(u)[0]
+        E = u[ind]
+        v = v[:,ind]
         print('\tEnergy at site {}= {}'.format(i,E))
         self.M[i] = np.reshape(v,(n1,n2,n3))
         return E
@@ -100,11 +103,13 @@ class MPS_OPT:
     def calc_observables(self,site):
         self.energy_calc = np.einsum('ijk,jlmn,olp,mio,nkp->',\
                 self.F[site],self.mpo.W[site],self.F[site+1],np.conjugate(self.M[site]),self.M[site])
-        self.calc_spin_x[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sx,self.M[site])
-        self.calc_spin_y[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sy,self.M[site])
-        self.calc_spin_z[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sz,self.M[site])
-        self.calc_empty[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.v,self.M[site])
-        self.calc_occ[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.n,self.M[site])
+        if self.hamType is "heis":
+            self.calc_spin_x[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sx,self.M[site])
+            self.calc_spin_y[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sy,self.M[site])
+            self.calc_spin_z[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sz,self.M[site])
+        elif self.hamType is "tasep":
+            self.calc_empty[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.v,self.M[site])
+            self.calc_occ[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.n,self.M[site])
         return self.energy_calc
 
     def plot_observables(self):
@@ -115,10 +120,13 @@ class MPS_OPT:
             else:
                 plt.figure(self.exp_val_figure.number)
             plt.cla()
-            if self.mpo.hamType is "tasep":
-                plt.plot(range(0,self.N-1),self.calc_occ[0:self.N-1],linewidth=3)
+            if self.hamType is "tasep":
+                plt.plot(range(0,int(self.N-1)),self.calc_occ[0:int(self.N-1)],linewidth=3)
                 plt.ylabel('Average Occupation',fontsize=20)
                 plt.xlabel('Site',fontsize=20)
+            elif self.hamType is "heis":
+                plt.plot()
+                # FIX THIS!!!
             else:
                 raise ValueError("Plotting of expectation values only operational for TASEP")
             plt.hold(False)
@@ -137,7 +145,7 @@ class MPS_OPT:
                 self.x_vec.insert(-1,i)
             plt.cla()
             if len(self.y_vec) > 3:
-                plt.semilogy(self.x_vec[:-2],np.abs(max(self.y_vec)-self.y_vec[:-2]),'r-',linewidth=2)
+                plt.plot(self.x_vec[:-2],self.y_vec[:-2],'r-',linewidth=2)
             plt.ylabel('Energy',fontsize=20)
             plt.xlabel('Site',fontsize=20)
             plt.hold(False)
@@ -155,7 +163,7 @@ class MPS_OPT:
         while not converged:
             # Right Sweep --------------------------
             print('Right Sweep {}'.format(iterCnt))
-            for i in range(self.N-1):
+            for i in range(int(self.N-1)):
                 E = self.local_optimization(i)
                 self.calc_observables(i)
                 self.normalize(i,'right')
@@ -163,8 +171,8 @@ class MPS_OPT:
                 self.plot_observables()
                 self.plot_convergence(i)
             # Left Sweep ---------------------------
-            print('Right Sweep {}'.format(iterCnt))
-            for i in range(self.N-1,0,-1):
+            print('Left Sweep {}'.format(iterCnt))
+            for i in range(int(self.N-1),0,-1):
                 E = self.local_optimization(i)
                 self.calc_observables(i)
                 self.normalize(i,'left')
@@ -183,3 +191,4 @@ class MPS_OPT:
             else:
                 E_prev = E
                 iterCnt += 1
+        return self.finalEnergy
