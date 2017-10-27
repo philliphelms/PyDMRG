@@ -16,7 +16,7 @@ In this, and all, implementations, I seek to follow the algorithm and terminolog
 In the second directory, *sep_exact_diagonalization*, I have adapted calculations by [Ushish Ray](http://www.stochasticphysics.org/) to perform exact diagonalization calculations. These are currently implemented in Matlab scripts, but as time progresses I will translate these to python and allow them to be run from the *efficient* code to allow comparisons.
 
 
-The final directory is named *verificationCalcs* and contains the most simple implementations of the DMRG algorithm. 
+The final directory is named *simple_scripts* and contains the most simple implementations of the DMRG algorithm. 
 This contains scripts that are only approximately 100 lines long an perform DMRG calculations in the simplest implementation I include. 
 Currently, there are three scripts which run the calculations for two, four, or an arbitrary number of sites. 
 
@@ -56,9 +56,15 @@ eigMethod   |'full'       |Specifies the method used for solving eigenvalue prob
 
 
 ### *sep_exact_diagonalization*
+I will update this section once I've converted the original calculations into python and provided some interaction between this and the *efficient* code.
+
+### *simple_scripts*
+This directory contains three scripts, each of which is self-contained, which should give an extremely simple introduction to the DMRG algorithm in the MPS formalism.
+In the scripts, and after the required python modules are imported, the key input variables are all defined. 
+The script can be controlled by changing values in this section of the code.
 
 
-### *verificationCalcs*
+Note that currently, all of these calculations are using the simple exclusion model - In the future, the heisenberg model will be implmented.  
 
 ## Future Work
 * Efficiency Related
@@ -70,7 +76,10 @@ eigMethod   |'full'       |Specifies the method used for solving eigenvalue prob
     * Implement time evolution
         * Using TEBD Algorithm
     * Implement infinite algorithm
-    * Implement fully general SEP (instead of only TASEP)    
+    * Implement fully general SEP (instead of only TASEP)
+    * Implement the use of quantum numbers
+* Other
+    * Simple script for heisenberg model
 
 ## Known Issues
 There are currently no known issues - Please contact me if you come accross any problems. 
