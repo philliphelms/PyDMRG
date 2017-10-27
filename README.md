@@ -9,9 +9,12 @@ The code is currently divided into three different sections. First is a director
 * Heisenberg
 * Ising
 * Totally Assymetric Simple Exclusion Process
+
 In this, and all, implementations, I seek to follow the algorithm and terminology as discussed in the paper [**Density Matrix Renormalization Group in the Age of Matrix Product States**](https://arxiv.org/abs/1008.3477) (Schollwoeck, 2011).
 
+
 In the second directory, *sep_exact_diagonalization*, I have adapted calculations by [Ushish Ray](http://www.stochasticphysics.org/) to perform exact diagonalization calculations. These are currently implemented in Matlab scripts, but as time progresses I will translate these to python and allow them to be run from the *efficient* code to allow comparisons.
+
 
 The final directory is named *verificationCalcs* and contains the most simple implementations of the DMRG algorithm. 
 This contains scripts that are only approximately 100 lines long an perform DMRG calculations in the simplest implementation I include. 
