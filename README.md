@@ -22,19 +22,38 @@ Currently, there are three scripts which run the calculations for two, four, or 
 
 ## Running Calculations
 ### *efficient*
-To run the simple code, navigate into the *simple* directory and do the following in python:
+The file *driver.py* contains multiple examples of how the efficient version of the DMRG calculations can be run. 
+The majority of these examples are centered on calculations for classical models, but the final shows how this can be done for the heisenberg model.
+
+
+In general, a simple calculation can be done via two steps: (1) Initializing an mpo_opt object and (2) running the calculation. 
+As the simplest example:
 ```python
-import numpy as np
-import simple_dmrg
-x = simple_dmrg.simpleHeisDMRG(L=20, 
-                               d=2, 
-                               D=8, 
-                               tol=1e-5, 
-                               max_sweep_cnt=100, 
-                               J=1, 
-                               h=0)
-x.calculate_ground_state()
+import mps_opt
+x = mps_opt.MPS_OPT()
+x.kernel()
 ```
+This simple script will run the optimization with all the default settings. If a setting is to be changed, you specify:
+```python
+x = mps_opt.MPS_OPT(setting1=value1,
+                    setting2=value2,
+                    ...)
+```
+Where the available settings and their default values are:
+
+Keyword     | Default     | Description
+------------|-------------|-------------
+N           |10           |Number of lattice sites
+d           |2            |Local state-space dimension
+maxBondDim  |8            |Maximum Bond Dimension
+tol         |1e-5         |Convergence tolerance 
+maxIter     |10           |Maximum number of left and right sweeps
+hamType     |'tasep'      |Type of hamiltonian ('heis','tasep')
+hamParams   |(0.35,-1,2/3)|Parameters for given hamiltonian. For Heis=(J,h), TASEP=(a,s,b)
+plotExpVals |False        |If True, then a plot of expectation values, such as local spins, is created and updated at each step
+plotConv    |False        |If True, then a plot showing the energy as a function of the sweep number is created
+eigMethod   |'full'       |Specifies the method used for solving eigenvalue problems. (np.linalg.eig='full',sp.sparse.linalg.eigs='arnoldi')
+
 
 ### *sep_exact_diagonalization*
 
