@@ -82,7 +82,7 @@ class MPS_OPT:
         (n1,n2,n3,n4,n5,n6) = H.shape
         H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
         u,v = arnoldiEig(H,1,which='LR')
-        if self.hamType is "tasep":
+        if (self.hamType is "tasep") or (self.hamType is "sep"):
             ind = np.argsort(u)[-1]
         else:
             ind = np.argsort(u)[0]
@@ -107,7 +107,7 @@ class MPS_OPT:
             self.calc_spin_x[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sx,self.M[site])
             self.calc_spin_y[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sy,self.M[site])
             self.calc_spin_z[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sz,self.M[site])
-        elif self.hamType is "tasep":
+        elif (self.hamType is "tasep") or (self.hamType is "sep"):
             self.calc_empty[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.v,self.M[site])
             self.calc_occ[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.n,self.M[site])
         return self.energy_calc
@@ -120,7 +120,7 @@ class MPS_OPT:
             else:
                 plt.figure(self.exp_val_figure.number)
             plt.cla()
-            if self.hamType is "tasep":
+            if (self.hamType is "tasep") or (self.hamType is "sep"):
                 plt.plot(range(0,int(self.N-1)),self.calc_occ[0:int(self.N-1)],linewidth=3)
                 plt.ylabel('Average Occupation',fontsize=20)
                 plt.xlabel('Site',fontsize=20)

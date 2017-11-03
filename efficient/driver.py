@@ -4,12 +4,13 @@ import mps_opt
 import matplotlib.pyplot as plt
 
 # Possible plots to be created:
-simpleCalc = False
+simpleCalc = True
 vary_systemSize = False
 vary_s = False
 vary_maxBondDim = False
 phaseDiagram = False
-simpleHeis = True
+simpleHeis = False
+simpleFullSEP = True
 
 # Set Plotting parameters
 plt.rc('text', usetex=True)
@@ -24,6 +25,8 @@ if simpleCalc:
     # Run single TASEP calculation
     x = mps_opt.MPS_OPT(N = 40,
                         hamType = 'tasep',
+                        plotExpVals = True,
+                        plotConv = True,
                         hamParams = (0.35,0,2/3))
     x.kernel()
 
@@ -180,4 +183,13 @@ if simpleHeis:
     x = mps_opt.MPS_OPT(N=int(N),
                         hamType = "heis",
                         hamParams = (1,0))
+    E = x.kernel()
+
+if simpleFullSEP:
+    N = 40
+    x = mps_opt.MPS_OPT(N=N,
+                        hamType = "sep",
+                        plotExpVals = True,
+                        plotConv = True,
+                        hamParams = (0.35,0,1,0,0,2/3,-1))
     E = x.kernel()

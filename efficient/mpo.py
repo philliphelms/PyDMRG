@@ -12,6 +12,7 @@ class MPO:
             tasep - Totally Assymetric Simple Exclusion Process Model
                 param = (alpha,s,beta)
             sep - Simple Exclusion Process Model
+                param = (alpha,gamma,p,q,beta,delta,s)
         """
         self.hamType = hamType
         self.N = N
@@ -56,6 +57,34 @@ class MPO:
                                                     [self.v,  self.z,                 self.z,  self.z],\
                                                     [self.z,  np.exp(-self.s)*self.Sp,-self.n, self.I]]))
             self.W.insert(len(self.W),np.array([[self.I],[self.Sm],[self.v],[self.beta*(np.exp(-self.s)*self.Sp-self.n)]]))
+        elif hamType is "sep":
+            self.alpha = param[0]
+            self.gamma = param[1]
+            self.p = param[2]
+            self.q = param[3]
+            self.beta = param[4]
+            self.delta = param[5]
+            self.s = param[6]
+            self.W = []
+            self.W.insert(len(self.W),np.array([[self.alpha*(np.exp(-self.s)*self.Sm-self.v)+
+                                                 self.gamma*(np.exp(-self.s)*self.Sp-self.n),
+                                                 self.Sm,self.v,self.Sp,self.n,self.I]]))
+            for i in range(int(self.N-2)):
+                self.W.insert(len(self.W),np.array(\
+                    [[self.I,self.z,self.z,self.z,self.z,self.z],\
+                     [self.p*np.exp(-self.s)*self.Sp, self.z,  self.z, self.z,  self.z, self.z],\
+                     [self.p*self.n,             self.z,  self.z, self.z,  self.z, self.z],\
+                     [self.q*np.exp(-self.s)*self.Sm, self.z,  self.z, self.z,  self.z, self.z],\
+                     [self.q*self.v,             self.z,  self.z, self.z,  self.z, self.z],\
+                     [self.z,                    self.Sm, self.v, self.Sp, self.n, self.I]]))
+            self.W.insert(len(self.W),np.array([[self.I],\
+                                                [self.p*np.exp(-self.s)*self.Sp],\
+                                                [self.p*self.n],\
+                                                [self.q*np.exp(-self.s)*self.Sm],\
+                                                [self.q*self.v],\
+                                                [self.beta*(np.exp(-self.s)*self.Sm-self.v)+\
+                                                 self.delta*(np.exp(-self.s)*self.Sp-self.n)]]))
+                                                 
         elif hamType is "ising":
             print("I haven't implemented the heisenberg model yet")
         elif hamType is "sep":
