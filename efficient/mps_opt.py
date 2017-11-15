@@ -107,7 +107,7 @@ class MPS_OPT:
     def calc_observables(self,site):
         self.energy_calc = np.einsum('ijk,jlmn,olp,mio,nkp->',\
                 self.F[site],self.mpo.W[site],self.F[site+1],np.conjugate(self.M[site]),self.M[site])
-        if (self.hamType is "heis") or (self.hamType is "heis_2d"):
+        if (self.hamType is "heis") or (self.hamType is "heis_2d") or (self.hamType is 'ising'):
             self.calc_spin_x[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sx,self.M[site])
             self.calc_spin_y[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sy,self.M[site])
             self.calc_spin_z[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sz,self.M[site])
@@ -129,15 +129,17 @@ class MPS_OPT:
                 plt.plot(range(0,int(self.N-1)),self.calc_occ[0:int(self.N-1)],linewidth=3)
                 plt.ylabel('Average Occupation',fontsize=20)
                 plt.xlabel('Site',fontsize=20)
-            elif self.hamType is "heis":
+            elif (self.hamType is "heis")  or (self.hamType is 'ising'):
                 ax = self.exp_val_figure.gca(projection='3d')
                 x = np.arange(self.N)
                 y = np.zeros(self.N)
                 z = np.zeros(self.N)
                 ax.scatter(x,y,z,color='k')
                 plt.quiver(x,y,z,self.calc_spin_x,self.calc_spin_y,self.calc_spin_z,pivot='tail')
-                ax.set_zlim((min(self.calc_spin_z),max(self.calc_spin_z)))
-                ax.set_ylim((min(self.calc_spin_y),max(self.calc_spin_y)))
+                ax.set_zlim((np.min(-np.abs(np.min(self.calc_spin_z)),-np.abs(np.max(self.calc_spin_z))),
+                             np.max( np.abs(np.max(self.calc_spin_z)) , np.abs(np.min(self.calc_spin_z)))))
+                ax.set_ylim((np.min(-np.abs(np.min(self.calc_spin_y)),-np.abs(np.max(self.calc_spin_y))),
+                             np.max( np.abs(np.max(self.calc_spin_y)), np.abs(np.min(self.calc_spin_y)))))
                 plt.ylabel('y',fontsize=20)
                 plt.xlabel('x',fontsize=20)
                 ax.set_zlabel('z',fontsize=20)    

@@ -49,7 +49,7 @@ class MPO:
             for i in range(int(self.N-2)):
                 self.W.insert(len(self.W),self.w_arr)
             self.W.insert(len(self.W),np.expand_dims(self.w_arr[:,0],1))
-        lif hamType is "heis_2d":
+        if hamType is "heis_2d":
             self.N2d = int(np.sqrt(self.N))
             self.J = param[0]
             self.h = param[1]
@@ -154,9 +154,18 @@ class MPO:
                                                  self.delta*(np.exp(-self.s)*self.Sp-self.n)]]))
                                                  
         elif hamType is "ising":
-            print("I haven't implemented the heisenberg model yet")
+            self.J = param[0]
+            self.h = param[1]
+            self.w_arr = np.array([[self.I,         self.z,         self.z],
+                                   [self.Sz,        self.z,         self.z],
+                                   [self.h*self.Sz, self.J*self.Sz, self.I]])
+            self.W = []
+            self.W.insert(len(self.W),np.expand_dims(self.w_arr[-1,:],0))
+            for i in range(int(self.N-2)):
+                self.W.insert(len(self.W),self.w_arr)
+            self.W.insert(len(self.W),np.expand_dims(self.w_arr[:,0],1))
         else:
-            raise ValueError("Input Hamiltonian type is not supported")
+            raise ValueError("Specified Hamiltonian type is not supported")
     
     def return_full_ham(self):
         # This function calculates the full hamiltonian matrix

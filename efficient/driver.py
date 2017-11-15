@@ -3,15 +3,16 @@ import time
 import mps_opt
 import matplotlib.pyplot as plt
 
-# Possible plots to be created:
+# Possible calculations:
 simpleCalc = False
 vary_systemSize = False
 vary_s = False
 vary_maxBondDim = False
 phaseDiagram = False
-simpleHeis = True
+simpleHeis = False
 simpleFullSEP = False
 heis2D = True
+simpleIsing = True
 
 # Set Plotting parameters
 plt.rc('text', usetex=True)
@@ -20,7 +21,7 @@ plt.rc('font', family='serif')
 plt.rcParams['text.latex.unicode']=False
 np.set_printoptions(suppress=True)
 np.set_printoptions(precision=2)
-plt.style.use('fivethirtyeight') #'ggplot'
+plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
 if simpleCalc:
     # Run single TASEP calculation
@@ -204,5 +205,14 @@ if heis2D:
                         plotExpVals = True,
                         plotConv = True,
                         maxBondDim=4,
-                        hamParams = (1,1))
+                        hamParams = (-1,0))
+    E = x.kernel()
+
+if simpleIsing:
+    N = 50
+    x = mps_opt.MPS_OPT(N=N,
+                        hamType = "ising",
+                        plotExpVals = True,
+                        plotConv = True,
+                        hamParams = (1,0))
     E = x.kernel()
