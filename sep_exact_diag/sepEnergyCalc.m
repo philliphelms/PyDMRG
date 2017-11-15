@@ -127,8 +127,8 @@ for iter = 1:maxitr
     lam = zeros(L/clsz,2^clsz);
     Ms = zeros(2^clsz,2^clsz,L/clsz);
     for c = 1:L/clsz
-        li = (c-1)*clsz+1;
-        ri = (c-1)*clsz+clsz;
+        li = (c-1)*clsz+1
+        ri = (c-1)*clsz+clsz
         
         %Left couple
         LC = zeros(2,2);

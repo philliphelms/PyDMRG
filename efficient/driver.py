@@ -4,13 +4,14 @@ import mps_opt
 import matplotlib.pyplot as plt
 
 # Possible plots to be created:
-simpleCalc = True
+simpleCalc = False
 vary_systemSize = False
 vary_s = False
 vary_maxBondDim = False
 phaseDiagram = False
-simpleHeis = False
-simpleFullSEP = True
+simpleHeis = True
+simpleFullSEP = False
+heis2D = True
 
 # Set Plotting parameters
 plt.rc('text', usetex=True)
@@ -19,15 +20,15 @@ plt.rc('font', family='serif')
 plt.rcParams['text.latex.unicode']=False
 np.set_printoptions(suppress=True)
 np.set_printoptions(precision=2)
-plt.style.use('ggplot')
+plt.style.use('fivethirtyeight') #'ggplot'
 
 if simpleCalc:
     # Run single TASEP calculation
-    x = mps_opt.MPS_OPT(N = 40,
+    x = mps_opt.MPS_OPT(N = 10,
                         hamType = 'tasep',
-                        plotExpVals = True,
-                        plotConv = True,
-                        hamParams = (0.35,0,2/3))
+                        plotExpVals = False,
+                        plotConv = False,
+                        hamParams = (0.35,-1,2/3))
     x.kernel()
 
 if vary_systemSize:
@@ -179,17 +180,29 @@ if phaseDiagram:
     f2.savefig('my_analytic_phaseDiagram.pdf')
 
 if simpleHeis:
-    N = 100
+    N = 50
     x = mps_opt.MPS_OPT(N=int(N),
                         hamType = "heis",
+                        plotExpVals = True,
+                        plotConv = True,
                         hamParams = (1,0))
     E = x.kernel()
 
 if simpleFullSEP:
-    N = 40
+    N = 50
     x = mps_opt.MPS_OPT(N=N,
                         hamType = "sep",
+                        plotExpVals = False,
+                        plotConv = False,
+                        hamParams = (0.35,0,1,0,0,2/3,-1))
+    E = x.kernel()
+
+if heis2D:
+    N = 6
+    x = mps_opt.MPS_OPT(N=N**2,
+                        hamType = "heis_2d",
                         plotExpVals = True,
                         plotConv = True,
-                        hamParams = (0.35,0,1,0,0,2/3,-1))
+                        maxBondDim=4,
+                        hamParams = (1,1))
     E = x.kernel()

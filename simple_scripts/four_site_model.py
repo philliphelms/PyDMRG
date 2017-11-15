@@ -4,7 +4,7 @@ import numpy as np
 # Model
 alpha = 0.35  # In at left
 beta = 2/3    # Exit at right
-s = -1        # Exponential weighting
+s = 0         # Exponential weighting
 gamma = 0     # Exit at left
 delta = 0     # In at right
 p = 1         # Jump right

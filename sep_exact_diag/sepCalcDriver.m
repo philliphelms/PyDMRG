@@ -1,7 +1,7 @@
 close all; clear; clc;
 
 % Parameters
-L = 10;
+L = 2;
 alpha = 0.35;
 beta = 2/3;
 gamma = 0;

@@ -5,6 +5,8 @@ import mpo
 import warnings
 from scipy.linalg import eig as fullEig
 from scipy.sparse.linalg import eigs as arnoldiEig
+from mpl_toolkits.mplot3d import axes3d
+from numpy import ma
 
 class MPS_OPT:
 
@@ -63,11 +65,11 @@ class MPS_OPT:
             self.M[i] = np.reshape(U,(n1,n2,n3))
             self.M[i+1] = np.einsum('i,ij,kjl->kil',s,V,self.M[i+1])
         elif direction is 'left':
-            (n1,n2,n3) = self.M[i].shape
             M_reshape = np.swapaxes(self.M[i],0,1)
-            M_reshape = np.reshape(M_reshape,(n2,n1*n3))
+            (n1,n2,n3) = M_reshape.shape
+            M_reshape = np.reshape(M_reshape,(n1,n2*n3))
             (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
-            M_reshape = np.reshape(V,(n2,n1,n3))
+            M_reshape = np.reshape(V,(n1,n2,n3))
             self.M[i] = np.swapaxes(M_reshape,0,1)
             self.M[i-1] = np.einsum('klj,ji,i->kli',self.M[i-1],U,s)
         else:
@@ -75,13 +77,15 @@ class MPS_OPT:
 
     def calc_initial_f(self):
         for i in range(int(self.N)-1,0,-1):
+            print(i)
             self.F[i] = np.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(self.M[i]),self.mpo.W[i],self.M[i],self.F[i+1])
 
     def local_optimization(self,i):
         H = np.einsum('jlp,lmin,kmq->ijknpq',self.F[i],self.mpo.W[i],self.F[i+1])
         (n1,n2,n3,n4,n5,n6) = H.shape
         H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
-        u,v = arnoldiEig(H,1,which='LR')
+        #u,v = arnoldiEig(H,1,which='LR')
+        u,v = np.linalg.eig(H)
         if (self.hamType is "tasep") or (self.hamType is "sep"):
             ind = np.argsort(u)[-1]
         else:
@@ -103,7 +107,7 @@ class MPS_OPT:
     def calc_observables(self,site):
         self.energy_calc = np.einsum('ijk,jlmn,olp,mio,nkp->',\
                 self.F[site],self.mpo.W[site],self.F[site+1],np.conjugate(self.M[site]),self.M[site])
-        if self.hamType is "heis":
+        if (self.hamType is "heis") or (self.hamType is "heis_2d"):
             self.calc_spin_x[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sx,self.M[site])
             self.calc_spin_y[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sy,self.M[site])
             self.calc_spin_z[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sz,self.M[site])
@@ -117,6 +121,7 @@ class MPS_OPT:
             plt.ion()
             if not self.exp_val_figure:
                 self.exp_val_figure = plt.figure()
+                self.angle = 0
             else:
                 plt.figure(self.exp_val_figure.number)
             plt.cla()
@@ -125,10 +130,40 @@ class MPS_OPT:
                 plt.ylabel('Average Occupation',fontsize=20)
                 plt.xlabel('Site',fontsize=20)
             elif self.hamType is "heis":
-                plt.plot()
-                # FIX THIS!!!
+                ax = self.exp_val_figure.gca(projection='3d')
+                x = np.arange(self.N)
+                y = np.zeros(self.N)
+                z = np.zeros(self.N)
+                ax.scatter(x,y,z,color='k')
+                plt.quiver(x,y,z,self.calc_spin_x,self.calc_spin_y,self.calc_spin_z,pivot='tail')
+                ax.set_zlim((min(self.calc_spin_z),max(self.calc_spin_z)))
+                ax.set_ylim((min(self.calc_spin_y),max(self.calc_spin_y)))
+                plt.ylabel('y',fontsize=20)
+                plt.xlabel('x',fontsize=20)
+                ax.set_zlabel('z',fontsize=20)    
+                self.angle += 3
+                ax.view_init(30, self.angle)
+                plt.draw()
+            elif self.hamType is "heis_2d":
+                ax = self.exp_val_figure.gca(projection='3d')
+                x, y = np.meshgrid(np.arange((-self.mpo.N2d+1)/2,(self.mpo.N2d-1)/2+1),
+                                   np.arange((-self.mpo.N2d+1)/2,(self.mpo.N2d-1)/2+1))
+                ax.scatter(x,y,np.zeros((self.mpo.N2d,self.mpo.N2d)),color='k')
+                plt.quiver(x,y,np.zeros((self.mpo.N2d,self.mpo.N2d)),
+                           np.reshape(self.calc_spin_x,x.shape),
+                           np.reshape(self.calc_spin_y,x.shape),
+                           np.reshape(self.calc_spin_z,x.shape),
+                           pivot='tail')
+                ax.plot_surface(x, y, np.zeros((self.mpo.N2d,self.mpo.N2d)), alpha=0.2)
+                ax.set_zlim((min(self.calc_spin_z),max(self.calc_spin_z)))
+                plt.ylabel('y',fontsize=20)
+                plt.xlabel('x',fontsize=20)
+                ax.set_zlabel('z',fontsize=20)
+                self.angle += 3
+                ax.view_init(30, self.angle)
+                plt.draw()
             else:
-                raise ValueError("Plotting of expectation values only operational for TASEP")
+                raise ValueError("Plotting of expectation values is not implemented for the given hamiltonian type")
             plt.hold(False)
             plt.pause(0.0001)
 

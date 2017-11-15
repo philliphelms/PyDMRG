@@ -2,7 +2,7 @@ import numpy as np
 
 ######## Inputs ##############################
 # SEP Model
-N = 200
+N = 10
 alpha = 0.35  # In at left
 beta = 2/3    # Exit at right
 s = -1        # Exponential weighting
