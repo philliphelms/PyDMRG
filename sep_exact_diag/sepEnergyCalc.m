@@ -1,4 +1,4 @@
-function la = sepEnergyCalc(L,p,a,b,q,g,d,s)
+function la = sepEnergyCalc(L,p,a,b,q,g,d,s,clsz)
 %==========================
 %Copyright (c) Ushnish Ray
 %All rights reserved
@@ -10,7 +10,6 @@ function la = sepEnergyCalc(L,p,a,b,q,g,d,s)
 %b = 2/3; %Right remove
 beta = s;
 
-clsz = L; %L must be a multiple of cluster size
 %%
 %q = 0; %1-p; %Left move
 %g = 0; %1-a; %Left remove 
@@ -87,7 +86,7 @@ if(clsz>2)
 else
     mc = mi;
 end
-
+mc
 %%
 %Single site observables
 cop = zeros(2^clsz,2^clsz,clsz);
@@ -110,6 +109,9 @@ for s = 1:clsz
         cdop(:,:,s) = kron(kron(eye(2^ls),[0,0;1,0;]),eye(2^rs));
         nop(:,:,s) = kron(kron(eye(2^ls),[0,0;0,1;]),eye(2^rs));
     end
+    cop(:,:,s)
+    cdop(:,:,s)
+    nop(:,:,s)
 end
 %%
 maxitr = 1000;
@@ -137,9 +139,9 @@ for iter = 1:maxitr
             LC(1,2) = qw*cdv(li-1);
             LC(2,1) = pw*cv(li-1);
             LC(2,2) = -q*(1-nv(li-1));
-            LC = kron(LC,eye(2^(clsz-1),2^(clsz-1)));
+            LC = kron(LC,eye(2^(clsz-1),2^(clsz-1)))
         else
-            LC = ma;
+            LC = ma
         end
         
         
@@ -150,13 +152,12 @@ for iter = 1:maxitr
             RC(1,2) = pw*cdv(ri+1);
             RC(2,1) = qw*cv(ri+1);
             RC(2,2) = -p*(1-nv(ri+1));
-            RC = kron(eye(2^(clsz-1),2^(clsz-1)),RC);
+            RC = kron(eye(2^(clsz-1),2^(clsz-1)),RC)
         else
-            RC = mb;
+            RC = mb
         end
-        
    
-        M = mc + LC + RC;
+        M = mc + LC + RC
         
      %   mc
      %   LC
@@ -167,8 +168,9 @@ for iter = 1:maxitr
         %Diagonalize
         [RV,E,LV] = eig(M);
         [se,idx] = sort(diag(E));
-
-        
+        disp(RV)
+        disp(E)
+        clc;
         pp = -1; val = -100;
         for i = 1:(2^clsz)
             if(imag(E(i,i))<1.0e-10 && E(i,i)>val)
@@ -201,6 +203,7 @@ for iter = 1:maxitr
         IRV = inv(RV);
         lpsi = IRV(pp,:);
         rpsi = RV(:,pp);
+        disp(rpsi)
         for s = 1:clsz
            nv_new((c-1)*clsz+s) = lpsi*nop(:,:,s)*rpsi;
            cv_new((c-1)*clsz+s) = lpsi*cop(:,:,s)*rpsi;
@@ -234,9 +237,9 @@ for iter = 1:maxitr
     cvdiff = norm(cv_new-cv);
     cdvdiff = norm(cdv_new-cdv);
     
-    nv = nv_new;
-    cv = cv_new;
-    cdv = cdv_new;
+    nv = nv_new
+    cv = cv_new
+    cdv = cdv_new
     
     %display(sprintf('%10.6e %10.6e %10.6e # %10.6e %10.6e %10.6e',cvdiff,cdvdiff,nvdiff,sum(nv_new)/L,sum(cdv_new)/L,sum(cv_new)/L));
         
@@ -253,7 +256,7 @@ end
 %Do intra cluster
 la = 0.0;
 for c = 1:L/clsz
-   Lpsi = isproj(c,:); 
+   Lpsi = isproj(c,:);
    Rpsi = sproj(c,:)';
    m = mc;
    if(c == 1)
@@ -263,8 +266,8 @@ for c = 1:L/clsz
    if(c == L/clsz)
       m = m + mb; 
    end
-   
-   la = la + Lpsi*m*Rpsi;
+   m
+   la = la + Lpsi*m*Rpsi
 end
 
 %Do inter cluster
@@ -275,7 +278,7 @@ if(clsz ~= L)
        Rpsi = kron(sproj(c,:),sproj(c+1,:))';
        Lpsi = kron(isproj(c,:),isproj(c+1,:));
 
-       la = la + Lpsi*mi_x*Rpsi;
+       la = la + Lpsi*mi_x*Rpsi
     end
 end
 

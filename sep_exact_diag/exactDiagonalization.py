@@ -1,11 +1,12 @@
 import numpy as np
 from scipy.linalg import eig as fullEig
+from numpy.linalg import norm
 
 class exactDiag:
 
     def __init__(self, L=10, alpha=0.35, gamma=0,
                  beta=2/3, delta=0, s=-1, p=1, q=0,
-                 clumpSize=10, maxIter=100):
+                 clumpSize=10, maxIter=10000, tol=1e-10):
         self.L = L
         self.alpha = alpha
         self.gamma = gamma
@@ -16,6 +17,7 @@ class exactDiag:
         self.q = q
         self.clumpSize = clumpSize
         self.maxIter = maxIter
+        self.tol = tol
 
     def kernel(self):
         # Extract info
@@ -38,13 +40,13 @@ class exactDiag:
         dw = d*np.exp(-s)
 
         # Some Containers
-        sproj = np.zeros((L/clumpSize, 2**clumpSize))
-        isproj = np.zeros((L/clumpSize, 2**clumpSize))
+        sproj = np.zeros((int(L/clumpSize), 2**clumpSize),dtype=np.complex128)
+        isproj = np.zeros((int(L/clumpSize), 2**clumpSize),dtype=np.complex128)
 
         # Create Initial Guess
-        nv = 0.1*np.ones(L)
-        cdv = 0.1*np.ones(L)
-        cv = 0.1*np.ones(L)
+        nv = 0.1*np.ones(L,dtype=np.complex128)
+        cdv = 0.1*np.ones(L,dtype=np.complex128)
+        cv = 0.1*np.ones(L,dtype=np.complex128)
 
         # Create Operators
         m1 = np.array([[-a,gw],[aw,-g]])
@@ -57,18 +59,17 @@ class exactDiag:
                        [0,-q,pw,0],
                        [0,qw,-p,0],
                        [0,0, 0, 0]])
-
         if clumpSize > 2:
             mc = np.zeros((2**clumpSize,2**clumpSize))
             for i in range(clumpSize-1):
-                left = i-1
-                right = clumpSize-(i+1)
+                left = i
+                right = clumpSize-(i+2)
                 if left is 0:
                     mc += np.kron(mi,np.eye(2**right))
                 elif right is 0:
                     mc += np.kron(np.eye(2**left),mi)
                 else:
-                    mc += kron(kron(np.eye(2**left),mi),np.eye(2**right))
+                    mc += np.kron(np.kron(np.eye(2**left),mi),np.eye(2**right))
         else:
             mc = mi
 
@@ -94,13 +95,12 @@ class exactDiag:
 
         if L is clumpSize: self.maxIter = 1
 
-        for iter in range(self.maxIter):
-            print("Iteration {}".format(iter))
-            nv_new = np.zeros(L)
-            cv_new = np.zeros(L)
-            cdv_new = np.zeros(L)
-            lam = np.zeros((int(L/clumpSize),2**clumpSize))
-            Ms = np.zeros((2**clumpSize,2**clumpSize,L/clumpSize))
+        for iterCnt in range(self.maxIter):
+            nv_new = np.zeros(L,dtype=np.complex128)
+            cv_new = np.zeros(L,dtype=np.complex128)
+            cdv_new = np.zeros(L,dtype=np.complex128)
+            lam = np.zeros((int(L/clumpSize),2**clumpSize),dtype=np.complex128)
+            Ms = np.zeros((2**clumpSize,2**clumpSize,int(L/clumpSize)))
             for clump in range(int(L/clumpSize)):
                 leftClump = (clump)*clumpSize
                 rightClump = (clump)*clumpSize+clumpSize-1
@@ -108,8 +108,9 @@ class exactDiag:
                 if clump is 0:
                     leftSide = m1
                 else:
-                    leftSide = np.array([[-p*nv[leftClump],qw*cdv[leftClump]],
-                                         [pw*cv[leftClump],-q*(1-nv[leftClump])]])
+                    leftSide = np.array([[-p*nv[leftClump-1],qw*cdv[leftClump-1]],
+                                         [pw*cv[leftClump-1],-q*(1-nv[leftClump-1])]])
+                    leftSide = np.kron(leftSide,np.eye(2**(clumpSize-1)));
                 # Couple Right Side
                 rightSide = np.zeros((2,2))
                 if clump is int(L/clumpSize-1):
@@ -119,9 +120,6 @@ class exactDiag:
                                           [qw*cv[rightClump+1],-p*(1-nv[rightClump+1])]])
                     rightSide = np.kron(np.eye(2**(clumpSize-1)),rightSide)
                 # Create Main Matrix
-                print(mc)
-                print(leftSide)
-                print(rightSide)
                 M = mc+leftSide+rightSide
                 # Diagonalize Main Matrix
                 u,v = fullEig(M)
@@ -130,10 +128,11 @@ class exactDiag:
                 u = np.sort(u)
                 # Check to see which one has a low imaginary value
                 ind = -1
+                curEig = -1e3
                 for i in range(len(u)):
-                    if np.abs(np.imag(u[i])) < 1e-8:
+                    if (np.imag(u[i]) < 1e-8) and u[i] > curEig:
                         ind = i
-                        break
+                        curEig = u[ind]
                 u = u[ind]
                 lam[clump,0] = u
                 # Calculate Expectation Values
@@ -146,32 +145,50 @@ class exactDiag:
                     cdv_new[(clump)*clumpSize+s] = np.dot(lpsi,np.dot(cdop[:,:,s],rpsi))
                 sproj[clump,:] = v[:,ind]
                 isproj[clump,:] = iv[ind,:]
+            # Determine change in values
+            nvdiff = norm(nv_new-nv);
+            cvdiff = norm(cv_new-cv);
+            cdvdiff = norm(cdv_new-cdv);
             # Update Values
             nv = nv_new
             cv = cv_new
             cdv = cdv_new
+            # Check for convergence
+            if (nvdiff<self.tol) and (cvdiff<self.tol) and (cdvdiff<self.tol):
+                print('\n')
+                print('Mean Field Convergence Achevied after {} iterations'.format(iterCnt))
+                print('='*50)
+                break
+        if L is clumpSize: 
+            print('\n')
+            print('Exact Diagonalization Results Obtained')
+            print('='*50)
         # Calculate Energy
         # Intra Clump
         E = 0
         for clump in range(int(L/clumpSize)):
             lpsi = isproj[clump,:]
             rpsi = sproj[clump,:]
-            m = mc
+            m = mc.copy() # Why do I have to copy here!!!???!!!???
             if clump is 0:
                 m += m1
-            if clump is L/clumpSize:
+            if clump is int(L/clumpSize-1):
                 m += mL
             E += np.dot(lpsi,np.dot(m,rpsi))
         # Inter Clump
         if clumpSize is not L:
             mi_x = np.kron(np.eye(2**(clumpSize-1)),mi)
-            mi_x = np.kron(mi_x,np.eye(2**clumpSize-1))
-            for clump in range(L/clumpSize-1):
+            mi_x = np.kron(mi_x,np.eye(2**(clumpSize-1)))
+            for clump in range(int(L/clumpSize-1)):
                 lpsi = np.kron(isproj[clump,:],isproj[clump+1,:])
                 rpsi = np.kron(sproj[clump,:],sproj[clump+1,:]).transpose()
                 E += np.dot(lpsi,np.dot(mi_x,rpsi))
         return E
 
 if __name__ == "__main__":
-    x = exactDiag(L=2,clumpSize=2)
-    print(x.kernel())
+    x = exactDiag(L=10,clumpSize=2,s=0)
+    print("E = {}".format(x.kernel()))
+    print('='*50)
+    x = exactDiag(L=10,clumpSize=10,s=0)
+    print("E = {}".format(x.kernel()))
+    print('='*50)

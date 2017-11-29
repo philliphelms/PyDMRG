@@ -1,7 +1,8 @@
 close all; clear; clc;
 
 % Parameters
-L = 2;
+L = 10;
+clumpSize = 2;
 alpha = 0.35;
 beta = 2/3;
 gamma = 0;
@@ -9,10 +10,10 @@ delta = 0;
 q = 0;
 p = 1;
 
-s = linspace(-1,1,2);
+s = -1; %linspace(-0.1,0.1,100);
 E_vec = zeros(size(s));
 for i = 1:length(s)
-    E_vec(i) = sepEnergyCalc(L,p,alpha,beta,q,gamma,delta,s(i));
+    E_vec(i) = sepEnergyCalc(L,p,alpha,beta,q,gamma,delta,s(i),clumpSize);
 end
 plot(s,E_vec/(L+1),'b.','MarkerSize',10)
 dE = E_vec(2:end)-E_vec(1:end-1);

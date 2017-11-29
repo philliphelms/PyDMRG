@@ -86,7 +86,7 @@ class MPS_OPT:
         H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
         #u,v = arnoldiEig(H,1,which='LR')
         u,v = np.linalg.eig(H)
-        if (self.hamType is "tasep") or (self.hamType is "sep"):
+        if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
             ind = np.argsort(u)[-1]
         else:
             ind = np.argsort(u)[0]
@@ -111,7 +111,7 @@ class MPS_OPT:
             self.calc_spin_x[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sx,self.M[site])
             self.calc_spin_y[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sy,self.M[site])
             self.calc_spin_z[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sz,self.M[site])
-        elif (self.hamType is "tasep") or (self.hamType is "sep"):
+        elif (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
             self.calc_empty[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.v,self.M[site])
             self.calc_occ[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.n,self.M[site])
         return self.energy_calc
@@ -126,9 +126,14 @@ class MPS_OPT:
                 plt.figure(self.exp_val_figure.number)
             plt.cla()
             if (self.hamType is "tasep") or (self.hamType is "sep"):
-                plt.plot(range(0,int(self.N-1)),self.calc_occ[0:int(self.N-1)],linewidth=3)
+                plt.plot(range(0,int(self.N)),self.calc_occ,linewidth=3)
                 plt.ylabel('Average Occupation',fontsize=20)
                 plt.xlabel('Site',fontsize=20)
+            elif (self.hamType is "sep_2d"):
+                plt.clf()
+                x,y = np.meshgrid(np.arange(self.mpo.N2d),np.arange(self.mpo.N2d))
+                pcolorPlot = plt.pcolor(x, y, np.real(np.reshape(self.calc_occ,(self.mpo.N2d,self.mpo.N2d))).T)
+                plt.colorbar(pcolorPlot)
             elif (self.hamType is "heis")  or (self.hamType is 'ising'):
                 ax = self.exp_val_figure.gca(projection='3d')
                 x = np.arange(self.N)
@@ -166,7 +171,6 @@ class MPS_OPT:
                 plt.draw()
             else:
                 raise ValueError("Plotting of expectation values is not implemented for the given hamiltonian type")
-            plt.hold(False)
             plt.pause(0.0001)
 
     def plot_convergence(self,i):
@@ -185,7 +189,6 @@ class MPS_OPT:
                 plt.plot(self.x_vec[:-2],self.y_vec[:-2],'r-',linewidth=2)
             plt.ylabel('Energy',fontsize=20)
             plt.xlabel('Site',fontsize=20)
-            plt.hold(False)
             plt.pause(0.0001)
 
     def kernel(self):

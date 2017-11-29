@@ -15,6 +15,10 @@ class MPO:
                 param = (alpha,s,beta)
             sep - Simple Exclusion Process Model
                 param = (alpha,gamma,p,q,beta,delta,s)
+            sep_2d - Two Dimensional Simple Exclusion Process Model
+                param = (jump_left,jump_right,enter_left,enter_right,
+                         exit_left,exit_right,jump_up,jump_down,
+                         enter_top,enter_bottom,exit_top,exit_bottom,s))
         """
         self.hamType = hamType
         self.N = N
@@ -152,7 +156,79 @@ class MPO:
                                                 [self.q*self.n],
                                                 [self.beta*(np.exp(-self.s)*self.Sm-self.v)+
                                                  self.delta*(np.exp(-self.s)*self.Sp-self.n)]]))
-                                                 
+        elif hamType is "sep_2d":
+            self.N2d = int(np.sqrt(self.N))
+            self.jl = param[0]
+            self.jr = param[1]
+            self.il = param[2]
+            self.ir = param[3]
+            self.ol = param[4]
+            self.outr = param[5]
+            self.ju = param[6]
+            self.jd = param[7]
+            self.it = param[8]
+            self.ib = param[9]
+            self.ot = param[10]
+            self.ob = param[11]
+            self.s = param[12]
+            ham_dim = 10+(self.N2d-2)*4
+            self.w_arr = np.zeros((ham_dim,ham_dim,2,2))
+            # Build generic first column
+            self.w_arr[0,0,:,:] = self.I
+            self.w_arr[1,0,:,:] = self.ju*self.Sm
+            self.w_arr[self.N2d,0,:,:] = self.jr*self.Sm
+            self.w_arr[self.N2d+1,0,:,:] = self.ju*self.v
+            self.w_arr[2*self.N2d,0,:,:] = self.jr*self.v
+            self.w_arr[2*self.N2d+1,0,:,:] = self.jd*self.Sp
+            self.w_arr[3*self.N2d,0,:,:] = self.jl*self.Sp
+            self.w_arr[3*self.N2d+1,0,:,:] = self.jd*self.n
+            self.w_arr[4*self.N2d,0,:,:] = self.jl*self.n
+            # Build generic interior
+            col_ind = 1
+            row_ind = 2
+            for j in range(4):
+                for i in range(self.N2d-1):
+                    self.w_arr[row_ind,col_ind,:,:] = self.I
+                    col_ind += 1
+                    row_ind += 1
+                col_ind += 1
+                row_ind += 1
+            # Build bottom row
+            self.w_arr[-1,self.N2d,:,:] = np.exp(-self.s)*self.Sp
+            self.w_arr[-1,2*self.N2d,:,:] = -self.n
+            self.w_arr[-1,3*self.N2d,:,:] = np.exp(-self.s)*self.Sm
+            self.w_arr[-1,4*self.N2d,:,:] = -self.v
+            self.w_arr[-1,4*self.N2d+1,:,:] = self.I
+            self.W = []
+            for i in range(self.N2d):
+                for j in range(self.N2d):
+                    # copy generic mpo
+                    curr_w_arr = self.w_arr
+                    # Add interaction with external reservoirs
+                    if j is 0:
+                        curr_w_arr[-1,0,:,:] += self.il*(np.exp(-self.s)*self.Sm-self.v) +\
+                                                self.ol*(np.exp(-self.s)*self.Sp-self.n)
+                    if (j is 0) and (i is not 0): # Prevents interaction between ends
+                        curr_w_arr[self.N2d,0,:,:] = self.z
+                        curr_w_arr[2*self.N2d,0,:,:] = self.z
+                        curr_w_arr[3*self.N2d,0,:,:] = self.z
+                        curr_w_arr[4*self.N2d,0,:,:] = self.z
+                    if i is 0:
+                        curr_w_arr[-1,0,:,:] += self.ib*(np.exp(-self.s)*self.Sm-self.v) +\
+                                                self.ob*(np.exp(-self.s)*self.Sp-self.n)
+                    if j is self.N2d-1:
+                        curr_w_arr[-1,0,:,:] += self.ir*(np.exp(-self.s)*self.Sm-self.v) +\
+                                                self.outr*(np.exp(-self.s)*self.Sp-self.n)
+                    if i is self.N2d-1:
+                        curr_w_arr[-1,0,:,:] += self.it*(np.exp(-self.s)*self.Sm-self.v) +\
+                                                self.ot*(np.exp(-self.s)*self.Sp-self.n)
+                    if (i is 0) and (j is 0):
+                        self.W.insert(len(self.W),np.expand_dims(curr_w_arr[-1,:],0))
+                    elif (i is self.N2d-1) and (j is self.N2d-1):
+                        self.W.insert(len(self.W),np.expand_dims(curr_w_arr[:,0],1))
+                    else:
+                        self.W.insert(len(self.W),curr_w_arr)
+
         elif hamType is "ising":
             self.J = param[0]
             self.h = param[1]

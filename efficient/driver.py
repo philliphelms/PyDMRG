@@ -4,15 +4,17 @@ import mps_opt
 import matplotlib.pyplot as plt
 
 # Possible calculations:
-simpleCalc = False
+simple_tasep = False
 vary_systemSize = False
 vary_s = False
 vary_maxBondDim = False
-phaseDiagram = False
+phaseDiagram = True
 simpleHeis = False
 simpleFullSEP = False
-heis2D = True
-simpleIsing = True
+reverseFullSEP = False
+heis2D = False
+simpleIsing = False
+check_2d_tasep = False
 
 # Set Plotting parameters
 plt.rc('text', usetex=True)
@@ -20,10 +22,10 @@ plt.rcParams['text.latex.preamble'] = [r'\boldmath']
 plt.rc('font', family='serif')
 plt.rcParams['text.latex.unicode']=False
 np.set_printoptions(suppress=True)
-np.set_printoptions(precision=2)
+np.set_printoptions(precision=4)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-if simpleCalc:
+if simple_tasep:
     # Run single TASEP calculation
     x = mps_opt.MPS_OPT(N = 10,
                         hamType = 'tasep',
@@ -100,9 +102,9 @@ if vary_s:
     fig4.savefig('VaryS_current.pdf')
 
 if vary_maxBondDim:
-    N = 20
-    bondDimVec = np.array([2,4,8,16,32,64])
-    #E_exact = 5.378053311010889458998462941963
+    N = 10
+    bondDimVec = np.array([2])
+    E_exact = 5.378053311010889458998462941963
     Evec = np.zeros(len(bondDimVec))
     diffVec = np.zeros(len(bondDimVec))
     for i in range(len(bondDimVec)):
@@ -128,7 +130,7 @@ if vary_maxBondDim:
 
 if phaseDiagram:
     N = 10
-    npts = 30
+    npts = 100
     betaVec = np.linspace(0,1,npts)
     alphaVec = np.linspace(0,1,npts)
     J_mat = np.zeros((len(betaVec),len(alphaVec)))
@@ -136,7 +138,7 @@ if phaseDiagram:
     for i in range(len(betaVec)):
         for j in range(len(alphaVec)):
             print('-'*20+'\nalpha = {}%, beta = {}%\n'.format(j/len(alphaVec),i/len(betaVec)))
-            x = mps_opt.MPS_OPT(N=int(N),
+            #x = mps_opt.MPS_OPT(N=int(N),
                                 maxBondDim = 8,
                                 tol = 1e-1,
                                 hamParams = (alphaVec[j],-0.001,betaVec[i]))
@@ -176,8 +178,8 @@ if phaseDiagram:
     plt.plot(np.array([0.5,1]),np.array([0.5,0.5]),'k-',linewidth=5)
     plt.xticks(fontsize=14)
     plt.yticks(fontsize=14)
-    plt.xlabel('$\alpha$',fontsize=20)
-    plt.ylabel('$\beta$',fontsize=20)
+    plt.xlabel('a',fontsize=20)
+    plt.ylabel('b',fontsize=20)
     f2.savefig('my_analytic_phaseDiagram.pdf')
 
 if simpleHeis:
@@ -190,22 +192,31 @@ if simpleHeis:
     E = x.kernel()
 
 if simpleFullSEP:
-    N = 50
+    N = 8
     x = mps_opt.MPS_OPT(N=N,
                         hamType = "sep",
-                        plotExpVals = False,
-                        plotConv = False,
+                        plotExpVals = True,
+                        plotConv = True,
                         hamParams = (0.35,0,1,0,0,2/3,-1))
     E = x.kernel()
 
+if reverseFullSEP:
+    N = 8
+    x = mps_opt.MPS_OPT(N=N,
+                        hamType = "sep",
+                        plotExpVals = True,
+                        plotConv = True,
+                        hamParams = (0,2/3,0,1,0.35,0,-1))
+    E = x.kernel()
+
 if heis2D:
-    N = 6
+    N = 10
     x = mps_opt.MPS_OPT(N=N**2,
                         hamType = "heis_2d",
                         plotExpVals = True,
                         plotConv = True,
                         maxBondDim=4,
-                        hamParams = (-1,0))
+                        hamParams = (1,0))
     E = x.kernel()
 
 if simpleIsing:
@@ -215,4 +226,16 @@ if simpleIsing:
                         plotExpVals = True,
                         plotConv = True,
                         hamParams = (1,0))
+    E = x.kernel()
+
+if check_2d_tasep:
+    # This checks that the 2D sep calculation gives the same results as the tasep
+    # for all four possible directions
+    N = 10
+    x = mps_opt.MPS_OPT(N=N**2,
+                        hamType="sep_2d",
+                        plotExpVals=True,
+                        plotConv=True,
+                        hamParams = (0,1,0.35,0,0,2/3,      # jl,jr,il,ir,ol,or,
+                                     0,0,0,   0,0,0  ,-1))  # ju,jd,it,ib,ot,ob,s
     E = x.kernel()
