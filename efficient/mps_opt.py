@@ -232,3 +232,67 @@ class MPS_OPT:
                 E_prev = E
                 iterCnt += 1
         return self.finalEnergy
+
+
+    # ADD THE ABILITY TO DO OTHER TYPES OF CALCULATIONS FROM THE MPS OBJECT
+    def exact_diag(self,maxIter=10000,tol=1e-10):
+        import exactDiag_meanField
+        if self.hamType is 'tasep':
+            x = exactDiag_meanField.exactDiag(L=self.N,
+                                              clumpSize=self.N,
+                                              alpha=self.mpo.alpha,
+                                              gamma=0,
+                                              beta=self.mpo.beta,
+                                              delta=0,
+                                              s=self.mpo.s,
+                                              p=1,
+                                              q=0,
+                                              maxIter=maxIter,
+                                              tol=tol)
+        elif self.hamType is 'sep':
+            x = exactDiag_meanField.exactDiag(L=self.N,
+                                              clumpSize=self.N,
+                                              alpha=self.mpo.alpha,
+                                              gamma=self.mpo.gamma,
+                                              beta=self.mpo.beta,
+                                              delta=self.mpo.delta,
+                                              s=self.mpo.s,
+                                              p=self.mpo.p,
+                                              q=self.mpo.q,
+                                              maxIter=maxIter,
+                                              tol=tol)
+        else:
+            raise ValueError("Only 1D SEP and TASEP are supported for Exact Diagonalization")
+        self.E_ed = x.kernel()
+        return(self.E_ed)
+
+    def mean_field(self,maxIter=10000,tol=1e-10,clumpSize=2):
+        import exactDiag_meanField
+        if self.hamType is 'tasep':
+            x = exactDiag_meanField.exactDiag(L=self.N,
+                                              clumpSize=clumpSize,
+                                              alpha=self.mpo.alpha,
+                                              gamma=0,
+                                              beta=self.mpo.beta,
+                                              delta=0,
+                                              s=self.mpo.s,
+                                              p=1,
+                                              q=0,
+                                              maxIter=maxIter,
+                                              tol=tol)
+        elif self.hamType is 'sep':
+            x = exactDiag_meanField.exactDiag(L=self.N,
+                                              clumpSize=self.clumpSize,
+                                              alpha=self.mpo.alpha,
+                                              gamma=self.mpo.gamma,
+                                              beta=self.mpo.beta,
+                                              delta=self.mpo.delta,
+                                              s=self.mpo.s,
+                                              p=self.mpo.p,
+                                              q=self.mpo.q,
+                                              maxIter=maxIter,
+                                              tol=tol)
+        else:
+            raise ValueError("Only 1D SEP and TASEP are supported for Mean Field")
+        self.E_mf = x.kernel()
+        return(self.E_mf)

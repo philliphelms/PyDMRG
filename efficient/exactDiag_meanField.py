@@ -183,12 +183,11 @@ class exactDiag:
                 lpsi = np.kron(isproj[clump,:],isproj[clump+1,:])
                 rpsi = np.kron(sproj[clump,:],sproj[clump+1,:]).transpose()
                 E += np.dot(lpsi,np.dot(mi_x,rpsi))
+        print("E = {}".format(E))
+        print('='*50)
         return E
+
 
 if __name__ == "__main__":
     x = exactDiag(L=10,clumpSize=2,s=0)
-    print("E = {}".format(x.kernel()))
-    print('='*50)
     x = exactDiag(L=10,clumpSize=10,s=0)
-    print("E = {}".format(x.kernel()))
-    print('='*50)
