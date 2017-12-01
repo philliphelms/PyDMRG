@@ -240,6 +240,8 @@ class MPO:
                     elif (i is self.N2d-1) and (j is self.N2d-1):
                         self.W.insert(len(self.W),np.expand_dims(curr_w_arr[:,0],1))
                     else:
+                        self.W.insert(len(self.W),curr_w_arr)
+
         elif hamType is "ising":
             self.J = param[0]
             self.h = param[1]

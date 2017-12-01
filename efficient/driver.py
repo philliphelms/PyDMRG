@@ -4,7 +4,7 @@ import mps_opt
 import matplotlib.pyplot as plt
 
 ## Possible calculations:#########################
-simple_tasep = True
+simple_tasep = False
 vary_systemSize = False
 vary_s = False
 vary_maxBondDim = False
@@ -14,7 +14,8 @@ simpleFullSEP = False
 reverseFullSEP = False
 heis2D = False
 simpleIsing = False
-check_2d_tasep = True
+check_2d_tasep = False
+practice_2d_tasep = True
 test_ds = False
 # Comparing DMRG, MF & ED
 vary_s_comp = False
@@ -262,6 +263,14 @@ if check_2d_tasep:
                                       0,1,0.35,0,0,2/3,-1))
     E4 = x4.kernel()
 
+if practice_2d_tasep:
+    N = 10
+    x = mps_opt.MPS_OPT(N=N**2,
+                        hamType="sep_2d",
+                        plotExpVals=True,
+                        plotConv=True,
+                        hamParams = (0.5,0.5,0.9,0.2,0.2,0.8,
+                                     0.5,0.5,0.9,0.2,0.2,0.8,0)
 
 if test_ds:
     # Find the optimal spacing for ds

@@ -142,9 +142,13 @@ class MPS_OPT:
                 plt.xlabel('Site',fontsize=20)
             elif (self.hamType is "sep_2d"):
                 plt.clf()
-                x,y = np.meshgrid(np.arange(self.mpo.N2d),np.arange(self.mpo.N2d))
-                pcolorPlot = plt.pcolor(x, y, np.real(np.reshape(self.calc_occ,(self.mpo.N2d,self.mpo.N2d))).T)
-                plt.colorbar(pcolorPlot)
+                x,y = (np.arange(self.mpo.N2d),np.arange(self.mpo.N2d))
+                currPlot = plt.imshow(np.real(np.reshape(self.calc_occ,(self.mpo.N2d,self.mpo.N2d))))
+                plt.colorbar(currPlot)
+                plt.gca().set_xticks(range(len(x)))
+                plt.gca().set_yticks(range(len(y)))
+                plt.gca().set_xticklabels(x)
+                plt.gca().set_yticklabels(y)
             elif (self.hamType is "heis")  or (self.hamType is 'ising'):
                 ax = self.exp_val_figure.gca(projection='3d')
                 x = np.arange(self.N)
