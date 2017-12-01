@@ -229,7 +229,7 @@ if simpleIsing:
                         hamParams = (1,0))
     E = x.kernel()
 
-if 2d_tasep_l2r:
+if check_2d_tasep:
     # This checks that the 2D sep calculation gives the same results as the tasep
     # for all four possible directions
     N = 4
