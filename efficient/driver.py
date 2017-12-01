@@ -14,7 +14,7 @@ simpleFullSEP = False
 reverseFullSEP = False
 heis2D = False
 simpleIsing = False
-check_2d_tasep = False
+check_2d_tasep = True
 test_ds = False
 # Comparing DMRG, MF & ED
 vary_s_comp = False
@@ -34,11 +34,11 @@ plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
 if simple_tasep:
     # Run single TASEP calculation
-    x = mps_opt.MPS_OPT(N = 10,
+    x = mps_opt.MPS_OPT(N = 12,
                         hamType = 'tasep',
                         plotExpVals = True,
                         plotConv = True,
-                        hamParams = (0.5,0,0.5))
+                        hamParams = (0.35,-1,2/3))
     x.kernel()
 
 if vary_systemSize:
@@ -229,17 +229,39 @@ if simpleIsing:
                         hamParams = (1,0))
     E = x.kernel()
 
-if check_2d_tasep:
+if 2d_tasep_l2r:
     # This checks that the 2D sep calculation gives the same results as the tasep
     # for all four possible directions
-    N = 10
-    x = mps_opt.MPS_OPT(N=N**2,
+    N = 4
+    x1 = mps_opt.MPS_OPT(N=N**2,
                         hamType="sep_2d",
                         plotExpVals=True,
                         plotConv=True,
                         hamParams = (0,1,0.35,0,0,2/3,      # jl,jr,il,ir,ol,or,
                                      0,0,0,   0,0,0  ,-1))  # ju,jd,it,ib,ot,ob,s
-    E = x.kernel()
+    E1 = x1.kernel()
+    x2 = mps_opt.MPS_OPT(N=N**2,
+                         hamType="sep_2d",
+                         plotExpVals=True,
+                         plotConv=True,
+                         hamParams = (1,0,0,0.35,2/3,0,
+                                      0,0,0,0   ,0  ,0,-1))
+    E2 = x2.kernel()
+    x3 = mps_opt.MPS_OPT(N=N**2,
+                         hamType="sep_2d",
+                         plotExpVals=True,
+                         plotConv=True,
+                         hamParams = (0,0,0,0,0,0,
+                                      1,0,0,0.35,2/3,0,-1))
+    E3 = x3.kernel()
+    x4 = mps_opt.MPS_OPT(N=N**2,
+                         hamType="sep_2d",
+                         plotExpVals=True,
+                         plotConv=True,
+                         hamParams = (0,0,0,0,0,0,
+                                      0,1,0.35,0,0,2/3,-1))
+    E4 = x4.kernel()
+
 
 if test_ds:
     # Find the optimal spacing for ds

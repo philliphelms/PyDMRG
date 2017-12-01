@@ -171,6 +171,19 @@ class MPO:
             self.ot = param[10]
             self.ob = param[11]
             self.s = param[12]
+            print('jump left = {}'.format(self.jl))
+            print('jump right = {}'.format(self.jr))
+            print('in left = {}'.format(self.il))
+            print('in right = {}'.format(self.ir))
+            print('out left = {}'.format(self.ol))
+            print('out right = {}'.format(self.outr))
+            print('jump up = {}'.format(self.ju))
+            print('jump down = {}'.format(self.jd))
+            print('in top = {}'.format(self.it))
+            print('in bottom = {}'.format(self.ib))
+            print('out top = {}'.format(self.ot))
+            print('out bottom = {}'.format(self.ob))
+            print('s = {}'.format(self.s))
             ham_dim = 10+(self.N2d-2)*4
             self.w_arr = np.zeros((ham_dim,ham_dim,2,2))
             # Build generic first column
@@ -203,7 +216,7 @@ class MPO:
             for i in range(self.N2d):
                 for j in range(self.N2d):
                     # copy generic mpo
-                    curr_w_arr = self.w_arr
+                    curr_w_arr = self.w_arr.copy()
                     # Add interaction with external reservoirs
                     if j is 0:
                         curr_w_arr[-1,0,:,:] += self.il*(np.exp(-self.s)*self.Sm-self.v) +\
@@ -228,6 +241,62 @@ class MPO:
                         self.W.insert(len(self.W),np.expand_dims(curr_w_arr[:,0],1))
                     else:
                         self.W.insert(len(self.W),curr_w_arr)
+            self.w_print = np.zeros((ham_dim,ham_dim))
+            # Build generic first column
+            self.w_print[0,0] = 1
+            self.w_print[1,0] = 2
+            self.w_print[self.N2d,0] = 3
+            self.w_print[self.N2d+1,0] = 4
+            self.w_print[2*self.N2d,0] = 5
+            self.w_print[2*self.N2d+1,0] = 6
+            self.w_print[3*self.N2d,0] = 7
+            self.w_print[3*self.N2d+1,0] = 8
+            self.w_print[4*self.N2d,0] = 9
+            # Build generic interior
+            col_ind = 1
+            row_ind = 2
+            for j in range(4):
+                for i in range(self.N2d-1):
+                    self.w_print[row_ind,col_ind] = 1
+                    col_ind += 1
+                    row_ind += 1
+                col_ind += 1
+                row_ind += 1
+            # Build bottom row
+            self.w_print[-1,self.N2d] = 10
+            self.w_print[-1,2*self.N2d] = 11
+            self.w_print[-1,3*self.N2d] = 12
+            self.w_print[-1,4*self.N2d] = 13
+            self.w_print[-1,4*self.N2d+1] = 14
+            self.W_print = []
+            for i in range(self.N2d):
+                for j in range(self.N2d):
+                    # copy generic mpo
+                    curr_w_print = self.w_print.copy()
+                    # Add interaction with external reservoirs
+                    if j is 0:
+                        curr_w_print[-1,0] += 100
+                    if (j is 0) and (i is not 0): # Prevents interaction between ends
+                        curr_w_print[self.N2d,0] = 0
+                        curr_w_print[2*self.N2d,0] = 0
+                        curr_w_print[3*self.N2d,0] = 0
+                        curr_w_print[4*self.N2d,0] = 0
+                    if i is 0:
+                        curr_w_print[-1,0] += 101
+                    if j is self.N2d-1:
+                        curr_w_print[-1,0] += 102 
+                    if i is self.N2d-1:
+                        curr_w_print[-1,0] += 103
+                    if (i is 0) and (j is 0):
+                        self.W_print.insert(len(self.W),curr_w_print[-1,:])
+                    elif (i is self.N2d-1) and (j is self.N2d-1):
+                        self.W_print.insert(len(self.W),curr_w_print[:,0])
+                    else:
+                        self.W_print.insert(len(self.W),curr_w_print)
+                    print(curr_w_print)
+            for i in range(len(self.W_print)):
+                print('W at position {}'.format(i))
+                print(self.W_print[i])
 
         elif hamType is "ising":
             self.J = param[0]

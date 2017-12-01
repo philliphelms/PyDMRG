@@ -83,6 +83,7 @@ class MPS_OPT:
         H = np.einsum('jlp,lmin,kmq->ijknpq',self.F[i],self.mpo.W[i],self.F[i+1])
         (n1,n2,n3,n4,n5,n6) = H.shape
         H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
+        #u,v = arnoldiEig(H,1,which='LR')
         u,v = np.linalg.eig(H)
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
             u_sort = u[np.argsort(u)]
@@ -121,6 +122,10 @@ class MPS_OPT:
         elif (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
             self.calc_empty[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.v,self.M[site])
             self.calc_occ[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.n,self.M[site])
+
+    def energy_contraction(self,site):
+        return np.einsum('ijk,jlmn,olp,mio,nkp->',\
+                self.F[site],self.mpo.W[site],self.F[site+1],np.conjugate(self.M[site]),self.M[site])
 
     def plot_observables(self):
         if self.plotExpVals:
@@ -205,7 +210,8 @@ class MPS_OPT:
         self.calc_initial_f()
         converged = False
         iterCnt = 0
-        E_prev = self.calc_observables(0)
+        self.calc_observables(0)
+        E_prev = self.energy_contraction(0)
         while not converged:
             # Right Sweep --------------------------
             print('Right Sweep {}'.format(iterCnt))
