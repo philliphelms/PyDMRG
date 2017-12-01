@@ -37,9 +37,9 @@ class MPS_OPT:
     def generate_mps(self):
         self.M = []
         for i in range(int(self.N/2)):
-            self.M.insert(len(self.M),np.ones((self.d,min(self.d**(i),self.maxBondDim),min(self.d**(i+1),self.maxBondDim))))
+            self.M.insert(len(self.M),np.zeros((self.d,min(self.d**(i),self.maxBondDim),min(self.d**(i+1),self.maxBondDim))))
         for i in range(int(self.N/2))[::-1]:
-            self.M.insert(len(self.M),np.ones((self.d,min(self.d**(i+1),self.maxBondDim),min(self.d**i,self.maxBondDim))))
+            self.M.insert(len(self.M),np.zeros((self.d,min(self.d**(i+1),self.maxBondDim),min(self.d**i,self.maxBondDim))))
 
     def generate_mpo(self):
         self.mpo = mpo.MPO(self.hamType,self.hamParams,self.N)
@@ -87,10 +87,21 @@ class MPS_OPT:
         #u,v = arnoldiEig(H,1,which='LR')
         u,v = np.linalg.eig(H)
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
-            ind = np.argsort(u)[-1]
+            u_sort = u[np.argsort(u)]
+            ind = -1
+            for j in range(len(u_sort)-1,0,-1):
+                if np.abs(np.imag(u_sort[j])) < 1e-8:
+                    ind = j
+                break
         else:
-            ind = np.argsort(u)[0]
-        E = u[ind]
+            u_sort = u[np.argsort(u)]
+            ind = 0
+            for j in range(len(u_sort)):
+                if np.abs(np.imag(u_sort[j])) < 1e-8:
+                    ind = j
+                break
+        E = u_sort[ind]
+        v = v[:,np.argsort(u)]
         v = v[:,ind]
         print('\tEnergy at site {}= {}'.format(i,E))
         self.M[i] = np.reshape(v,(n1,n2,n3))

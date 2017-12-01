@@ -15,9 +15,10 @@ reverseFullSEP = False
 heis2D = False
 simpleIsing = False
 check_2d_tasep = False
+test_ds = False
 # Comparing DMRG, MF & ED
-vary_s_comp = True
-vary_maxBondDim_comp = True
+vary_s_comp = False
+vary_maxBondDim_comp = False
 phaseDiagram_comp = True
 ##################################################
 
@@ -28,16 +29,16 @@ plt.rcParams['text.latex.preamble'] = [r'\boldmath']
 plt.rc('font', family='serif')
 plt.rcParams['text.latex.unicode']=False
 np.set_printoptions(suppress=True)
-np.set_printoptions(precision=4)
+np.set_printoptions(precision=100)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
 if simple_tasep:
     # Run single TASEP calculation
     x = mps_opt.MPS_OPT(N = 10,
                         hamType = 'tasep',
-                        plotExpVals = False,
-                        plotConv = False,
-                        hamParams = (0.35,-1,2/3))
+                        plotExpVals = True,
+                        plotConv = True,
+                        hamParams = (0.5,0,0.5))
     x.kernel()
 
 if vary_systemSize:
@@ -240,10 +241,48 @@ if check_2d_tasep:
                                      0,0,0,   0,0,0  ,-1))  # ju,jd,it,ib,ot,ob,s
     E = x.kernel()
 
+if test_ds:
+    # Find the optimal spacing for ds
+    N = 6
+    npts = 5
+    ds = np.array([0.5,0.4,0.3,0.2,0.1,0.05,0.01,0.001,0.0001])
+    error = np.zeros(ds.shape)
+    betaVec = np.linspace(0.01,0.99,npts)
+    alphaVec = np.linspace(0.01,0.99,npts)
+    J_mat = np.zeros((len(betaVec),len(alphaVec)))
+    J_mat_inf = np.zeros((len(betaVec),len(alphaVec)))
+    J_mat_ed = np.zeros((len(betaVec),len(alphaVec)))
+    J_mat_mf = np.zeros((len(betaVec),len(alphaVec)))
+    for k in range(len(ds)):
+        for i in range(len(betaVec)):
+            for j in range(len(alphaVec)):
+                print('-'*20+'\nalpha = {}% Complete\nbeta = {} Complete%\n'.format(j/len(alphaVec)*100,i/len(betaVec)*100))
+                x = mps_opt.MPS_OPT(N=int(N),
+                                    hamParams = (alphaVec[j],-ds[k],betaVec[i]))
+                E1 = x.kernel()
+                print(E1)
+                E1_ed = x.exact_diag()
+                print(E1_ed)
+                print(E1-E1_ed)
+                x = mps_opt.MPS_OPT(N=int(N),
+                                    hamParams = (alphaVec[j],ds[k],betaVec[i]))
+                E2 = x.kernel()
+                print(E2)
+                E2_ed = x.exact_diag()
+                print(E2_ed)
+                print(E2-E2_ed)
+                # Calculate Current
+                J_mat[i,j] = (E1-E2)/(2*ds[k])/N
+                J_mat_ed[i,j] = (E1_ed-E2_ed)/(2*ds[k])/N
+        error[k] = np.sum(np.sum(np.abs(J_mat-J_mat_ed)))/(len(alphaVec)*len(betaVec))
+    plt.figure()
+    plt.semilogy(ds,np.abs(error))
+    plt.show()
+
 if vary_s_comp:
     # Run TASEP Current Calculations
     N_vec = np.array([10])#np.array([10,20,30,40,50,60])
-    s_vec = np.linspace(-1,1,10)
+    s_vec = np.linspace(-1,1,100)
     fig1 = plt.figure()
     fig2 = plt.figure()
     fig3 = plt.figure()
@@ -336,3 +375,135 @@ if vary_s_comp:
     fig4.savefig('VaryS_current_comparison.pdf')
     fig5.savefig('VaryS_comparison_CGFerror.pdf')
     fig6.savefig('VaryS_comparison_currentError.pdf')
+
+if vary_maxBondDim_comp:
+    N = np.array([4,6,8,10])
+    bondDimVec = np.array([1,2,3,4,10])
+    col_vec = ['r','y','g','b','c','k','m']
+    fig1 = plt.figure()
+    for j in range(len(N)):
+        Evec = np.zeros(len(bondDimVec))
+        diffVec = np.zeros(len(bondDimVec))
+        for i in range(len(bondDimVec)):
+            print('\tRunning Calcs for M = {}'.format(bondDimVec[i]))
+            x = mps_opt.MPS_OPT(N=int(N[j]),
+                                maxBondDim = bondDimVec[i],
+                                tol = 1e-1,
+                                hamParams = (0.35,-1,2/3))
+            Evec[i] = x.kernel()
+        #E_ed = x.exact_diag()
+        E_mf = x.mean_field()
+        #diffVec = np.abs(Evec-E_exact)
+        diffVec = np.abs(Evec-Evec[-1])
+        plt.semilogy(bondDimVec[:-1],diffVec[:-1],col_vec[j]+'-o',linewidth=5,markersize=10,markeredgecolor='k')
+        plt.semilogy([bondDimVec[0],bondDimVec[-2]],[np.abs(E_mf-Evec[-1]),np.abs(E_mf-Evec[-1])],col_vec[j]+':',linewidth=5)
+        #plt.plot(np.array([bondDimVec[0],bondDimVec[-1]]),np.array([0,0]),'b--',linewidth=5)
+        plt.xticks(fontsize=14)
+        plt.yticks(fontsize=14)
+    plt.xlabel('Bond Dimension',fontsize=20)
+    plt.ylabel('$E-E_{exact}$',fontsize=20)
+    plt.legend(('DMRG','Mean Field'))
+    plt.show()
+    fig1.savefig('varyMaxBondDim.pdf')
+
+if phaseDiagram_comp:
+    N = 10
+    npts = 50
+    ds = 0.1
+    betaVec = np.linspace(0.01,0.99,npts)
+    alphaVec = np.linspace(0.01,0.99,npts)
+    J_mat = np.zeros((len(betaVec),len(alphaVec)))
+    J_mat_inf = np.zeros((len(betaVec),len(alphaVec)))
+    J_mat_ed = np.zeros((len(betaVec),len(alphaVec)))
+    J_mat_mf = np.zeros((len(betaVec),len(alphaVec)))
+    for i in range(len(betaVec)):
+        for j in range(len(alphaVec)):
+            print(('-'*20+'\nalpha = {}\nbeta = {}\n{}% Complete\n'+'-'*20).format(alphaVec[j],betaVec[i],i/len(betaVec)*100))
+            x = mps_opt.MPS_OPT(N=int(N),
+                                hamParams = (alphaVec[j],-ds,betaVec[i]))
+            E1 = x.kernel()
+            E1_ed = x.exact_diag()
+            E1_mf = x.mean_field()
+            x = mps_opt.MPS_OPT(N=int(N),
+                                hamParams = (alphaVec[j],ds,betaVec[i]))
+            E2 = x.kernel()
+            E2_ed = x.exact_diag()
+            E2_mf = x.mean_field()
+            # Calculate Current
+            J_mat[i,j] = (E1-E2)/(2*ds)/N
+            J_mat_ed[i,j] = (E1_ed-E2_ed)/(2*ds)/N
+            J_mat_mf[i,j] = (E1_mf-E2_mf)/(2*ds)/N
+            # Determine infinite limit current
+            if alphaVec[j] > 0.5 and betaVec[i] > 0.5:
+                J_mat_inf[i,j] = 1/4
+            elif alphaVec[j] < 0.5 and betaVec[i] > alphaVec[j]:
+                J_mat_inf[i,j] = alphaVec[j]*(1-alphaVec[j])
+            else:
+                J_mat_inf[i,j] = betaVec[i]*(1-betaVec[i])
+    x,y = np.meshgrid(betaVec,alphaVec)
+    f = plt.figure()
+    plt.pcolor(x,y,J_mat,vmin=-0,vmax=0.25)
+    plt.colorbar()
+    plt.plot(np.array([0,0.5]),np.array([0,0.5]),'k-',linewidth=5)
+    plt.plot(np.array([0.5,0.5]),np.array([0.5,1]),'k-',linewidth=5)
+    plt.plot(np.array([0.5,1]),np.array([0.5,0.5]),'k-',linewidth=5)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.xlabel('$\alpha$',fontsize=20)
+    plt.ylabel('$\beta$',fontsize=20)
+    f.savefig('dmrg_phaseDiagram.pdf')
+    f2 = plt.figure()
+    plt.pcolor(x,y,J_mat_inf,vmin=-0,vmax=0.25)
+    plt.colorbar()
+    plt.plot(np.array([0,0.5]),np.array([0,0.5]),'k-',linewidth=5)
+    plt.plot(np.array([0.5,0.5]),np.array([0.5,1]),'k-',linewidth=5)
+    plt.plot(np.array([0.5,1]),np.array([0.5,0.5]),'k-',linewidth=5)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.xlabel('a',fontsize=20)
+    plt.ylabel('b',fontsize=20)
+    f2.savefig('analytic_phaseDiagram.pdf')
+    f3 = plt.figure()
+    plt.pcolor(x,y,J_mat_ed,vmin=-0,vmax=0.25)
+    plt.colorbar()
+    plt.plot(np.array([0,0.5]),np.array([0,0.5]),'k-',linewidth=5)
+    plt.plot(np.array([0.5,0.5]),np.array([0.5,1]),'k-',linewidth=5)
+    plt.plot(np.array([0.5,1]),np.array([0.5,0.5]),'k-',linewidth=5)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.xlabel('$\alpha$',fontsize=20)
+    plt.ylabel('$\beta$',fontsize=20)
+    f3.savefig('ed_phaseDiagram.pdf')
+    f4 = plt.figure()
+    plt.pcolor(x,y,J_mat_mf,vmin=-0,vmax=0.25)
+    plt.colorbar()
+    plt.plot(np.array([0,0.5]),np.array([0,0.5]),'k-',linewidth=5)
+    plt.plot(np.array([0.5,0.5]),np.array([0.5,1]),'k-',linewidth=5)
+    plt.plot(np.array([0.5,1]),np.array([0.5,0.5]),'k-',linewidth=5)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.xlabel('$\alpha$',fontsize=20)
+    plt.ylabel('$\beta$',fontsize=20)
+    f4.savefig('mf_phaseDiagram.pdf')
+    f5 = plt.figure()
+    plt.pcolor(x,y,np.log(np.abs(J_mat_ed-J_mat+1e-16)))
+    plt.colorbar()
+    plt.plot(np.array([0,0.5]),np.array([0,0.5]),'k-',linewidth=5)
+    plt.plot(np.array([0.5,0.5]),np.array([0.5,1]),'k-',linewidth=5)
+    plt.plot(np.array([0.5,1]),np.array([0.5,0.5]),'k-',linewidth=5)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.xlabel('$\alpha$',fontsize=20)
+    plt.ylabel('$\beta$',fontsize=20)
+    f5.savefig('dmrg_phaseDiagram_error.pdf')
+    f6 = plt.figure()
+    plt.pcolor(x,y,np.log(np.abs(J_mat_ed-J_mat_mf+1e-16)))
+    plt.colorbar()
+    plt.plot(np.array([0,0.5]),np.array([0,0.5]),'k-',linewidth=5)
+    plt.plot(np.array([0.5,0.5]),np.array([0.5,1]),'k-',linewidth=5)
+    plt.plot(np.array([0.5,1]),np.array([0.5,0.5]),'k-',linewidth=5)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.xlabel('$\alpha$',fontsize=20)
+    plt.ylabel('$\beta$',fontsize=20)
+    f6.savefig('mf_phaseDiagram_error.pdf')
