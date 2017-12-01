@@ -83,7 +83,6 @@ class MPS_OPT:
         H = np.einsum('jlp,lmin,kmq->ijknpq',self.F[i],self.mpo.W[i],self.F[i+1])
         (n1,n2,n3,n4,n5,n6) = H.shape
         H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
-        #u,v = arnoldiEig(H,1,which='LR')
         u,v = np.linalg.eig(H)
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
             u_sort = u[np.argsort(u)]
