@@ -77,7 +77,6 @@ class MPS_OPT:
 
     def calc_initial_f(self):
         for i in range(int(self.N)-1,0,-1):
-            print(i)
             self.F[i] = np.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(self.M[i]),self.mpo.W[i],self.M[i],self.F[i+1])
 
     def local_optimization(self,i):
@@ -116,8 +115,6 @@ class MPS_OPT:
             raise NameError('Direction must be left or right')
 
     def calc_observables(self,site):
-        self.energy_calc = np.einsum('ijk,jlmn,olp,mio,nkp->',\
-                self.F[site],self.mpo.W[site],self.F[site+1],np.conjugate(self.M[site]),self.M[site])
         if (self.hamType is "heis") or (self.hamType is "heis_2d") or (self.hamType is 'ising'):
             self.calc_spin_x[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sx,self.M[site])
             self.calc_spin_y[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sy,self.M[site])
@@ -125,7 +122,6 @@ class MPS_OPT:
         elif (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
             self.calc_empty[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.v,self.M[site])
             self.calc_occ[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.n,self.M[site])
-        return self.energy_calc
 
     def plot_observables(self):
         if self.plotExpVals:
@@ -189,11 +185,11 @@ class MPS_OPT:
             plt.ion()
             if not self.conv_figure:
                 self.conv_figure = plt.figure()
-                self.y_vec = [self.energy_calc]
+                self.y_vec = [self.E]
                 self.x_vec = [i]
             else:
                 plt.figure(self.conv_figure.number)
-                self.y_vec.insert(-1,self.energy_calc)
+                self.y_vec.insert(-1,self.E)
                 self.x_vec.insert(-1,i)
             plt.cla()
             if len(self.y_vec) > 3:
@@ -215,7 +211,7 @@ class MPS_OPT:
             # Right Sweep --------------------------
             print('Right Sweep {}'.format(iterCnt))
             for i in range(int(self.N-1)):
-                E = self.local_optimization(i)
+                self.E = self.local_optimization(i)
                 self.calc_observables(i)
                 self.normalize(i,'right')
                 self.update_f(i,'right')
@@ -224,23 +220,23 @@ class MPS_OPT:
             # Left Sweep ---------------------------
             print('Left Sweep {}'.format(iterCnt))
             for i in range(int(self.N-1),0,-1):
-                E = self.local_optimization(i)
+                self.E = self.local_optimization(i)
                 self.calc_observables(i)
                 self.normalize(i,'left')
                 self.update_f(i,'left')
                 self.plot_observables()
                 self.plot_convergence(i)
             # Check Convergence --------------------
-            if np.abs(E-E_prev) < self.tol:
-                print('#'*75+'\nConverged at E = {}'.format(E)+'\n'+'#'*75)
-                self.finalEnergy = E
+            if np.abs(self.E-E_prev) < self.tol:
+                print('#'*75+'\nConverged at E = {}'.format(self.E)+'\n'+'#'*75)
+                self.finalEnergy = self.E
                 converged = True
             elif iterCnt >= self.maxIter:
                 print('!'*75+'\nConvergence not acheived\n'+'!'*75)
-                self.finalEnergy = E
+                self.finalEnergy = self.E
                 converged = True
             else:
-                E_prev = E
+                E_prev = self.E
                 iterCnt += 1
         return self.finalEnergy
 

@@ -4,7 +4,7 @@ import mps_opt
 import matplotlib.pyplot as plt
 
 ## Possible calculations:#########################
-simple_tasep = False
+simple_tasep = True
 vary_systemSize = False
 vary_s = False
 vary_maxBondDim = False
@@ -19,7 +19,7 @@ test_ds = False
 # Comparing DMRG, MF & ED
 vary_s_comp = False
 vary_maxBondDim_comp = False
-phaseDiagram_comp = True
+phaseDiagram_comp = False
 ##################################################
 
 
