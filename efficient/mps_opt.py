@@ -149,6 +149,7 @@ class MPS_OPT:
                 plt.gca().set_yticks(range(len(y)))
                 plt.gca().set_xticklabels(x)
                 plt.gca().set_yticklabels(y)
+                plt.gca().grid(False)
             elif (self.hamType is "heis")  or (self.hamType is 'ising'):
                 ax = self.exp_val_figure.gca(projection='3d')
                 x = np.arange(self.N)

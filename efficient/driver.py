@@ -270,7 +270,8 @@ if practice_2d_tasep:
                         plotExpVals=True,
                         plotConv=True,
                         hamParams = (0.5,0.5,0.9,0.2,0.2,0.8,
-                                     0.5,0.5,0.9,0.2,0.2,0.8,0)
+                                     0.5,0.5,0.9,0.2,0.2,0.8,0))
+    E = x.kernel()
 
 if test_ds:
     # Find the optimal spacing for ds
