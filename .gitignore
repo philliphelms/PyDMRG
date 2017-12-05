@@ -1,9 +1,8 @@
-heisenbergModel/__pycache__/*
-heisenberg_occupation_calc.xlsx
-isingModel/*
-sepModel/*
 *.swp
+*.pdf
 simple/__pycache__/*
 efficient/__pycache__/*
 efficient/figures/*
-efficient/data/*
+efficient/data/dmrg/*
+efficient/data/mf/*
+efficient/data/ed/*

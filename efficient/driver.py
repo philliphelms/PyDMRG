@@ -4,9 +4,9 @@ import mps_opt
 import matplotlib.pyplot as plt
 
 ## Possible calculations:#########################
-simple_tasep = False
+simple_tasep = True
 vary_systemSize = False
-vary_s = False
+vary_s = True
 vary_maxBondDim = False
 phaseDiagram = False
 simpleHeis = False
@@ -22,7 +22,7 @@ vary_s_comp = False
 vary_maxBondDim_comp = False
 phaseDiagram_comp = False
 # Full 2D Comparison
-vary_maxBondDim_2d_comp = True
+vary_maxBondDim_2d_comp = False
 ##################################################
 
 
@@ -543,8 +543,8 @@ if phaseDiagram_comp:
     f6.savefig('mf_phaseDiagram_error.pdf')
 
 if vary_maxBondDim_2d_comp:
-    N = 10
-    bondDimVec = np.array([1,2,3,4,10,30])
+    N = 6
+    bondDimVec = np.array([1,2,4,10,14,20,24,30,34,40])
     col_vec = ['r','y','g','b','c','k','m']
     # Run 1D Calculation for comparison
     Evec_1d = np.zeros(len(bondDimVec))
@@ -554,6 +554,8 @@ if vary_maxBondDim_2d_comp:
         x = mps_opt.MPS_OPT(N=N,
                             maxBondDim = bondDimVec[i],
                             hamParams = (0.35,-1,2/3),
+                            plotConv = False,
+                            plotExpVals = False,
                             hamType = 'tasep')
         Evec_1d[i] = x.kernel()
     # Run exact Diagonalization for 1D
@@ -562,18 +564,6 @@ if vary_maxBondDim_2d_comp:
     # Run mean field 1d
     print('Running mean field (1D)')
     E_mf = x.mean_field()
-    # Run 2D in aligned direction
-    Evec_2d_aligned = np.zeros(len(bondDimVec))
-    print('Running aligned 2D calculations')
-    for i in range(len(bondDimVec)):
-        x = mps_opt.MPS_OPT(N=N**2,
-                            maxBondDim = bondDimVec[i],
-                            hamType="sep_2d",
-                            plotExpVals=False,
-                            plotConv=False,
-                            hamParams = (0,1,0.35,0,0,2/3,      # jl,jr,il,ir,ol,or,
-                                         0,0,0,   0,0,0  ,-1))  # ju,jd,it,ib,ot,ob,s
-        Evec_2d_aligned[i] = x.kernel()/N
     # Run 2D in opposite direction
     Evec_2d_notaligned = np.zeros(len(bondDimVec))
     print('Running misaligned 2D calculations')
@@ -586,6 +576,19 @@ if vary_maxBondDim_2d_comp:
                             hamParams = (0,0,0,0,0,0,
                                          1,0,0,0.35,2/3,0,-1))
         Evec_2d_notaligned[i] = x.kernel()/N
+        plt.close("all")
+    # Run 2D in aligned direction
+    Evec_2d_aligned = np.zeros(len(bondDimVec))
+    print('Running aligned 2D calculations')
+    for i in range(len(bondDimVec)):
+        x = mps_opt.MPS_OPT(N=N**2,
+                            maxBondDim = bondDimVec[i],
+                            hamType="sep_2d",
+                            plotExpVals=False,
+                            plotConv=False,
+                            hamParams = (0,1,0.35,0,0,2/3,      # jl,jr,il,ir,ol,or,
+                                         0,0,0,   0,0,0  ,-1))  # ju,jd,it,ib,ot,ob,s
+        Evec_2d_aligned[i] = x.kernel()/N
     # Calculate Errors
     err_mf = np.abs(E_mf-E_ed)
     errVec_1d = np.abs(Evec_1d-E_ed)
@@ -602,5 +605,13 @@ if vary_maxBondDim_2d_comp:
     plt.xlabel('Bond Dimension',fontsize=20)
     plt.ylabel('$E-E_{exact}$',fontsize=20)
     plt.legend(('Mean Field','1D DMRG','2D DMRG (aligned)','2D DMRG (not aligned)'))
-    plt.show()
-    fig1.savefig('varyMaxBondDim.pdf')
+    fig1.savefig('varyMaxBondDim_'+str(bondDimVec[i])+'.pdf')
+    np.savez('data_varyMaxBondDim_'+str(bondDimVec[i]),Evec_1d=Evec_1d,
+                                                       E_ed = E_ed,
+                                                       E_mf = E_mf,
+                                                       Evec_2d_notaligned = Evec_2d_notaligned,
+                                                       Evec_2d_aligned = Evec_2d_aligned,
+                                                       err_mf = err_mf,
+                                                       errVec_1d = errVec_1d,
+                                                       errVec_2d_aligned = errVec_2d_aligned,
+                                                       errVec_2d_notaligned = errVec_2d_notaligned)

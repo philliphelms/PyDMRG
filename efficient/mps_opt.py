@@ -13,7 +13,8 @@ class MPS_OPT:
     def __init__(self, N=10, d=2, maxBondDim=8, tol=1e-5, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
-                 eigMethod='full'):
+                 eigMethod='full',\
+                 saveResults=True,dataFolder='data/'):
         # Import parameters
         self.N = N
         self.d = d
@@ -27,6 +28,8 @@ class MPS_OPT:
         self.eigMethod = eigMethod
         self.conv_figure = False
         self.exp_val_figure = False
+        self.saveResults = saveResults
+        self.dataFolder = dataFolder
      
         self.calc_spin_x = [0]*self.N
         self.calc_spin_y = [0]*self.N 
@@ -207,6 +210,30 @@ class MPS_OPT:
             plt.xlabel('Site',fontsize=20)
             plt.pause(0.0001)
 
+    def saveFinalResults(self,calcType):
+        if self.saveResults:
+            # Create Filename:
+            filename = 'results_'+self.hamType+'_N'+str(self.N)+'_M'+str(self.maxBondDim)
+            for i in range(len(self.hamParams)):
+                filename += ('_'+str(self.hamParams[i]))
+            if calcType is 'dmrg':
+                np.savez(self.dataFolder+'dmrg/'+filename,
+                         N=self.N,
+                         M=self.maxBondDim,
+                         hamParams=self.hamParams,
+                         dmrg_energy = self.finalEnergy,
+                         calc_empty = self.calc_empty,
+                         calc_occ = self.calc_occ,
+                         calc_spin_x = self.calc_spin_x,
+                         calc_spin_y = self.calc_spin_y,
+                         calc_spin_z = self.calc_spin_z)
+            elif calcType is 'mf':
+                np.savez(self.dataFolder+'mf/'+filename,
+                         E_mf = self.E_mf)
+            elif calcType is 'ed':
+                np.savez(self.dataFolder+'ed/'+filename,
+                         E_ed = self.E_ed)
+
     def kernel(self):
         self.generate_mps()
         self.right_canonicalize_mps()
@@ -248,6 +275,7 @@ class MPS_OPT:
             else:
                 E_prev = self.E
                 iterCnt += 1
+        self.saveFinalResults('dmrg')
         return self.finalEnergy
 
 
@@ -281,6 +309,7 @@ class MPS_OPT:
         else:
             raise ValueError("Only 1D SEP and TASEP are supported for Exact Diagonalization")
         self.E_ed = x.kernel()
+        self.saveFinalResults('ed')
         return(self.E_ed)
 
     def mean_field(self,maxIter=10000,tol=1e-10,clumpSize=2):
@@ -312,4 +341,5 @@ class MPS_OPT:
         else:
             raise ValueError("Only 1D SEP and TASEP are supported for Mean Field")
         self.E_mf = x.kernel()
+        self.saveFinalResults('mf')
         return(self.E_mf)
