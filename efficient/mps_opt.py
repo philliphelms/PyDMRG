@@ -125,6 +125,8 @@ class MPS_OPT:
         v = v[:,np.argsort(u)]
         v = v[:,ind]
         self.M[i] = np.reshape(v,(n1,n2,n3))
+        if self.verbose > 1:
+            print('Current Energy = {}'.format(E))
         return E
 
     def update_f(self,i,direction):
