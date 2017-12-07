@@ -1,0 +1,476 @@
+Running 1D Calculations
+Right Sweep 0
+	Energy at site 0= -0.35
+	Energy at site 1= -0.3499999999999998
+	Energy at site 2= -0.34999999999999976
+Left Sweep 0
+	Energy at site 3= 0.5037978745669139
+	Energy at site 2= 1.1116573996374592
+	Energy at site 1= 1.7559861424265546
+Right Sweep 1
+	Energy at site 0= 1.8456562400200844
+	Energy at site 1= 1.8504796858926027
+	Energy at site 2= 1.841040348755232
+Left Sweep 1
+	Energy at site 3= 2.1335527344989993
+	Energy at site 2= 2.13411228283606
+	Energy at site 1= 2.1346230175041945
+Right Sweep 2
+	Energy at site 0= 2.1316930313119276
+	Energy at site 1= 2.13160705946683
+	Energy at site 2= 2.131579875131268
+Left Sweep 2
+	Energy at site 3= 2.130844649060881
+	Energy at site 2= 2.130848099622853
+	Energy at site 1= 2.1308569992029867
+Right Sweep 3
+	Energy at site 0= 2.130698851666925
+	Energy at site 1= 2.1306935334159434
+	Energy at site 2= 2.13069309576975
+Left Sweep 3
+	Energy at site 3= 2.130683304478099
+	Energy at site 2= 2.130683348849802
+	Energy at site 1= 2.1306834649547985
+Right Sweep 4
+	Energy at site 0= 2.130674594437083
+	Energy at site 1= 2.130674294213839
+	Energy at site 2= 2.130674317413783
+Left Sweep 4
+	Energy at site 3= 2.130674094057465
+	Energy at site 2= 2.1306740950691605
+	Energy at site 1= 2.130674087939995
+###########################################################################
+Converged at E = 2.130674087939995
+###########################################################################
+Running Exact Diagonalization (1D)
+
+
+Exact Diagonalization Results Obtained
+==================================================
+E = (2.2841408913745807+4.820259416250313e-18j)
+==================================================
+Running mean field (1D)
+
+
+Mean Field Convergence Achevied after 59 iterations
+==================================================
+E = (2.1934826127070934-5.998279113108036e-17j)
+==================================================
+Running misaligned 2D calculations
+jump left = 0
+jump right = 0
+in left = 0
+in right = 0
+out left = 0
+out right = 0
+jump up = 1
+jump down = 0
+in top = 0
+in bottom = 0.35
+out top = 0.6666666666666666
+out bottom = 0
+s = -1
+Right Sweep 0
+	Energy at site 0= -1.4
+	Energy at site 1= -1.4
+	Energy at site 2= -1.4
+	Energy at site 3= -1.3999999999999997
+	Energy at site 4= -1.4000000000000004
+	Energy at site 5= -1.4000000000000004
+	Energy at site 6= -1.4000000000000001
+	Energy at site 7= -1.4000000000000001
+	Energy at site 8= -1.4
+	Energy at site 9= -1.3999999999999997
+	Energy at site 10= -1.3999999999999995
+	Energy at site 11= -1.3999999999999995
+	Energy at site 12= -0.5462021254330856
+	Energy at site 13= 0.3075957491338295
+	Energy at site 14= 1.1613936237007443
+Left Sweep 0
+	Energy at site 15= 2.0151914982676598
+	Energy at site 14= 2.0151914982676598
+	Energy at site 13= 2.015191498267661
+	Energy at site 12= 2.0151914982676615
+	Energy at site 11= 2.6230510233382063
+	Energy at site 10= 3.230910548408753
+	Energy at site 9= 3.8387700734792993
+	Energy at site 8= 4.446629598549848
+	Energy at site 7= 5.090958341338943
+	Energy at site 6= 5.735287084128041
+	Energy at site 5= 6.379615826917139
+	Energy at site 4= 7.023944569706236
+	Energy at site 3= 7.113614667299762
+	Energy at site 2= 7.203284764893292
+	Energy at site 1= 7.2929548624868215
+Right Sweep 1
+	Energy at site 0= 7.382624960080352
+	Energy at site 1= 7.382624960080349
+	Energy at site 2= 7.3826249600803475
+	Energy at site 3= 7.382624960080349
+	Energy at site 4= 7.387448405952867
+	Energy at site 5= 7.392271851825382
+	Energy at site 6= 7.3970952976978985
+	Energy at site 7= 7.401918743570412
+	Energy at site 8= 7.392479406433044
+	Energy at site 9= 7.383040069295673
+	Energy at site 10= 7.373600732158298
+	Energy at site 11= 7.364161395020926
+	Energy at site 12= 7.656673780764694
+	Energy at site 13= 7.949186166508459
+	Energy at site 14= 8.241698552252224
+Left Sweep 1
+	Energy at site 15= 8.534210937995992
+	Energy at site 14= 8.53421093799599
+	Energy at site 13= 8.53421093799599
+	Energy at site 12= 8.534210937995992
+	Energy at site 11= 8.534770486333054
+	Energy at site 10= 8.535330034670114
+	Energy at site 9= 8.535889583007176
+	Energy at site 8= 8.53644913134424
+	Energy at site 7= 8.53695986601237
+	Energy at site 6= 8.537470600680512
+	Energy at site 5= 8.537981335348647
+	Energy at site 4= 8.53849207001678
+	Energy at site 3= 8.535562083824512
+	Energy at site 2= 8.532632097632241
+	Energy at site 1= 8.529702111439974
+Right Sweep 2
+	Energy at site 0= 8.52677212524771
+	Energy at site 1= 8.52677212524771
+	Energy at site 2= 8.52677212524771
+	Energy at site 3= 8.526772125247712
+	Energy at site 4= 8.526686153402617
+	Energy at site 5= 8.526600181557521
+	Energy at site 6= 8.526514209712426
+	Energy at site 7= 8.526428237867322
+	Energy at site 8= 8.52640105353176
+	Energy at site 9= 8.5263738691962
+	Energy at site 10= 8.526346684860643
+	Energy at site 11= 8.526319500525082
+	Energy at site 12= 8.525584274454692
+	Energy at site 13= 8.524849048384302
+	Energy at site 14= 8.524113822313916
+Left Sweep 2
+	Energy at site 15= 8.52337859624353
+	Energy at site 14= 8.52337859624353
+	Energy at site 13= 8.523378596243525
+	Energy at site 12= 8.523378596243523
+	Energy at site 11= 8.523382046805496
+	Energy at site 10= 8.523385497367471
+	Energy at site 9= 8.523388947929444
+	Energy at site 8= 8.523392398491415
+	Energy at site 7= 8.52340129807155
+	Energy at site 6= 8.523410197651682
+	Energy at site 5= 8.523419097231812
+	Energy at site 4= 8.523427996811945
+	Energy at site 3= 8.523269849275882
+	Energy at site 2= 8.523111701739822
+	Energy at site 1= 8.52295355420376
+Right Sweep 3
+	Energy at site 0= 8.5227954066677
+	Energy at site 1= 8.5227954066677
+	Energy at site 2= 8.522795406667697
+	Energy at site 3= 8.522795406667697
+	Energy at site 4= 8.522790088416711
+	Energy at site 5= 8.522784770165732
+	Energy at site 6= 8.522779451914749
+	Energy at site 7= 8.522774133663766
+	Energy at site 8= 8.522773696017573
+	Energy at site 9= 8.522773258371378
+	Energy at site 10= 8.522772820725185
+	Energy at site 11= 8.52277238307899
+	Energy at site 12= 8.522762591787343
+	Energy at site 13= 8.52275280049569
+	Energy at site 14= 8.522743009204046
+Left Sweep 3
+	Energy at site 15= 8.522733217912393
+	Energy at site 14= 8.522733217912396
+	Energy at site 13= 8.522733217912393
+	Energy at site 12= 8.522733217912398
+	Energy at site 11= 8.522733262284095
+	Energy at site 10= 8.522733306655796
+	Energy at site 9= 8.522733351027496
+	Energy at site 8= 8.522733395399193
+	Energy at site 7= 8.522733511504189
+	Energy at site 6= 8.522733627609192
+	Energy at site 5= 8.522733743714191
+	Energy at site 4= 8.52273385981919
+	Energy at site 3= 8.522724989301484
+	Energy at site 2= 8.522716118783768
+	Energy at site 1= 8.522707248266052
+Right Sweep 4
+	Energy at site 0= 8.522698377748334
+	Energy at site 1= 8.522698377748334
+	Energy at site 2= 8.522698377748334
+	Energy at site 3= 8.522698377748334
+	Energy at site 4= 8.522698077525085
+	Energy at site 5= 8.52269777730184
+	Energy at site 6= 8.522697477078596
+	Energy at site 7= 8.52269717685535
+	Energy at site 8= 8.522697200055296
+	Energy at site 9= 8.522697223255246
+	Energy at site 10= 8.522697246455193
+	Energy at site 11= 8.522697269655135
+	Energy at site 12= 8.52269704629882
+	Energy at site 13= 8.5226968229425
+	Energy at site 14= 8.522696599586183
+Left Sweep 4
+	Energy at site 15= 8.522696376229863
+	Energy at site 14= 8.522696376229863
+	Energy at site 13= 8.522696376229863
+	Energy at site 12= 8.522696376229863
+	Energy at site 11= 8.52269637724156
+	Energy at site 10= 8.522696378253254
+	Energy at site 9= 8.52269637926495
+	Energy at site 8= 8.522696380276646
+	Energy at site 7= 8.52269637314748
+	Energy at site 6= 8.522696366018314
+	Energy at site 5= 8.522696358889155
+	Energy at site 4= 8.52269635175999
+	Energy at site 3= 8.522695831919846
+	Energy at site 2= 8.522695312079698
+	Energy at site 1= 8.522694792239552
+Right Sweep 5
+	Energy at site 0= 8.522694272399406
+	Energy at site 1= 8.522694272399406
+	Energy at site 2= 8.522694272399404
+	Energy at site 3= 8.522694272399406
+	Energy at site 4= 8.522694254799157
+	Energy at site 5= 8.522694237198909
+	Energy at site 6= 8.522694219598655
+	Energy at site 7= 8.522694201998403
+	Energy at site 8= 8.522694205112407
+	Energy at site 9= 8.522694208226412
+	Energy at site 10= 8.522694211340417
+	Energy at site 11= 8.522694214454427
+	Energy at site 12= 8.522694200814536
+	Energy at site 13= 8.522694187174647
+	Energy at site 14= 8.522694173534761
+Left Sweep 5
+	Energy at site 15= 8.522694159894877
+	Energy at site 14= 8.52269415989487
+	Energy at site 13= 8.522694159894872
+	Energy at site 12= 8.52269415989487
+	Energy at site 11= 8.52269415995665
+	Energy at site 10= 8.522694160018432
+	Energy at site 9= 8.522694160080214
+	Energy at site 8= 8.522694160141995
+	Energy at site 7= 8.522694159206782
+	Energy at site 6= 8.52269415827157
+	Energy at site 5= 8.522694157336359
+	Energy at site 4= 8.522694156401144
+	Energy at site 3= 8.522694125064696
+	Energy at site 2= 8.522694093728251
+	Energy at site 1= 8.522694062391805
+###########################################################################
+Converged at E = 8.522694062391805
+###########################################################################
+Running aligned 2D calculations
+jump left = 0
+jump right = 1
+in left = 0.35
+in right = 0
+out left = 0
+out right = 0.6666666666666666
+jump up = 0
+jump down = 0
+in top = 0
+in bottom = 0
+out top = 0
+out bottom = 0
+s = -1
+Right Sweep 0
+	Energy at site 0= -1.4
+	Energy at site 1= -1.3999999999999995
+	Energy at site 2= -1.3999999999999995
+	Energy at site 3= -0.5462021254330856
+	Energy at site 4= -0.5462021254330853
+	Energy at site 5= -0.5462021254330853
+	Energy at site 6= -0.5462021254330854
+	Energy at site 7= 0.30759574913382837
+	Energy at site 8= 0.30759574913382864
+	Energy at site 9= 0.3075957491338288
+	Energy at site 10= 0.3075957491338289
+	Energy at site 11= 1.1613936237007425
+	Energy at site 12= 1.1613936237007425
+	Energy at site 13= 1.1613936237007425
+	Energy at site 14= 1.161393623700743
+Left Sweep 0
+	Energy at site 15= 2.0151914982676584
+	Energy at site 14= 2.6230510233382023
+	Energy at site 13= 3.2673797661272976
+	Energy at site 12= 3.3570498637208264
+	Energy at site 11= 3.357049863720825
+	Energy at site 10= 3.96490938879137
+	Energy at site 9= 4.6092381315804625
+	Energy at site 8= 4.698908229173992
+	Energy at site 7= 4.698908229173991
+	Energy at site 6= 5.306767754244537
+	Energy at site 5= 5.951096497033631
+	Energy at site 4= 6.04076659462716
+	Energy at site 3= 6.040766594627159
+	Energy at site 2= 6.6486261196977035
+	Energy at site 1= 7.292954862486797
+Right Sweep 1
+	Energy at site 0= 7.382624960080326
+	Energy at site 1= 7.387448405952843
+	Energy at site 2= 7.378009068815473
+	Energy at site 3= 7.670521454559239
+	Energy at site 4= 7.670521454559243
+	Energy at site 5= 7.675344900431762
+	Energy at site 6= 7.665905563294388
+	Energy at site 7= 7.9584179490381555
+	Energy at site 8= 7.9584179490381555
+	Energy at site 9= 7.963241394910671
+	Energy at site 10= 7.953802057773303
+	Energy at site 11= 8.246314443517067
+	Energy at site 12= 8.246314443517068
+	Energy at site 13= 8.25113788938959
+	Energy at site 14= 8.241698552252219
+Left Sweep 1
+	Energy at site 15= 8.534210937995985
+	Energy at site 14= 8.534770486333048
+	Energy at site 13= 8.535281221001181
+	Energy at site 12= 8.53235123480891
+	Energy at site 11= 8.532351234808909
+	Energy at site 10= 8.53291078314597
+	Energy at site 9= 8.533421517814109
+	Energy at site 8= 8.530491531621847
+	Energy at site 7= 8.530491531621847
+	Energy at site 6= 8.531051079958909
+	Energy at site 5= 8.531561814627047
+	Energy at site 4= 8.528631828434776
+	Energy at site 3= 8.528631828434778
+	Energy at site 2= 8.529191376771838
+	Energy at site 1= 8.529702111439974
+Right Sweep 2
+	Energy at site 0= 8.52677212524771
+	Energy at site 1= 8.526686153402615
+	Energy at site 2= 8.526658969067054
+	Energy at site 3= 8.525923742996667
+	Energy at site 4= 8.525923742996666
+	Energy at site 5= 8.52583777115157
+	Energy at site 6= 8.525810586816007
+	Energy at site 7= 8.52507536074562
+	Energy at site 8= 8.525075360745621
+	Energy at site 9= 8.524989388900524
+	Energy at site 10= 8.524962204564956
+	Energy at site 11= 8.524226978494568
+	Energy at site 12= 8.52422697849457
+	Energy at site 13= 8.524141006649472
+	Energy at site 14= 8.524113822313911
+Left Sweep 2
+	Energy at site 15= 8.523378596243523
+	Energy at site 14= 8.523382046805494
+	Energy at site 13= 8.523390946385632
+	Energy at site 12= 8.523232798849568
+	Energy at site 11= 8.523232798849568
+	Energy at site 10= 8.52323624941154
+	Energy at site 9= 8.523245148991679
+	Energy at site 8= 8.523087001455615
+	Energy at site 7= 8.523087001455615
+	Energy at site 6= 8.523090452017588
+	Energy at site 5= 8.52309935159772
+	Energy at site 4= 8.522941204061658
+	Energy at site 3= 8.52294120406166
+	Energy at site 2= 8.522944654623629
+	Energy at site 1= 8.522953554203761
+Right Sweep 3
+	Energy at site 0= 8.522795406667697
+	Energy at site 1= 8.522790088416714
+	Energy at site 2= 8.522789650770523
+	Energy at site 3= 8.522779859478874
+	Energy at site 4= 8.522779859478874
+	Energy at site 5= 8.52277454122789
+	Energy at site 6= 8.522774103581696
+	Energy at site 7= 8.522764312290045
+	Energy at site 8= 8.522764312290048
+	Energy at site 9= 8.52275899403907
+	Energy at site 10= 8.522758556392873
+	Energy at site 11= 8.522748765101221
+	Energy at site 12= 8.522748765101221
+	Energy at site 13= 8.522743446850235
+	Energy at site 14= 8.522743009204042
+Left Sweep 3
+	Energy at site 15= 8.52273321791239
+	Energy at site 14= 8.522733262284092
+	Energy at site 13= 8.52273337838909
+	Energy at site 12= 8.52272450787138
+	Energy at site 11= 8.52272450787138
+	Energy at site 10= 8.522724552243085
+	Energy at site 9= 8.522724668348085
+	Energy at site 8= 8.522715797830367
+	Energy at site 7= 8.522715797830365
+	Energy at site 6= 8.522715842202064
+	Energy at site 5= 8.522715958307064
+	Energy at site 4= 8.52270708778935
+	Energy at site 3= 8.52270708778935
+	Energy at site 2= 8.522707132161054
+	Energy at site 1= 8.522707248266046
+Right Sweep 4
+	Energy at site 0= 8.522698377748334
+	Energy at site 1= 8.522698077525085
+	Energy at site 2= 8.522698100725036
+	Energy at site 3= 8.522697877368714
+	Energy at site 4= 8.522697877368715
+	Energy at site 5= 8.522697577145466
+	Energy at site 6= 8.522697600345413
+	Energy at site 7= 8.522697376989097
+	Energy at site 8= 8.522697376989097
+	Energy at site 9= 8.522697076765851
+	Energy at site 10= 8.522697099965796
+	Energy at site 11= 8.522696876609475
+	Energy at site 12= 8.522696876609473
+	Energy at site 13= 8.522696576386227
+	Energy at site 14= 8.522696599586169
+Left Sweep 4
+	Energy at site 15= 8.522696376229852
+	Energy at site 14= 8.52269637724155
+	Energy at site 13= 8.522696370112387
+	Energy at site 12= 8.52269585027224
+	Energy at site 11= 8.52269585027224
+	Energy at site 10= 8.522695851283938
+	Energy at site 9= 8.522695844154775
+	Energy at site 8= 8.522695324314633
+	Energy at site 7= 8.522695324314634
+	Energy at site 6= 8.522695325326328
+	Energy at site 5= 8.52269531819716
+	Energy at site 4= 8.522694798357017
+	Energy at site 3= 8.522694798357016
+	Energy at site 2= 8.522694799368711
+	Energy at site 1= 8.522694792239543
+Right Sweep 5
+	Energy at site 0= 8.5226942723994
+	Energy at site 1= 8.522694254799148
+	Energy at site 2= 8.522694257913155
+	Energy at site 3= 8.52269424427327
+	Energy at site 4= 8.522694244273271
+	Energy at site 5= 8.52269422667302
+	Energy at site 6= 8.522694229787023
+	Energy at site 7= 8.522694216147135
+	Energy at site 8= 8.522694216147137
+	Energy at site 9= 8.522694198546889
+	Energy at site 10= 8.522694201660892
+	Energy at site 11= 8.522694188021
+	Energy at site 12= 8.522694188021001
+	Energy at site 13= 8.522694170420753
+	Energy at site 14= 8.522694173534758
+Left Sweep 5
+	Energy at site 15= 8.52269415989487
+	Energy at site 14= 8.52269415995665
+	Energy at site 13= 8.522694159021434
+	Energy at site 12= 8.522694127684986
+	Energy at site 11= 8.522694127684986
+	Energy at site 10= 8.522694127746771
+	Energy at site 9= 8.522694126811555
+	Energy at site 8= 8.522694095475105
+	Energy at site 7= 8.52269409547511
+	Energy at site 6= 8.52269409553689
+	Energy at site 5= 8.522694094601679
+	Energy at site 4= 8.522694063265234
+	Energy at site 3= 8.522694063265234
+	Energy at site 2= 8.522694063327013
+	Energy at site 1= 8.522694062391796
+###########################################################################
+Converged at E = 8.522694062391796
+###########################################################################

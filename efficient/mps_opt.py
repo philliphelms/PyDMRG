@@ -14,7 +14,7 @@ class MPS_OPT:
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
                  eigMethod='full',\
-                 saveResults=True,dataFolder='data/'):
+                 saveResults=True,dataFolder='data/',verbose=1):
         # Import parameters
         self.N = N
         self.d = d
@@ -30,6 +30,7 @@ class MPS_OPT:
         self.exp_val_figure = False
         self.saveResults = saveResults
         self.dataFolder = dataFolder
+        self.verbose = verbose
      
         self.calc_spin_x = [0]*self.N
         self.calc_spin_y = [0]*self.N 
@@ -38,6 +39,8 @@ class MPS_OPT:
         self.calc_occ = [0]*self.N
 
     def generate_mps(self):
+        if self.verbose > 3:
+            print('Generating MPS')
         self.M = []
         for i in range(int(self.N/2)):
             self.M.insert(len(self.M),np.zeros((self.d,min(self.d**(i),self.maxBondDim),min(self.d**(i+1),self.maxBondDim))))
@@ -45,13 +48,21 @@ class MPS_OPT:
             self.M.insert(len(self.M),np.zeros((self.d,min(self.d**(i+1),self.maxBondDim),min(self.d**i,self.maxBondDim))))
 
     def generate_mpo(self):
+        if self.verbose > 3:
+            print('Generating MPO')
         self.mpo = mpo.MPO(self.hamType,self.hamParams,self.N)
 
     def right_canonicalize_mps(self):
+        if self.verbose > 3:
+            print('Performing Right Canonicalization')
         for i in range(1,len(self.M))[::-1]:
+            if self.verbose > 3:
+                print('\t at site {}'.format(i))
             self.normalize(i,'left')
 
     def generate_f(self):
+        if self.verbose > 3:
+            print('Generating initial F arrays')
         self.F = []
         self.F.insert(len(self.F),np.array([[[1]]]))
         for i in range(int(self.N/2)):
@@ -61,6 +72,8 @@ class MPS_OPT:
         self.F.insert(len(self.F),np.array([[[1]]]))
 
     def normalize(self,i,direction):
+        if self.verbose > 3:
+            print('Normalization at site {} in direction: {}'.format(i,direction))
         if direction is 'right':
             (n1,n2,n3) = self.M[i].shape
             M_reshape = np.reshape(self.M[i],(n1*n2,n3))
@@ -79,10 +92,16 @@ class MPS_OPT:
             raise NameError('Direction must be left or right')
 
     def calc_initial_f(self):
+        if self.verbose > 3:
+            print('Calculating initial F')
         for i in range(int(self.N)-1,0,-1):
+            if self.verbose > 3:
+                print('\t at site {}'.format(i))
             self.F[i] = np.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(self.M[i]),self.mpo.W[i],self.M[i],self.F[i+1])
 
     def local_optimization(self,i):
+        if self.verbose > 3:
+            print('Local optimization at site {}'.format(i))
         H = np.einsum('jlp,lmin,kmq->ijknpq',self.F[i],self.mpo.W[i],self.F[i+1])
         (n1,n2,n3,n4,n5,n6) = H.shape
         H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
@@ -105,11 +124,12 @@ class MPS_OPT:
         E = u_sort[ind]
         v = v[:,np.argsort(u)]
         v = v[:,ind]
-        print('\tEnergy at site {}= {}'.format(i,E))
         self.M[i] = np.reshape(v,(n1,n2,n3))
         return E
 
     def update_f(self,i,direction):
+        if self.verbose > 3:
+            print('Updating F at site {}'.format(i))
         if direction is 'right':
             self.F[i+1] = np.einsum('jlp,ijk,lmin,npq->kmq',self.F[i],np.conj(self.M[i]),self.mpo.W[i],self.M[i])
         elif direction is 'left':
@@ -118,6 +138,8 @@ class MPS_OPT:
             raise NameError('Direction must be left or right')
 
     def calc_observables(self,site):
+        if self.verbose > 3:
+            print('Calculating Observables')
         if (self.hamType is "heis") or (self.hamType is "heis_2d") or (self.hamType is 'ising'):
             self.calc_spin_x[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sx,self.M[site])
             self.calc_spin_y[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sy,self.M[site])
@@ -211,6 +233,8 @@ class MPS_OPT:
             plt.pause(0.0001)
 
     def saveFinalResults(self,calcType):
+        if self.verbose > 3:
+            print('Writing final results to output file')
         if self.saveResults:
             # Create Filename:
             filename = 'results_'+self.hamType+'_N'+str(self.N)+'_M'+str(self.maxBondDim)
@@ -246,7 +270,8 @@ class MPS_OPT:
         E_prev = self.energy_contraction(0)
         while not converged:
             # Right Sweep --------------------------
-            print('Right Sweep {}'.format(iterCnt))
+            if self.verbose > 1:
+                print('Right Sweep {}'.format(iterCnt))
             for i in range(int(self.N-1)):
                 self.E = self.local_optimization(i)
                 self.calc_observables(i)
@@ -255,7 +280,8 @@ class MPS_OPT:
                 self.plot_observables()
                 self.plot_convergence(i)
             # Left Sweep ---------------------------
-            print('Left Sweep {}'.format(iterCnt))
+            if self.verbose > 1:
+                print('Left Sweep {}'.format(iterCnt))
             for i in range(int(self.N-1),0,-1):
                 self.E = self.local_optimization(i)
                 self.calc_observables(i)
@@ -265,14 +291,18 @@ class MPS_OPT:
                 self.plot_convergence(i)
             # Check Convergence --------------------
             if np.abs(self.E-E_prev) < self.tol:
-                print('#'*75+'\nConverged at E = {}'.format(self.E)+'\n'+'#'*75)
+                if self.verbose > 0:
+                    print('#'*75+'\nConverged at E = {}'.format(self.E)+'\n'+'#'*75)
                 self.finalEnergy = self.E
                 converged = True
             elif iterCnt >= self.maxIter:
-                print('!'*75+'\nConvergence not acheived\n'+'!'*75)
+                if self.verbose > 0:
+                    print('!'*75+'\nConvergence not acheived\n'+'!'*75)
                 self.finalEnergy = self.E
                 converged = True
             else:
+                if self.verbose > 1:
+                    print('Energy Change {}\nNeeded <{}'.format(np.abs(self.E-E_prev),self.tol))
                 E_prev = self.E
                 iterCnt += 1
         self.saveFinalResults('dmrg')

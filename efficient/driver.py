@@ -4,9 +4,9 @@ import mps_opt
 import matplotlib.pyplot as plt
 
 ## Possible calculations:#########################
-simple_tasep = True
+simple_tasep = False
 vary_systemSize = False
-vary_s = True
+vary_s = False
 vary_maxBondDim = False
 phaseDiagram = False
 simpleHeis = False
@@ -22,7 +22,7 @@ vary_s_comp = False
 vary_maxBondDim_comp = False
 phaseDiagram_comp = False
 # Full 2D Comparison
-vary_maxBondDim_2d_comp = False
+vary_maxBondDim_2d_comp = True
 ##################################################
 
 
@@ -543,8 +543,8 @@ if phaseDiagram_comp:
     f6.savefig('mf_phaseDiagram_error.pdf')
 
 if vary_maxBondDim_2d_comp:
-    N = 6
-    bondDimVec = np.array([1,2,4,10,14,20,24,30,34,40])
+    N = 4
+    bondDimVec = np.array([120])
     col_vec = ['r','y','g','b','c','k','m']
     # Run 1D Calculation for comparison
     Evec_1d = np.zeros(len(bondDimVec))
@@ -573,6 +573,7 @@ if vary_maxBondDim_2d_comp:
                             hamType="sep_2d",
                             plotExpVals=False,
                             plotConv=False,
+                            verbose=10,
                             hamParams = (0,0,0,0,0,0,
                                          1,0,0,0.35,2/3,0,-1))
         Evec_2d_notaligned[i] = x.kernel()/N
@@ -606,12 +607,3 @@ if vary_maxBondDim_2d_comp:
     plt.ylabel('$E-E_{exact}$',fontsize=20)
     plt.legend(('Mean Field','1D DMRG','2D DMRG (aligned)','2D DMRG (not aligned)'))
     fig1.savefig('varyMaxBondDim_'+str(bondDimVec[i])+'.pdf')
-    np.savez('data_varyMaxBondDim_'+str(bondDimVec[i]),Evec_1d=Evec_1d,
-                                                       E_ed = E_ed,
-                                                       E_mf = E_mf,
-                                                       Evec_2d_notaligned = Evec_2d_notaligned,
-                                                       Evec_2d_aligned = Evec_2d_aligned,
-                                                       err_mf = err_mf,
-                                                       errVec_1d = errVec_1d,
-                                                       errVec_2d_aligned = errVec_2d_aligned,
-                                                       errVec_2d_notaligned = errVec_2d_notaligned)
