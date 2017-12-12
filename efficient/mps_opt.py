@@ -14,7 +14,7 @@ class MPS_OPT:
     def __init__(self, N=10, d=2, maxBondDim=8, tol=1e-5, maxIter=100,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
-                 usePyscf=True,initialGuess=0.5,\
+                 usePyscf=True,initialGuess=0.5,ed_limit=10,\
                  saveResults=True,dataFolder='data/',verbose=1):
         # Import parameters
         self.N = N
@@ -35,6 +35,7 @@ class MPS_OPT:
             self.einsum = np.einsum
         self.usePyscf = usePyscf
         self.initialGuess = initialGuess
+        self.ed_limit = ed_limit
 
         self.calc_spin_x = [0]*self.N
         self.calc_spin_y = [0]*self.N 
@@ -362,7 +363,7 @@ class MPS_OPT:
 
     # ADD THE ABILITY TO DO OTHER TYPES OF CALCULATIONS FROM THE MPS OBJECT
     def exact_diag(self,maxIter=10000,tol=1e-10):
-        if self.N > 10:
+        if self.N > self.ed_limit:
             print('!'*50+'\nExact Diagonalization limited to systems of 10 or fewer sites\n'+'!'*50)
             return 0
         import exactDiag_meanField

@@ -543,8 +543,8 @@ if phaseDiagram_comp:
     f6.savefig('mf_phaseDiagram_error.pdf')
 
 if vary_maxBondDim_2d_comp:
-    N = 1
-    bondDimVec = np.array([10])
+    N = 12
+    bondDimVec = np.array([20])
     col_vec = ['r','y','g','b','c','k','m']
     # Run 1D Calculation for comparison
     Evec_1d = np.zeros(len(bondDimVec))
