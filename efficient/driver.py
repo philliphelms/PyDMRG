@@ -543,8 +543,8 @@ if phaseDiagram_comp:
     f6.savefig('mf_phaseDiagram_error.pdf')
 
 if vary_maxBondDim_2d_comp:
-    N = 4
-    bondDimVec = np.array([150])
+    N = 8
+    bondDimVec = np.array([90])
     col_vec = ['r','y','g','b','c','k','m']
     # Run 1D Calculation for comparison
     Evec_1d = np.zeros(len(bondDimVec))
@@ -573,7 +573,6 @@ if vary_maxBondDim_2d_comp:
                             hamType="sep_2d",
                             plotExpVals=False,
                             plotConv=False,
-                            verbose=10,
                             hamParams = (0,0,0,0,0,0,
                                          1,0,0,0.35,2/3,0,-1))
         Evec_2d_notaligned[i] = x.kernel()/N
