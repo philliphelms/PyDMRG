@@ -7,6 +7,11 @@ from scipy.linalg import eig as fullEig
 from scipy.sparse.linalg import eigs as arnoldiEig
 from mpl_toolkits.mplot3d import axes3d
 from numpy import ma
+from pyscf import lib
+
+# Control which version of einsum we use
+#einsum = np.einsum
+einsum = lib.einsum
 
 class MPS_OPT:
 
@@ -79,7 +84,7 @@ class MPS_OPT:
             M_reshape = np.reshape(self.M[i],(n1*n2,n3))
             (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
             self.M[i] = np.reshape(U,(n1,n2,n3))
-            self.M[i+1] = np.einsum('i,ij,kjl->kil',s,V,self.M[i+1])
+            self.M[i+1] = einsum('i,ij,kjl->kil',s,V,self.M[i+1])
         elif direction is 'left':
             M_reshape = np.swapaxes(self.M[i],0,1)
             (n1,n2,n3) = M_reshape.shape
@@ -87,7 +92,7 @@ class MPS_OPT:
             (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
             M_reshape = np.reshape(V,(n1,n2,n3))
             self.M[i] = np.swapaxes(M_reshape,0,1)
-            self.M[i-1] = np.einsum('klj,ji,i->kli',self.M[i-1],U,s)
+            self.M[i-1] = einsum('klj,ji,i->kli',self.M[i-1],U,s)
         else:
             raise NameError('Direction must be left or right')
 
@@ -97,12 +102,12 @@ class MPS_OPT:
         for i in range(int(self.N)-1,0,-1):
             if self.verbose > 3:
                 print('\t at site {}'.format(i))
-            self.F[i] = np.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(self.M[i]),self.mpo.W[i],self.M[i],self.F[i+1])
+            self.F[i] = einsum('bxc,ydbe,eaf,cdf->xya',np.conj(self.M[i]),self.mpo.W[i],self.M[i],self.F[i+1])
 
     def local_optimization(self,i):
         if self.verbose > 3:
             print('Local optimization at site {}'.format(i))
-        H = np.einsum('jlp,lmin,kmq->ijknpq',self.F[i],self.mpo.W[i],self.F[i+1])
+        H = einsum('jlp,lmin,kmq->ijknpq',self.F[i],self.mpo.W[i],self.F[i+1])
         (n1,n2,n3,n4,n5,n6) = H.shape
         H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
         #u,v = arnoldiEig(H,1,which='LR')
@@ -133,9 +138,9 @@ class MPS_OPT:
         if self.verbose > 3:
             print('Updating F at site {}'.format(i))
         if direction is 'right':
-            self.F[i+1] = np.einsum('jlp,ijk,lmin,npq->kmq',self.F[i],np.conj(self.M[i]),self.mpo.W[i],self.M[i])
+            self.F[i+1] = einsum('jlp,ijk,lmin,npq->kmq',self.F[i],np.conj(self.M[i]),self.mpo.W[i],self.M[i])
         elif direction is 'left':
-            self.F[i] = np.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(self.M[i]),self.mpo.W[i],self.M[i],self.F[i+1])
+            self.F[i] = einsum('bxc,ydbe,eaf,cdf->xya',np.conj(self.M[i]),self.mpo.W[i],self.M[i],self.F[i+1])
         else:
             raise NameError('Direction must be left or right')
 
@@ -143,15 +148,15 @@ class MPS_OPT:
         if self.verbose > 3:
             print('Calculating Observables')
         if (self.hamType is "heis") or (self.hamType is "heis_2d") or (self.hamType is 'ising'):
-            self.calc_spin_x[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sx,self.M[site])
-            self.calc_spin_y[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sy,self.M[site])
-            self.calc_spin_z[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sz,self.M[site])
+            self.calc_spin_x[site] = einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sx,self.M[site])
+            self.calc_spin_y[site] = einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sy,self.M[site])
+            self.calc_spin_z[site] = einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sz,self.M[site])
         elif (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
-            self.calc_empty[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.v,self.M[site])
-            self.calc_occ[site] = np.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.n,self.M[site])
+            self.calc_empty[site] = einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.v,self.M[site])
+            self.calc_occ[site] = einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.n,self.M[site])
 
     def energy_contraction(self,site):
-        return np.einsum('ijk,jlmn,olp,mio,nkp->',\
+        return einsum('ijk,jlmn,olp,mio,nkp->',\
                 self.F[site],self.mpo.W[site],self.F[site+1],np.conjugate(self.M[site]),self.M[site])
 
     def plot_observables(self):
