@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 ## Possible calculations:#########################
 simple_tasep = False
-vary_systemSize = False
+vary_systemSize = True
 vary_s = False
 vary_maxBondDim = False
 phaseDiagram = False
@@ -22,7 +22,7 @@ vary_s_comp = False
 vary_maxBondDim_comp = False
 phaseDiagram_comp = False
 # Full 2D Comparison
-vary_maxBondDim_2d_comp = True
+vary_maxBondDim_2d_comp = False
 ##################################################
 
 
@@ -45,9 +45,9 @@ if simple_tasep:
     x.kernel()
 
 if vary_systemSize:
-    N_vec = np.linspace(2,100,50)
-    s = np.array([-0.01,0.01])
-    current = np.zeros_like(N_vec)
+    N_vec = np.array([2,4,10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 150])
+    s = np.array([-0.05,0.05])
+    current = np.zeros(len(N_vec))
     for i in range(len(N_vec)):
         N = N_vec[i]
         print('Running Calcs for N={}'.format(N))

@@ -11,7 +11,7 @@ from pyscf import lib
 
 class MPS_OPT:
 
-    def __init__(self, N=10, d=2, maxBondDim=8, tol=1e-5, maxIter=10,\
+    def __init__(self, N=10, d=2, maxBondDim=8, tol=1e-5, maxIter=100,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
                  usePyscf=True,initialGuess=0.5,\
