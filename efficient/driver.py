@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 ## Possible calculations:#########################
 simple_tasep = False
-vary_systemSize = True
+vary_systemSize = False
 vary_s = False
 vary_maxBondDim = False
 phaseDiagram = False
@@ -22,7 +22,7 @@ vary_s_comp = False
 vary_maxBondDim_comp = False
 phaseDiagram_comp = False
 # Full 2D Comparison
-vary_maxBondDim_2d_comp = False
+vary_maxBondDim_2d_comp = True
 ##################################################
 
 
@@ -45,15 +45,15 @@ if simple_tasep:
     x.kernel()
 
 if vary_systemSize:
-    N_vec = np.array([2,4,10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 150])
-    s = np.array([-0.05,0.05])
+    N_vec = np.array([10,20,30,40,50,60,70,80,90,100,150,200,250,300,400,500,600,700,800,900,1000])
+    s = np.array([-0.01,0.01])
     current = np.zeros(len(N_vec))
     for i in range(len(N_vec)):
         N = N_vec[i]
         print('Running Calcs for N={}'.format(N))
-        x = mps_opt.MPS_OPT(N=N,maxIter=5,hamType='tasep',hamParams=(3/5,s[0],2/3))
+        x = mps_opt.MPS_OPT(N=N,hamType='tasep',hamParams=(3/5,s[0],2/3))
         E_left = x.kernel()
-        x = mps_opt.MPS_OPT(N=N,maxIter=5,hamType='tasep',hamParams=(3/5,s[1],2/3))
+        x = mps_opt.MPS_OPT(N=N,hamType='tasep',hamParams=(3/5,s[1],2/3))
         E_right = x.kernel()
         current[i] = (E_right-E_left)/(s[1]-s[0])/(N+1)
     fig1 = plt.figure()
@@ -543,8 +543,8 @@ if phaseDiagram_comp:
     f6.savefig('mf_phaseDiagram_error.pdf')
 
 if vary_maxBondDim_2d_comp:
-    N = 8
-    bondDimVec = np.array([90])
+    N = 1
+    bondDimVec = np.array([10])
     col_vec = ['r','y','g','b','c','k','m']
     # Run 1D Calculation for comparison
     Evec_1d = np.zeros(len(bondDimVec))
@@ -573,6 +573,7 @@ if vary_maxBondDim_2d_comp:
                             hamType="sep_2d",
                             plotExpVals=False,
                             plotConv=False,
+                            verbose = 3,
                             hamParams = (0,0,0,0,0,0,
                                          1,0,0,0.35,2/3,0,-1))
         Evec_2d_notaligned[i] = x.kernel()/N

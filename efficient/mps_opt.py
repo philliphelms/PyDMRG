@@ -77,6 +77,9 @@ class MPS_OPT:
             if self.verbose > 4:
                 print('\t'*3+'at site {}'.format(i))
             self.normalize(i,'left')
+        # Sloppy fix to prevent super large values in initial matrix
+        #self.M[0] = np.copy(self.M[-1])
+        self.M[0] = np.swapaxes(self.M[-1],1,2)
 
     def generate_f(self):
         if self.verbose > 3:
@@ -304,7 +307,11 @@ class MPS_OPT:
 
     def kernel(self):
         self.generate_mps()
+        print(self.M[0])
+        print(self.M[-1])
         self.right_canonicalize_mps()
+        print(self.M[0])
+        print(self.M[-1])
         self.generate_mpo()
         self.generate_f()
         self.calc_initial_f()
