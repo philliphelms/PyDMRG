@@ -7,7 +7,6 @@ from scipy.linalg import eig as fullEig
 from scipy.sparse.linalg import eigs as arnoldiEig
 from mpl_toolkits.mplot3d import axes3d
 from numpy import ma
-from pyscf import lib
 
 class MPS_OPT:
 
@@ -30,6 +29,7 @@ class MPS_OPT:
         self.dataFolder = dataFolder
         self.verbose = verbose
         if usePyscf:
+            from pyscf import lib
             self.einsum = lib.einsum
         else:
             self.einsum = np.einsum
