@@ -18,11 +18,12 @@ check_2d_tasep = False
 practice_2d_tasep = False
 test_ds = False
 # Comparing DMRG, MF & ED
+vary_s_ed = True
 vary_s_comp = False
 vary_maxBondDim_comp = False
 phaseDiagram_comp = False
 # Full 2D Comparison
-vary_maxBondDim_2d_comp = True
+vary_maxBondDim_2d_comp = False
 ##################################################
 
 
@@ -311,6 +312,22 @@ if test_ds:
         error[k] = np.sum(np.sum(np.abs(J_mat-J_mat_ed)))/(len(alphaVec)*len(betaVec))
     plt.figure()
     plt.semilogy(ds,np.abs(error))
+    plt.show()
+
+if vary_s_ed:
+    # Recreate Ushnish plot
+    N = 8
+    s_vec = np.linspace(-2,2,20)
+    E = np.zeros(s_vec.shape)
+    for i in range(len(s_vec)):
+        x = mps_opt.MPS_OPT(N=N,
+                            hamType = "sep",
+                            hamParams = (0.9,0.1,0.5,0.5,0.9,0.1,s_vec[i]),
+                            usePyscf = False)
+        x.kernel()
+        E[i] = x.exact_diag()
+    plt.plot(s_vec,E)
+    plt.grid(True)
     plt.show()
 
 if vary_s_comp:

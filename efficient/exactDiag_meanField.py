@@ -33,11 +33,11 @@ class exactDiag:
 
         # Currents
         pw = p*np.exp(-s)
-        qw = q*np.exp(-s)
+        qw = q*np.exp(s)
         aw = a*np.exp(-s)
         bw = b*np.exp(-s)
-        gw = g*np.exp(-s)
-        dw = d*np.exp(-s)
+        gw = g*np.exp(s)
+        dw = d*np.exp(s)
 
         # Some Containers
         sproj = np.zeros((int(L/clumpSize), 2**clumpSize),dtype=np.complex128)
