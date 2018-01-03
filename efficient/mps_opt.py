@@ -31,8 +31,10 @@ class MPS_OPT:
         if usePyscf:
             from pyscf import lib
             self.einsum = lib.einsum
+            self.eig = lib.eig
         else:
             self.einsum = np.einsum
+            self.eig = np.linalg.eig
         self.usePyscf = usePyscf
         self.initialGuess = initialGuess
         self.ed_limit = ed_limit
@@ -141,11 +143,11 @@ class MPS_OPT:
             # function([x]) => [array_like_x]
             if self.verbose > 6:
                 print('\t'*5+'Eigenvalue Iteration')
-            return np.einsum('ij,j->i',H,x)
+            return self.einsum('ij,j->i',H,x)
         def precond(dx,e,x0):
             # function(dx, e, x0) => array_like_dx
             return dx
-        E,v = lib.eig(opt_fun,np.reshape(self.M[i],(-1)),precond)
+        E,v = self.eig(opt_fun,np.reshape(self.M[i],(-1)),precond)
         self.M[i] = np.reshape(v,(n1,n2,n3))
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): E = -E
         if self.verbose > 2:
@@ -160,7 +162,7 @@ class MPS_OPT:
         (n1,n2,n3,n4,n5,n6) = H.shape
         H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): H = -H
-        u,v = np.linalg.eig(H)
+        u,v = self.eig(H)
         u_sort = u[np.argsort(u)]
         v = v[:,np.argsort(u)]
         ind = 0
