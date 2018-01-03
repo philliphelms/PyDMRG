@@ -310,11 +310,7 @@ class MPS_OPT:
 
     def kernel(self):
         self.generate_mps()
-        print(self.M[0])
-        print(self.M[-1])
         self.right_canonicalize_mps()
-        print(self.M[0])
-        print(self.M[-1])
         self.generate_mpo()
         self.generate_f()
         self.calc_initial_f()
