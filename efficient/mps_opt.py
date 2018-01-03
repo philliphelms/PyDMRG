@@ -364,6 +364,8 @@ class MPS_OPT:
         if self.N > self.ed_limit:
             print('!'*50+'\nExact Diagonalization limited to systems of 10 or fewer sites\n'+'!'*50)
             return 0
+        if not hasattr(self,'mpo'):
+            self.generate_mpo()
         import exactDiag_meanField
         if self.hamType is 'tasep':
             x = exactDiag_meanField.exactDiag(L=self.N,
@@ -396,6 +398,8 @@ class MPS_OPT:
         return(self.E_ed)
 
     def mean_field(self,maxIter=10000,tol=1e-10,clumpSize=2):
+        if not hasattr(self,'mpo'):
+            self.generate_mpo()
         import exactDiag_meanField
         if self.hamType is 'tasep':
             x = exactDiag_meanField.exactDiag(L=self.N,
@@ -411,7 +415,7 @@ class MPS_OPT:
                                               tol=tol)
         elif self.hamType is 'sep':
             x = exactDiag_meanField.exactDiag(L=self.N,
-                                              clumpSize=self.clumpSize,
+                                              clumpSize=clumpSize,
                                               alpha=self.mpo.alpha,
                                               gamma=self.mpo.gamma,
                                               beta=self.mpo.beta,

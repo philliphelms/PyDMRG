@@ -259,10 +259,10 @@ class MPO:
     def return_full_ham(self):
         # This function calculates the full hamiltonian matrix
         # As a warning, it is computationally expensive 
-        H = np.zeros((self.N,self.N))
-        for i in range(self.N):
+        H = np.zeros((self.N**2,self.N**2))
+        for i in range(self.N**2):
             i_occ = list(map(lambda x: int(x),'0'*(self.N-len(bin(i)[2:]))+bin(i)[2:]))
-            for j in range(self.N):
+            for j in range(self.N**2):
                 j_occ = list(map(lambda x: int(x),'0'*(self.N-len(bin(j)[2:]))+bin(j)[2:]))
                 tmp_mat = np.array([[1]])
                 for k in range(self.N):

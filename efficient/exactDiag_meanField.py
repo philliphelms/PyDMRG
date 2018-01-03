@@ -160,6 +160,7 @@ class exactDiag:
                 print('='*50)
                 break
         if L is clumpSize: 
+            print('H = \n{}'.format(M))
             print('\n')
             print('Exact Diagonalization Results Obtained')
             print('='*50)
