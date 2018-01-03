@@ -22,10 +22,10 @@ class exactDiag:
     def kernel(self):
         # Extract info
         L = self.L
-        a = self.alpha
-        g = self.gamma
-        b = self.beta
-        d = self.delta
+        a = self.alpha #Insert Left (0.9)
+        g = self.gamma #Insert Right (.1)
+        b = self.beta  #Exit Left (0.9)
+        d = self.delta #Exit Right (0.1)
         s = self.s
         p = self.p
         q = self.q
@@ -44,9 +44,9 @@ class exactDiag:
         isproj = np.zeros((int(L/clumpSize), 2**clumpSize),dtype=np.complex128)
 
         # Create Initial Guess
-        nv = 0.1*np.ones(L,dtype=np.complex128)
-        cdv = 0.1*np.ones(L,dtype=np.complex128)
-        cv = 0.1*np.ones(L,dtype=np.complex128)
+        nv = 0.5*np.ones(L,dtype=np.complex128)
+        cdv = 0.5*np.ones(L,dtype=np.complex128)
+        cv = 0.5*np.ones(L,dtype=np.complex128)
 
         # Create Operators
         m1 = np.array([[-a,gw],[aw,-g]])
