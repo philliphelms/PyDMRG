@@ -8,13 +8,15 @@ class exactDiag:
                  beta=2/3, delta=0, s=-1, p=1, q=0,
                  clumpSize=10, maxIter=10000, tol=1e-10):
         self.L = L
-        self.alpha = alpha
-        self.gamma = gamma
-        self.beta = beta
-        self.delta = delta
+        self.in_l = alpha
+        self.out_r = gamma
+        self.out_l = beta
+        self.in_r = delta
+        self.j_r = p
+        self.j_l = q
+        self.out_l = beta
+        self.in_r = delta
         self.s = s
-        self.p = p
-        self.q = q
         self.clumpSize = clumpSize
         self.maxIter = maxIter
         self.tol = tol
@@ -22,13 +24,13 @@ class exactDiag:
     def kernel(self):
         # Extract info
         L = self.L
-        a = self.alpha #Insert Left (0.9)
-        g = self.gamma #Insert Right (.1)
-        b = self.beta  #Exit Left (0.9)
-        d = self.delta #Exit Right (0.1)
+        a = self.in_l #Insert Left (0.9)
+        g = self.out_r #Insert Right (.1
+        b = self.out_l  #Exit Left (0.9)
+        d = self.in_r #Exit Right (0.1)
         s = self.s
-        p = self.p
-        q = self.q
+        p = self.j_r
+        q = self.j_l
         clumpSize = self.clumpSize
 
         # Currents
