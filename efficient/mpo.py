@@ -134,19 +134,12 @@ class MPO:
             self.beta = param[4]
             self.delta = param[5]
             self.s = param[6]
-            # Temporary fix to match ushnish 
-            #self.alpha = param[0]
-            #self.beta = param[1]
-            #self.p = param[2]
-            #self.q = param[3]
-            #self.gamma = param[4]
-            #self.delta = param[5]
-            # Same thing
-            self.exp_alpha = self.alpha*np.exp(self.s)
-            self.exp_gamma = self.gamma*np.exp(-self.s)
+            # multiply these by exponential weighting
+            self.exp_alpha = self.alpha*np.exp(-self.s)
+            self.exp_gamma = self.gamma*np.exp(self.s)
             self.exp_p = self.p*np.exp(-self.s)
             self.exp_q = self.q*np.exp(self.s)
-            self.exp_beta = self.beta*np.exp(-self.s)
+            self.exp_beta = self.beta*np.exp(self.s)
             self.exp_delta = self.delta*np.exp(-self.s)
             # Create MPO
             self.W = []

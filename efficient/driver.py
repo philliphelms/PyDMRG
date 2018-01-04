@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 ## Possible calculations:#########################
 simple_tasep = False
 vary_systemSize = False
-vary_s = False
+vary_s = True
 vary_maxBondDim = False
 phaseDiagram = False
 simpleHeis = False
@@ -316,15 +316,15 @@ if test_ds:
     plt.show()
 
 if vary_s_ed:
-    # Recreate Ushnish plot
     N = 8
-    s_vec = np.linspace(-2,2,20)
+    s_vec = np.linspace(-2,2,10)
     E_dmrg = np.zeros(s_vec.shape)
     E = np.zeros(s_vec.shape)
     for i in range(len(s_vec)):
         x = mps_opt.MPS_OPT(N=N,
                             hamType = "sep",
-                            hamParams = (0.9,0.1,0.5,0.5,0.9,0.1,s_vec[i]),
+                            #hamParams = (0.9,0.1,0.5,0.5,0.1,0.9,s_vec[i]),
+                            hamParams = (0.5,0.8,0.2,0.6,0.8,0.7,s_vec[i]),
                             usePyscf = False)
         E_dmrg[i] = x.kernel()
         E[i] = x.exact_diag()

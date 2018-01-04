@@ -14,8 +14,12 @@ class exactDiag:
         self.in_r = delta
         self.j_r = p
         self.j_l = q
-        self.out_l = beta
-        self.in_r = delta
+
+        self.in_l = alpha
+        self.out_r = beta
+        self.out_l = delta
+        self.in_r = gamma
+
         self.s = s
         self.clumpSize = clumpSize
         self.maxIter = maxIter
@@ -162,7 +166,6 @@ class exactDiag:
                 print('='*50)
                 break
         if L is clumpSize: 
-            print('H = \n{}'.format(M))
             print('\n')
             print('Exact Diagonalization Results Obtained')
             print('='*50)
