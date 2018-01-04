@@ -19,7 +19,7 @@ practice_2d_tasep = False
 test_ds = False
 # Comparing DMRG, MF & ED
 vary_s_ed = True
-vary_s_mf = True
+vary_s_mf = False
 vary_s_comp = False
 vary_maxBondDim_comp = False
 phaseDiagram_comp = False

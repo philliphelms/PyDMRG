@@ -134,10 +134,18 @@ class MPO:
             self.beta = param[4]
             self.delta = param[5]
             self.s = param[6]
-            self.exp_alpha = self.alpha*np.exp(-self.s)
+            # Temporary fix to match ushnish 
+            #self.alpha = param[0]
+            #self.beta = param[1]
+            #self.p = param[2]
+            #self.q = param[3]
+            #self.gamma = param[4]
+            #self.delta = param[5]
+            # Same thing
+            self.exp_alpha = self.alpha*np.exp(self.s)
             self.exp_gamma = self.gamma*np.exp(-self.s)
             self.exp_p = self.p*np.exp(-self.s)
-            self.exp_q = self.q*np.exp(-self.s)
+            self.exp_q = self.q*np.exp(self.s)
             self.exp_beta = self.beta*np.exp(-self.s)
             self.exp_delta = self.delta*np.exp(-self.s)
             # Create MPO
@@ -162,7 +170,7 @@ class MPO:
                                                 [self.exp_q*self.Sp],
                                                 [self.q*self.n],
                                                 [(self.exp_beta*self.Sm-self.beta*self.v)+
-                                                 (self.exp_delta*self.Sp-self.detla*self.n)]]))
+                                                 (self.exp_delta*self.Sp-self.delta*self.n)]]))
         elif hamType is "sep_2d":
             self.N2d = int(np.sqrt(self.N))
             self.jl = param[0]
