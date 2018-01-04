@@ -134,28 +134,35 @@ class MPO:
             self.beta = param[4]
             self.delta = param[5]
             self.s = param[6]
+            self.exp_alpha = self.alpha*np.exp(-self.s)
+            self.exp_gamma = self.gamma*np.exp(-self.s)
+            self.exp_p = self.p*np.exp(-self.s)
+            self.exp_q = self.q*np.exp(-self.s)
+            self.exp_beta = self.beta*np.exp(-self.s)
+            self.exp_delta = self.delta*np.exp(-self.s)
+            # Create MPO
             self.W = []
-            self.W.insert(len(self.W),np.array([[self.alpha*(np.exp(-self.s)*self.Sm-self.v)+
-                                                 self.gamma*(np.exp(self.s)*self.Sp-self.n),
-                                                 np.exp(-self.s)*self.Sp,
+            self.W.insert(len(self.W),np.array([[(self.exp_alpha*self.Sm-self.alpha*self.v)+
+                                                 (self.exp_gamma*self.Sp-self.gamma*self.n),
+                                                 self.Sp,
                                                  -self.n,
-                                                 np.exp(self.s)*self.Sm,
+                                                 self.Sm,
                                                  -self.v,
                                                  self.I]]))
             for i in range(int(self.N-2)):
-                self.W.insert(len(self.W),np.array([[self.I,                         self.z, self.z,   self.z, self.z,  self.z],
-                                                    [np.exp(-self.s)*self.p*self.Sm, self.z, self.z,   self.z, self.z,  self.z],
-                                                    [self.p*self.v,                  self.z, self.z,   self.z, self.z,  self.z],
-                                                    [np.exp(self.s)*self.q*self.Sp,  self.z, self.z,   self.z, self.z,  self.z],
-                                                    [self.q*self.n,                  self.z, self.z,   self.z, self.z,  self.z],
-                                                    [self.z,                         self.Sp, -self.n, self.Sm,-self.v, self.I]]))
+                self.W.insert(len(self.W),np.array([[self.I,             self.z,  self.z,  self.z, self.z,  self.z],
+                                                    [self.exp_p*self.Sm, self.z,  self.z,  self.z, self.z,  self.z],
+                                                    [self.p*self.v,      self.z,  self.z,  self.z, self.z,  self.z],
+                                                    [self.exp_q*self.Sp, self.z,  self.z,  self.z, self.z,  self.z],
+                                                    [self.q*self.n,      self.z,  self.z,  self.z, self.z,  self.z],
+                                                    [self.z,             self.Sp, -self.n, self.Sm,-self.v, self.I]]))
             self.W.insert(len(self.W),np.array([[self.I],
-                                                [self.p*self.Sm],
+                                                [self.exp_p*self.Sm],
                                                 [self.p*self.v],
-                                                [self.q*self.Sp],
+                                                [self.exp_q*self.Sp],
                                                 [self.q*self.n],
-                                                [self.beta*(np.exp(-self.s)*self.Sm-self.v)+
-                                                 self.delta*(np.exp(self.s)*self.Sp-self.n)]]))
+                                                [(self.exp_beta*self.Sm-self.beta*self.v)+
+                                                 (self.exp_delta*self.Sp-self.detla*self.n)]]))
         elif hamType is "sep_2d":
             self.N2d = int(np.sqrt(self.N))
             self.jl = param[0]
