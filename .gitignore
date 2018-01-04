@@ -1,6 +1,7 @@
 *.swp
 *.pdf
 *.txt
+*.pyc
 simple/__pycache__/*
 efficient/__pycache__/*
 efficient/figures/*
