@@ -39,6 +39,9 @@ class MPS_OPT:
         self.initialGuess = initialGuess
         self.ed_limit = ed_limit
 
+        self.exp_val_figure=False
+        self.conv_figure=False
+
         self.calc_spin_x = [0]*self.N
         self.calc_spin_y = [0]*self.N 
         self.calc_spin_z = [0]*self.N

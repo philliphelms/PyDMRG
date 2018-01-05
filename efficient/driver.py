@@ -4,9 +4,9 @@ import mps_opt
 import matplotlib.pyplot as plt
 
 ## Possible calculations:#########################
-simple_tasep = False
+simple_tasep = True
 vary_systemSize = False
-vary_s = True
+vary_s = False
 vary_maxBondDim = False
 phaseDiagram = False
 simpleHeis = False
@@ -18,7 +18,7 @@ check_2d_tasep = False
 practice_2d_tasep = False
 test_ds = False
 # Comparing DMRG, MF & ED
-vary_s_ed = True
+vary_s_ed = False
 vary_s_mf = False
 vary_s_comp = False
 vary_maxBondDim_comp = False
@@ -323,11 +323,12 @@ if vary_s_ed:
     for i in range(len(s_vec)):
         x = mps_opt.MPS_OPT(N=N,
                             hamType = "sep",
-                            #hamParams = (0.9,0.1,0.5,0.5,0.1,0.9,s_vec[i]),
-                            hamParams = (0.5,0.8,0.2,0.6,0.8,0.7,s_vec[i]),
-                            usePyscf = False)
+                            hamParams = (0.9,0.1,0.5,0.5,0.1,0.9,s_vec[i]),
+                            #hamParams = (0.5,0.8,0.2,0.6,0.8,0.7,s_vec[i]),
+                            usePyscf = True)
         E_dmrg[i] = x.kernel()
         E[i] = x.exact_diag()
+    fig1 = plt.figure()
     plt.plot(s_vec,E,'-')
     plt.plot(s_vec,E_dmrg,':')
     plt.grid(True)
