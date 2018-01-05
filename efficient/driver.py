@@ -313,7 +313,7 @@ if test_ds:
         error[k] = np.sum(np.sum(np.abs(J_mat-J_mat_ed)))/(len(alphaVec)*len(betaVec))
     plt.figure()
     plt.semilogy(ds,np.abs(error))
-    plt.show()
+    fig1.savefig('test_ds.pdf')
 
 if vary_s_ed:
     N = 8
@@ -331,7 +331,7 @@ if vary_s_ed:
     plt.plot(s_vec,E,'-')
     plt.plot(s_vec,E_dmrg,':')
     plt.grid(True)
-    plt.show()
+    fig1.savefig('Vary_s_ed.pdf')
 
 if vary_s_mf:
     # Recreate Ushnish plot
@@ -348,7 +348,7 @@ if vary_s_mf:
     plt.plot(s_vec,E,'-')
    # plt.plot(s_vec,E_dmrg,':')
     plt.grid(True)
-    plt.show()
+    fig1.savefig('Vary_s_mf.pdf')
 
 if vary_s_comp:
     # Run TASEP Current Calculations
@@ -474,7 +474,6 @@ if vary_maxBondDim_comp:
     plt.xlabel('Bond Dimension',fontsize=20)
     plt.ylabel('$E-E_{exact}$',fontsize=20)
     plt.legend(('DMRG','Mean Field'))
-    plt.show()
     fig1.savefig('varyMaxBondDim.pdf')
 
 if phaseDiagram_comp:
