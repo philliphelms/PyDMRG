@@ -74,18 +74,16 @@ Note that currently, all of these calculations are using the simple exclusion mo
 
 ## Future Work
 * Efficiency Related
-    * Improve Arnoldi Diagonalization Algorithm
-    * Use Cyclops for tensor algebra
+    * Implement some form of parallelization for tensor network operations
+    * Possibly improve speed of function fed to Davidson Algorithm
+    * Growing Bond Dimension during consecutive iterations
 * Applications Related
-    * Implement higher dimensional tensor network methods
-        * PEPS
-    * Implement time evolution
-        * Using TEBD Algorithm
     * Implement infinite algorithm
+        * Initially in 1D
+        * Then in 2D
     * Implement Periodic Boundary Conditions
     * Implement the use of quantum numbers
-* Other
-    * Simple script for heisenberg model
+    * Implement time evolution
 
 ## Known Issues
 There are currently no known issues - Please contact me if you come accross any problems. 
