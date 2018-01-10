@@ -53,7 +53,7 @@ class MPO:
             for i in range(int(self.N-2)):
                 self.W.insert(len(self.W),self.w_arr)
             self.W.insert(len(self.W),np.expand_dims(self.w_arr[:,0],1))
-        if hamType is "heis_2d":
+        elif hamType is "heis_2d":
             self.N2d = int(np.sqrt(self.N))
             self.J = param[0]
             self.h = param[1]

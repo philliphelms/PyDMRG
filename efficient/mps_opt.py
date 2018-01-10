@@ -14,7 +14,7 @@ class MPS_OPT:
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
                  usePyscf=True,initialGuess=0.5,ed_limit=10,\
-                 saveResults=True,dataFolder='data/',verbose=1):
+                 saveResults=True,dataFolder='data/',verbose=2):
         # Import parameters
         self.N = N
         self.d = d
@@ -235,10 +235,10 @@ class MPS_OPT:
                 z = np.zeros(self.N)
                 ax.scatter(x,y,z,color='k')
                 plt.quiver(x,y,z,self.calc_spin_x,self.calc_spin_y,self.calc_spin_z,pivot='tail')
-                ax.set_zlim((np.min(-np.abs(np.min(self.calc_spin_z)),-np.abs(np.max(self.calc_spin_z))),
-                             np.max( np.abs(np.max(self.calc_spin_z)) , np.abs(np.min(self.calc_spin_z)))))
-                ax.set_ylim((np.min(-np.abs(np.min(self.calc_spin_y)),-np.abs(np.max(self.calc_spin_y))),
-                             np.max( np.abs(np.max(self.calc_spin_y)), np.abs(np.min(self.calc_spin_y)))))
+                ax.set_zlim((np.min((-np.abs(np.min(self.calc_spin_z)),-np.abs(np.max(self.calc_spin_z)))),
+                             np.max(( np.abs(np.max(self.calc_spin_z)) , np.abs(np.min(self.calc_spin_z))))))
+                ax.set_ylim((np.min((-np.abs(np.min(self.calc_spin_y)),-np.abs(np.max(self.calc_spin_y)))),
+                             np.max(( np.abs(np.max(self.calc_spin_y)), np.abs(np.min(self.calc_spin_y))))))
                 plt.ylabel('y',fontsize=20)
                 plt.xlabel('x',fontsize=20)
                 ax.set_zlabel('z',fontsize=20)    

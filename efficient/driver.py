@@ -3,15 +3,15 @@ import time
 import mps_opt
 import matplotlib.pyplot as plt
 
-## Possible calculations:#########################
-simple_tasep = True
-vary_systemSize = False
-vary_s = False
-vary_maxBondDim = False
-phaseDiagram = False
-simpleHeis = False
-simpleFullSEP = False
-reverseFullSEP = False
+## Possible calculations:##################################################
+simple_tasep = False             # Simple case with tasep
+vary_systemSize = False          # TASEP, vary number of lattice sites
+vary_s = False                   # TASEP, calc J(s) and CGF(s)
+vary_maxBondDim = False          # TASEP, Vary the maximum bond dimensions
+phaseDiagram = False             # TASEP, create a phase diagram of the current vs. alpha & beta
+simpleHeis = False               # Heis, A simple test of the 1D heisenberg model calculation
+simpleFullSEP = False            # SEP, A simple test of the sep calulculation, should match simple_tasep
+reverseFullSEP = False           # SEP, The same as the simpleFullSEP test, but this time in the opposite direction
 heis2D = False
 simpleIsing = False
 check_2d_tasep = False
@@ -39,7 +39,7 @@ plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
 if simple_tasep:
     # Run single TASEP calculation
-    x = mps_opt.MPS_OPT(N = 12,
+    x = mps_opt.MPS_OPT(N = 10,
                         hamType = 'tasep',
                         plotExpVals = True,
                         plotConv = True,
@@ -47,7 +47,7 @@ if simple_tasep:
     x.kernel()
 
 if vary_systemSize:
-    N_vec = np.array([10,20,30,40,50,60,70,80,90,100,150,200,250,300,400,500,600,700,800,900,1000])
+    N_vec = np.array([10,20,30,40,50])
     s = np.array([-0.01,0.01])
     current = np.zeros(len(N_vec))
     for i in range(len(N_vec)):
@@ -66,22 +66,21 @@ if vary_systemSize:
 
 if vary_s:
     # Run TASEP Current Calculations
-    N_vec = np.array([4])#np.array([10,20,30,40,50,60])
-    s_vec = np.linspace(-10,10,100)
-    fig1 = plt.figure(10)
-    fig2 = plt.figure(20)
-    fig3 = plt.figure(30)
-    fig4 = plt.figure(40)
+    N_vec = np.array([10,20])
+    s_vec = np.linspace(-1,1,100)
+    fig1 = plt.figure()
+    fig2 = plt.figure()
+    fig3 = plt.figure()
+    fig4 = plt.figure()
     col_vec = ['r','r','y','g','b','c','k','m']
     for j in range(len(N_vec)):
         N = N_vec[j]
         print('Running Calcs for N={}'.format(N))
-        Evec = np.zeros_like(s_vec)
-        Evec_adj = np.zeros_like(s_vec)
+        Evec = np.zeros(s_vec.shape)
+        Evec_adj = np.zeros(s_vec.shape)
         for i in range(len(s_vec)):
             print('\tRunning Calcs for s={}'.format(s_vec[i]))
             x = mps_opt.MPS_OPT(N =int(N),
-                                  maxIter = 5,
                                   hamType = "tasep",
                                   hamParams = (0.35,s_vec[i],2/3))
             Evec[i] = x.kernel()
@@ -89,30 +88,30 @@ if vary_s:
         Ediff = Evec[1:]-Evec[:len(Evec)-1]
         Sdiff = s_vec[1:]-s_vec[:len(s_vec)-1]
         slope = -Ediff/(Sdiff)
-        plt.figure(10)
+        plt.figure(fig1.number)
         plt.plot(s_vec,Evec,col_vec[j]+'-',linewidth=3)
         plt.xlabel('$s$',fontsize=20)
         plt.ylabel('$\mu$',fontsize=20)
-        plt.figure(20)
+        plt.figure(fig2.number)
         plt.plot(s_vec,Evec_adj,col_vec[j]+'-',linewidth=3)
         plt.xlabel('$s$',fontsize=20)
         plt.ylabel('$\mu/(N+1)$',fontsize=20)
-        plt.figure(30)
+        plt.figure(fig3.number)
         plt.plot(s_vec[1:],slope,col_vec[j]+'-',linewidth=3)
         plt.xlabel('$s$',fontsize=20)
         plt.ylabel('$\partial_s\mu=J$',fontsize=20)
-        plt.figure(40)
+        plt.figure(fig4.number)
         plt.plot(s_vec[1:],slope/(N+1),col_vec[j]+'-',linewidth=3)
         plt.xlabel('$s$',fontsize=20)
         plt.ylabel('$\partial_s\mu/(N+1)$',fontsize=20)
     fig1.savefig('VaryS_CGF.pdf')
     fig2.savefig('varyS_scaledCGF.pdf')
-    fig3.savefig('VaryS_scaledCurrent.pdf')
-    fig4.savefig('VaryS_current.pdf')
+    fig3.savefig('VaryS_current.pdf')
+    fig4.savefig('VaryS_scaledCurrent.pdf')
 
 if vary_maxBondDim:
-    N = 10
-    bondDimVec = np.array([2])
+    N = 100
+    bondDimVec = np.array([2, 4, 8, 10, 20, 50, 100, 250, 500, 1000, 2000])
     E_exact = 5.378053311010889458998462941963
     Evec = np.zeros(len(bondDimVec))
     diffVec = np.zeros(len(bondDimVec))
@@ -149,11 +148,13 @@ if phaseDiagram:
             x = mps_opt.MPS_OPT(N=int(N),
                                 maxBondDim = 8,
                                 tol = 1e-1,
+                                verbose = 0,
                                 hamParams = (alphaVec[j],-0.001,betaVec[i]))
             E1 = x.kernel()
             x = mps_opt.MPS_OPT(N=int(N),
                                 maxBondDim = 8,
                                 tol = 1e-1,
+                                verbose = 0,
                                 hamParams = (alphaVec[j],0.001,betaVec[i]))
             E2 = x.kernel()
             J_mat[i,j] = (E1-E2)/(0.002)/N
@@ -198,21 +199,21 @@ if simpleHeis:
     E = x.kernel()
 
 if simpleFullSEP:
-    N = 8
+    N = 10
     x = mps_opt.MPS_OPT(N=N,
                         hamType = "sep",
                         plotExpVals = True,
                         plotConv = True,
-                        hamParams = (0.35,0,1,0,0,2/3,-1))
+                        hamParams = (2/3,0,1,0,0,0.35,-1))
     E = x.kernel()
 
 if reverseFullSEP:
-    N = 8
+    N = 10
     x = mps_opt.MPS_OPT(N=N,
                         hamType = "sep",
                         plotExpVals = True,
                         plotConv = True,
-                        hamParams = (0,2/3,0,1,0.35,0,-1))
+                        hamParams = (0,0.35,0,1,2/3,0,1))
     E = x.kernel()
 
 if heis2D:
