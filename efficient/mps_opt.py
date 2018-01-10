@@ -52,6 +52,7 @@ class MPS_OPT:
         self.calc_spin_z = [0]*self.N
         self.calc_empty = [0]*self.N
         self.calc_occ = [0]*self.N
+        self.bondDimEnergies = np.zeros(len(self.maxBondDim))
 
     def generate_mps(self):
         if self.verbose > 3:
@@ -371,6 +372,7 @@ class MPS_OPT:
                 else:
                     if self.verbose > 0:
                         print('-'*35+'\nConverged for Bond Dimension = {}\n at Energy = {}'.format(self.maxBondDimCurr,self.E)+'\n'+'-'*35)
+                    self.bondDimEnergies[self.maxBondDimInd] = self.E
                     self.maxBondDimInd += 1
                     self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
                     self.increaseBondDim()

@@ -17,7 +17,7 @@ simpleIsing = False              # Ising, A simple calculation using the ising h
 check_2d_tasep = False           # 2DSEP, Perform TASEP calcs aligned along the axis of a 2D SEP calculation (done in 4 directions)
 practice_2d_tasep = False        # 2DSEP, A simple example of an SEP
 test_ds = False                  # TASEP, Tests the spacing of s to calculate the current
-increase_maxBondDim = True       # TASEP, Slowly increases the maximum bond dimension
+increase_maxBondDim = False      # TASEP, Slowly increases the maximum bond dimension
 # Comparing DMRG, MF & ED
 vary_s_ed = False                # SEP, Exact Diagonalization Calculation of current and CGF
 vary_s_mf = False                # SEP, Mean Field Calculation of current and CGF
@@ -25,7 +25,7 @@ vary_s_comp = False              # SEP, Calculations of current and CGF compared
 vary_maxBondDim_comp = False     # SEP, Vary Maximum bond dimensions for 1D to find errors
 phaseDiagram_comp = False        # SEP, Create phase diagram via MF, ED & DMRG
 # Full 2D Comparison
-vary_maxBondDim_2d_comp = False  # 2DSEP, Vary Maximum bond dimensions for 2D to find errors
+vary_maxBondDim_2d_comp = True  # 2DSEP, Vary Maximum bond dimensions for 2D to find errors
 ##################################################
 
 
@@ -602,20 +602,18 @@ if phaseDiagram_comp:
 
 if vary_maxBondDim_2d_comp:
     N = 4
-    bondDimVec = np.array([2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384])
+    bondDimVec = [2,4,8]
     col_vec = ['r','y','g','b','c','k','m']
     # Run 1D Calculation for comparison
     Evec_1d = np.zeros(len(bondDimVec))
     diffVec = np.zeros(len(bondDimVec))
     print('Running 1D Calculations')
-    for i in range(len(bondDimVec)):
-        x = mps_opt.MPS_OPT(N=N,
-                            maxBondDim = bondDimVec[i],
-                            hamParams = (0.35,-1,2/3),
-                            plotConv = False,
-                            plotExpVals = False,
-                            hamType = 'tasep')
-        Evec_1d[i] = x.kernel()
+    x = mps_opt.MPS_OPT(N=N,
+                        maxBondDim = bondDimVec,
+                        hamParams = (0.35,-1,2/3),
+                        hamType = 'tasep')
+    x.kernel()
+    Evec_1d = x.bondDimEnergies
     # Run exact Diagonalization for 1D
     print('Running Exact Diagonalization (1D)')
     E_ed = x.exact_diag()
