@@ -77,6 +77,7 @@ Note that currently, all of these calculations are using the simple exclusion mo
     * Implement some form of parallelization for tensor network operations
     * Possibly improve speed of function fed to Davidson Algorithm
     * Growing Bond Dimension during consecutive iterations
+    * Ensure that contraction order is correct in calculation of Hamiltonian
 * Applications Related
     * Implement infinite algorithm
         * Initially in 1D

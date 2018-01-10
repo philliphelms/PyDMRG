@@ -10,7 +10,7 @@ from numpy import ma
 
 class MPS_OPT:
 
-    def __init__(self, N=10, d=2, maxBondDim=8, tol=1e-5, maxIter=100,\
+    def __init__(self, N=10, d=2, maxBondDim=[10,20,30,40,50], tol=1e-5, maxIter=100,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
                  usePyscf=True,initialGuess=0.5,ed_limit=10,\
@@ -18,7 +18,12 @@ class MPS_OPT:
         # Import parameters
         self.N = N
         self.d = d
-        self.maxBondDim = maxBondDim
+        self.maxBondDimInd = 0
+        if isinstance(maxBondDim, list):
+            self.maxBondDim = maxBondDim
+        else:
+            self.maxBondDim = [maxBondDim]
+        self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
         self.tol = tol
         self.maxIter = maxIter
         self.hamType = hamType
@@ -54,22 +59,22 @@ class MPS_OPT:
         self.M = []
         for i in range(int(self.N/2)):
             if self.initialGuess is "zeros":
-                self.M.insert(len(self.M),np.zeros((self.d,min(self.d**(i),self.maxBondDim),min(self.d**(i+1),self.maxBondDim))))
+                self.M.insert(len(self.M),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
             elif self.initialGuess is "ones":
-                self.M.insert(len(self.M),np.ones((self.d,min(self.d**(i),self.maxBondDim),min(self.d**(i+1),self.maxBondDim))))
+                self.M.insert(len(self.M),np.ones((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
             elif self.initialGuess is "rand":
-                self.M.insert(len(self.M),np.random.rand(self.d,min(self.d**(i),self.maxBondDim),min(self.d**(i+1),self.maxBondDim))) 
+                self.M.insert(len(self.M),np.random.rand(self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))) 
             else:
-                self.M.insert(len(self.M),self.initialGuess*np.ones((self.d,min(self.d**(i),self.maxBondDim),min(self.d**(i+1),self.maxBondDim))))
+                self.M.insert(len(self.M),self.initialGuess*np.ones((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
         for i in range(int(self.N/2))[::-1]:
             if self.initialGuess is "zeros":
-                self.M.insert(len(self.M),np.zeros((self.d,min(self.d**(i+1),self.maxBondDim),min(self.d**i,self.maxBondDim))))
+                self.M.insert(len(self.M),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
             elif self.initialGuess is "ones":
-                self.M.insert(len(self.M),np.ones((self.d,min(self.d**(i+1),self.maxBondDim),min(self.d**i,self.maxBondDim))))
+                self.M.insert(len(self.M),np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
             elif self.initialGuess is "rand":
-                self.M.insert(len(self.M),np.random.rand(self.d,min(self.d**(i+1),self.maxBondDim),min(self.d**i,self.maxBondDim)))
+                self.M.insert(len(self.M),np.random.rand(self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr)))
             else:
-                self.M.insert(len(self.M),self.initialGuess*np.ones((self.d,min(self.d**(i+1),self.maxBondDim),min(self.d**i,self.maxBondDim))))
+                self.M.insert(len(self.M),self.initialGuess*np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
 
     def generate_mpo(self):
         if self.verbose > 3:
@@ -93,9 +98,9 @@ class MPS_OPT:
         self.F = []
         self.F.insert(len(self.F),np.array([[[1]]]))
         for i in range(int(self.N/2)):
-            self.F.insert(len(self.F),np.zeros((min(self.d**(i+1),self.maxBondDim),4,min(self.d**(i+1),self.maxBondDim))))
+            self.F.insert(len(self.F),np.zeros((min(self.d**(i+1),self.maxBondDimCurr),4,min(self.d**(i+1),self.maxBondDimCurr))))
         for i in range(int(self.N/2)-1,0,-1):
-            self.F.insert(len(self.F),np.zeros((min(self.d**(i),self.maxBondDim),4,min(self.d**i,self.maxBondDim))))
+            self.F.insert(len(self.F),np.zeros((min(self.d**(i),self.maxBondDimCurr),4,min(self.d**i,self.maxBondDimCurr))))
         self.F.insert(len(self.F),np.array([[[1]]]))
 
     def normalize(self,i,direction):
@@ -117,6 +122,19 @@ class MPS_OPT:
             self.M[i-1] = self.einsum('klj,ji,i->kli',self.M[i-1],U,s)
         else:
             raise NameError('Direction must be left or right')
+
+    def increaseBondDim(self):
+        if self.verbose > 3:
+            print('\t'*2+'Increasing Bond Dimensions from {} to {}'.format(self.maxBondDim[self.maxBondDimInd-1],self.maxBondDimCurr))
+        Mnew = []
+        for i in range(int(self.N/2)):
+            Mnew.insert(len(Mnew),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+        for i in range(int(self.N/2))[::-1]:
+            Mnew.insert(len(Mnew),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
+        for i in range(len(Mnew)):
+            nx,ny,nz = self.M[i].shape
+            Mnew[i][:nx,:ny,:nz] = self.M[i]
+            self.M[i] = Mnew[i]
 
     def calc_initial_f(self):
         if self.verbose > 3:
@@ -318,13 +336,14 @@ class MPS_OPT:
         self.generate_f()
         self.calc_initial_f()
         converged = False
-        iterCnt = 0
+        currIterCnt = 0
+        totIterCnt = 0
         self.calc_observables(0)
         E_prev = self.energy_contraction(0)
         while not converged:
             # Right Sweep --------------------------
             if self.verbose > 1:
-                print('\t'*0+'Right Sweep {}'.format(iterCnt))
+                print('\t'*0+'Right Sweep {}'.format(totIterCnt))
             for i in range(int(self.N-1)):
                 self.E = self.local_optimization(i)
                 self.calc_observables(i)
@@ -334,7 +353,7 @@ class MPS_OPT:
                 self.plot_convergence(i)
             # Left Sweep ---------------------------
             if self.verbose > 1:
-                print('\t'*0+'Left Sweep {}'.format(iterCnt))
+                print('\t'*0+'Left Sweep {}'.format(totIterCnt))
             for i in range(int(self.N-1),0,-1):
                 self.E = self.local_optimization(i)
                 self.calc_observables(i)
@@ -344,11 +363,22 @@ class MPS_OPT:
                 self.plot_convergence(i)
             # Check Convergence --------------------
             if np.abs(self.E-E_prev) < self.tol:
-                if self.verbose > 0:
-                    print('#'*75+'\nConverged at E = {}'.format(self.E)+'\n'+'#'*75)
-                self.finalEnergy = self.E
-                converged = True
-            elif iterCnt >= self.maxIter:
+                if self.maxBondDimInd is (len(self.maxBondDim)-1):
+                    if self.verbose > 0:
+                        print('#'*75+'\nConverged at E = {} for Bond Dimension = {}'.format(self.E,self.maxBondDimCurr)+'\n'+'#'*75)
+                    self.finalEnergy = self.E
+                    converged = True
+                else:
+                    if self.verbose > 0:
+                        print('-'*35+'\nConverged for Bond Dimension = {}\n at Energy = {}'.format(self.maxBondDimCurr,self.E)+'\n'+'-'*35)
+                    self.maxBondDimInd += 1
+                    self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
+                    self.increaseBondDim()
+                    self.generate_f()
+                    self.calc_initial_f()
+                    totIterCnt += 1
+                    currIterCnt = 0
+            elif currIterCnt >= self.maxIter:
                 if self.verbose > 0:
                     print('!'*75+'\nConvergence not acheived\n'+'\tE={}\n'.format(self.E)+'!'*75)
                 self.finalEnergy = self.E
@@ -357,7 +387,8 @@ class MPS_OPT:
                 if self.verbose > 2:
                     print('\t'*1+'Energy Change {}\nNeeded <{}'.format(np.abs(self.E-E_prev),self.tol))
                 E_prev = self.E
-                iterCnt += 1
+                currIterCnt += 1
+                totIterCnt += 1
         self.saveFinalResults('dmrg')
         return self.finalEnergy
 

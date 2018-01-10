@@ -17,6 +17,7 @@ simpleIsing = False              # Ising, A simple calculation using the ising h
 check_2d_tasep = False           # 2DSEP, Perform TASEP calcs aligned along the axis of a 2D SEP calculation (done in 4 directions)
 practice_2d_tasep = False        # 2DSEP, A simple example of an SEP
 test_ds = False                  # TASEP, Tests the spacing of s to calculate the current
+increase_maxBondDim = True       # TASEP, Slowly increases the maximum bond dimension
 # Comparing DMRG, MF & ED
 vary_s_ed = False                # SEP, Exact Diagonalization Calculation of current and CGF
 vary_s_mf = False                # SEP, Mean Field Calculation of current and CGF
@@ -24,7 +25,7 @@ vary_s_comp = False              # SEP, Calculations of current and CGF compared
 vary_maxBondDim_comp = False     # SEP, Vary Maximum bond dimensions for 1D to find errors
 phaseDiagram_comp = False        # SEP, Create phase diagram via MF, ED & DMRG
 # Full 2D Comparison
-vary_maxBondDim_2d_comp = True  # 2DSEP, Vary Maximum bond dimensions for 2D to find errors
+vary_maxBondDim_2d_comp = False  # 2DSEP, Vary Maximum bond dimensions for 2D to find errors
 ##################################################
 
 
@@ -317,6 +318,23 @@ if test_ds:
     fig1 = plt.figure()
     plt.semilogy(ds,np.abs(error))
     fig1.savefig('test_ds.pdf')
+
+if increase_maxBondDim:
+    t1 = time.time()
+    N = 20
+    x = mps_opt.MPS_OPT(N=int(N),
+                        verbose = 2,
+                        maxBondDim = [10,50,100])
+    x.kernel()
+    t2 = time.time()
+    # Provide some comparison for if we don't slowly increase bond dim
+    x = mps_opt.MPS_OPT(N=int(N),
+                        verbose = 2,
+                        maxBondDim = 100)
+    x.kernel()
+    t3 = time.time()
+    # Print Results
+    print('#'*50+'\nIncremented case total time: {}\nDirect case total time: {}\n'.format(t2-t1,t3-t2)+'#'*50)
 
 if vary_s_ed:
     N = 8

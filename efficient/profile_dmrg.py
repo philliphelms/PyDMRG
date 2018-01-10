@@ -1,9 +1,9 @@
 import cProfile
 import mps_opt
 
-x = mps_opt.MPS_OPT(N = 10**2,
+x = mps_opt.MPS_OPT(N = 4**2,
                     hamType = 'sep_2d',
-                    maxBondDim = 200,
+                    maxBondDim = 250,
                     verbose=4,
                     plotExpVals=False,
                     plotConv=False,
