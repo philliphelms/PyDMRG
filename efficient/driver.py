@@ -15,16 +15,16 @@ reverseFullSEP = False           # SEP, The same as the simpleFullSEP test, but 
 heis2D = False # SOME PROBLEMS
 simpleIsing = False              # Ising, A simple calculation using the ising hamiltonian
 check_2d_tasep = False           # 2DSEP, Perform TASEP calcs aligned along the axis of a 2D SEP calculation (done in 4 directions)
-practice_2d_tasep = True
-test_ds = False
+practice_2d_tasep = False        # 2DSEP, A simple example of an SEP
+test_ds = False                  # TASEP, Tests the spacing of s to calculate the current
 # Comparing DMRG, MF & ED
-vary_s_ed = False
-vary_s_mf = False
-vary_s_comp = False
-vary_maxBondDim_comp = False
-phaseDiagram_comp = False
+vary_s_ed = False                # SEP, Exact Diagonalization Calculation of current and CGF
+vary_s_mf = False                # SEP, Mean Field Calculation of current and CGF
+vary_s_comp = False              # SEP, Calculations of current and CGF compared to ed & mf results
+vary_maxBondDim_comp = False     # SEP, Vary Maximum bond dimensions for 1D to find errors
+phaseDiagram_comp = False        # SEP, Create phase diagram via MF, ED & DMRG
 # Full 2D Comparison
-vary_maxBondDim_2d_comp = False
+vary_maxBondDim_2d_comp = True  # 2DSEP, Vary Maximum bond dimensions for 2D to find errors
 ##################################################
 
 
@@ -271,11 +271,13 @@ if check_2d_tasep:
 if practice_2d_tasep:
     N = 10
     x = mps_opt.MPS_OPT(N=N**2,
+                        maxBondDim=50,
                         hamType="sep_2d",
-                        plotExpVals=True,
-                        plotConv=True,
+                        plotExpVals=False,
+                        plotConv=False,
+                        verbose=3,
                         hamParams = (0.5,0.5,0.9,0.2,0.2,0.8,
-                                     0.5,0.5,0.9,0.2,0.2,0.8,0))
+                                     0.5,0.5,0.9,0.2,0.2,0.8,-1))
     E = x.kernel()
 
 if test_ds:
@@ -312,7 +314,7 @@ if test_ds:
                 J_mat[i,j] = (E1-E2)/(2*ds[k])/N
                 J_mat_ed[i,j] = (E1_ed-E2_ed)/(2*ds[k])/N
         error[k] = np.sum(np.sum(np.abs(J_mat-J_mat_ed)))/(len(alphaVec)*len(betaVec))
-    plt.figure()
+    fig1 = plt.figure()
     plt.semilogy(ds,np.abs(error))
     fig1.savefig('test_ds.pdf')
 
@@ -581,8 +583,8 @@ if phaseDiagram_comp:
     f6.savefig('mf_phaseDiagram_error.pdf')
 
 if vary_maxBondDim_2d_comp:
-    N = 12
-    bondDimVec = np.array([20])
+    N = 4
+    bondDimVec = np.array([2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384])
     col_vec = ['r','y','g','b','c','k','m']
     # Run 1D Calculation for comparison
     Evec_1d = np.zeros(len(bondDimVec))
@@ -630,6 +632,7 @@ if vary_maxBondDim_2d_comp:
         Evec_2d_aligned[i] = x.kernel()/N
     # Calculate Errors
     err_mf = np.abs(E_mf-E_ed)
+    print(err_mf)
     errVec_1d = np.abs(Evec_1d-E_ed)
     errVec_2d_aligned = np.abs(Evec_2d_aligned-E_ed)
     errVec_2d_notaligned = np.abs(Evec_2d_notaligned-E_ed)
