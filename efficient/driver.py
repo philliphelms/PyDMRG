@@ -12,10 +12,10 @@ phaseDiagram = False             # TASEP, create a phase diagram of the current 
 simpleHeis = False               # Heis, A simple test of the 1D heisenberg model calculation
 simpleFullSEP = False            # SEP, A simple test of the sep calulculation, should match simple_tasep
 reverseFullSEP = False           # SEP, The same as the simpleFullSEP test, but this time in the opposite direction
-heis2D = False
-simpleIsing = False
-check_2d_tasep = False
-practice_2d_tasep = False
+heis2D = False # SOME PROBLEMS
+simpleIsing = False              # Ising, A simple calculation using the ising hamiltonian
+check_2d_tasep = False           # 2DSEP, Perform TASEP calcs aligned along the axis of a 2D SEP calculation (done in 4 directions)
+practice_2d_tasep = True
 test_ds = False
 # Comparing DMRG, MF & ED
 vary_s_ed = False
