@@ -22,11 +22,12 @@ increase_maxBondDim = False      # TASEP, Slowly increases the maximum bond dime
 vary_s_ed = False                # SEP, Exact Diagonalization Calculation of current and CGF
 vary_s_mf = False                # SEP, Mean Field Calculation of current and CGF
 vary_s_comp_tasep = False        # TASEP, Calculations of current and CGF compared to ed & mf results
-vary_s_comp_sep = True           # SEP, calculations of CGF & Current compared to ed & mf results
+vary_s_comp_sep = False          # SEP, calculations of CGF & Current compared to ed & mf results
 vary_maxBondDim_comp = False     # SEP, Vary Maximum bond dimensions for 1D to find errors
 phaseDiagram_comp = False        # SEP, Create phase diagram via MF, ED & DMRG
 # Full 2D Comparison
 vary_maxBondDim_2d_comp = False  # 2DSEP, Vary Maximum bond dimensions for 2D to find errors
+vary_maxBondDim_2d_sep_comp = True # 2DSEP, Vary Max Bond Dimensions for 2D to find errors (using sep instead of tasep)
 phaseDiagram2D = False           # Create a phase diagram for the 2D SSEP
 ##################################################
 
@@ -534,8 +535,6 @@ if vary_s_comp_sep:
     plt.show()
     fig4.savefig('vary_s_comp_sep_current_error.pdf')
 
-
-
 if vary_maxBondDim_comp:
     N = np.array([4,6,8,10])
     bondDimVec = np.array([1,2,3,4,10])
@@ -718,6 +717,52 @@ if vary_maxBondDim_2d_comp:
     # Calculate Errors
     err_mf = np.abs(E_mf-E_ed)
     print(err_mf)
+    errVec_1d = np.abs(Evec_1d-E_ed)
+    errVec_2d_aligned = np.abs(Evec_2d_aligned-E_ed)
+    errVec_2d_notaligned = np.abs(Evec_2d_notaligned-E_ed)
+    # Create Plot
+    fig1 = plt.figure()
+    plt.semilogy(np.array([np.min(bondDimVec),np.max(bondDimVec)]),np.array([err_mf,err_mf]),':',linewidth=3)
+    plt.semilogy(bondDimVec,errVec_1d,linewidth=3)
+    plt.semilogy(bondDimVec,errVec_2d_aligned,linewidth=3)
+    plt.semilogy(bondDimVec,errVec_2d_notaligned,linewidth=3)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.xlabel('Bond Dimension',fontsize=20)
+    plt.ylabel('$E-E_{exact}$',fontsize=20)
+    plt.legend(('Mean Field','1D DMRG','2D DMRG (aligned)','2D DMRG (not aligned)'))
+    fig1.savefig('varyMaxBondDim_'+str(bondDimVec[-1])+'.pdf')
+
+if vary_maxBondDim_2d_sep_comp:
+    N = 4
+    bondDimVec = [2,4,8,12,20,30]
+    # Run 1D Calculation for comparison
+    x = mps_opt.MPS_OPT(N=N,
+                        maxBondDim = bondDimVec,
+                        hamType = "sep",
+                        hamParams = (0.9,0.1,0.5,0.5,0.1,0.9,-1))
+    x.kernel()
+    Evec_1d = x.bondDimEnergies
+    E_ed = x.exact_diag()
+    E_mf = x.mean_field()
+    # Run 2D in opposite direction
+    x = mps_opt.MPS_OPT(N=N**2,
+                        maxBondDim = bondDimVec,
+                        hamType="sep_2d",
+                        hamParams = (0,0,0,0,0,0,
+                                     0.5,0.5,0.9,0.1,0.1,0.9,-1))
+    x.kernel()
+    Evec_2d_notaligned = x.bondDimEnergies/N
+    # Run 2D in aligned direction
+    x = mps_opt.MPS_OPT(N=N**2,
+                        maxBondDim = bondDimVec,
+                        hamType="sep_2d",
+                        hamParams = (0.5,0.5,0.9,0.1,0.1,0.9,      # jl,jr,il,ir,ol,or,
+                                     0,0,0,   0,0,0  ,-1))         # ju,jd,it,ib,ot,ob,s
+    x.kernel()
+    Evec_2d_aligned = x.bondDimEnergies/N
+    # Calculate Errors
+    err_mf = np.abs(E_mf-E_ed)
     errVec_1d = np.abs(Evec_1d-E_ed)
     errVec_2d_aligned = np.abs(Evec_2d_aligned-E_ed)
     errVec_2d_notaligned = np.abs(Evec_2d_notaligned-E_ed)

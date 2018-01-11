@@ -165,6 +165,7 @@ class MPO:
                                                 [(self.exp_beta*self.Sm-self.beta*self.v)+
                                                  (self.exp_delta*self.Sp-self.delta*self.n)]]))
         elif hamType is "sep_2d":
+            # Collect Parameters
             self.N2d = int(np.sqrt(self.N))
             self.jl = param[0]
             self.jr = param[1]
@@ -179,29 +180,30 @@ class MPO:
             self.ot = param[10]
             self.ob = param[11]
             self.s = param[12]
-            #print('jump left = {}'.format(self.jl))
-            #print('jump right = {}'.format(self.jr))
-            #print('in left = {}'.format(self.il))
-            #print('in right = {}'.format(self.ir))
-            #print('out left = {}'.format(self.ol))
-            #print('out right = {}'.format(self.outr))
-            #print('jump up = {}'.format(self.ju))
-            #print('jump down = {}'.format(self.jd))
-            #print('in top = {}'.format(self.it))
-            #print('in bottom = {}'.format(self.ib))
-            #print('out top = {}'.format(self.ot))
-            #print('out bottom = {}'.format(self.ob))
-            #print('s = {}'.format(self.s))
+            # Multiply params by an exponential
+            self.exp_jl = self.jl*np.exp(self.s)  # Moving Left
+            self.exp_jr = self.jr*np.exp(-self.s) # Moving Right
+            self.exp_il = self.il*np.exp(-self.s) # Moving Right
+            self.exp_ir = self.ir*np.exp(self.s)  # Moving Left
+            self.exp_ol = self.ol*np.exp(self.s)  # Moving Left
+            self.exp_or = self.outr*np.exp(-self.s)# Moving Right
+            self.exp_ju = self.ju*np.exp(self.s)   # Moving up
+            self.exp_jd = self.jd*np.exp(-self.s)  # Moving Down
+            self.exp_it = self.it*np.exp(-self.s)  # Moving Down
+            self.exp_ib = self.ib*np.exp(self.s)   # Moving Up
+            self.exp_ot = self.ot*np.exp(self.s)   # Moving Up
+            self.exp_ob = self.ob*np.exp(-self.s)  # Moving Down
+            # Create container for mpo
             ham_dim = 10+(self.N2d-2)*4
             self.w_arr = np.zeros((ham_dim,ham_dim,2,2))
             # Build generic first column
             self.w_arr[0,0,:,:] = self.I
-            self.w_arr[1,0,:,:] = self.ju*self.Sm
-            self.w_arr[self.N2d,0,:,:] = self.jr*self.Sm
+            self.w_arr[1,0,:,:] = self.exp_ju*self.Sm
+            self.w_arr[self.N2d,0,:,:] = self.exp_jr*self.Sm
             self.w_arr[self.N2d+1,0,:,:] = self.ju*self.v
             self.w_arr[2*self.N2d,0,:,:] = self.jr*self.v
-            self.w_arr[2*self.N2d+1,0,:,:] = self.jd*self.Sp
-            self.w_arr[3*self.N2d,0,:,:] = self.jl*self.Sp
+            self.w_arr[2*self.N2d+1,0,:,:] = self.exp_jd*self.Sp
+            self.w_arr[3*self.N2d,0,:,:] = self.exp_jl*self.Sp
             self.w_arr[3*self.N2d+1,0,:,:] = self.jd*self.n
             self.w_arr[4*self.N2d,0,:,:] = self.jl*self.n
             # Build generic interior
@@ -215,9 +217,9 @@ class MPO:
                 col_ind += 1
                 row_ind += 1
             # Build bottom row
-            self.w_arr[-1,self.N2d,:,:] = np.exp(-self.s)*self.Sp
+            self.w_arr[-1,self.N2d,:,:] = self.Sp
             self.w_arr[-1,2*self.N2d,:,:] = -self.n
-            self.w_arr[-1,3*self.N2d,:,:] = np.exp(-self.s)*self.Sm
+            self.w_arr[-1,3*self.N2d,:,:] = self.Sm
             self.w_arr[-1,4*self.N2d,:,:] = -self.v
             self.w_arr[-1,4*self.N2d+1,:,:] = self.I
             self.W = []
@@ -227,22 +229,22 @@ class MPO:
                     curr_w_arr = self.w_arr.copy()
                     # Add interaction with external reservoirs
                     if j is 0:
-                        curr_w_arr[-1,0,:,:] += self.il*(np.exp(-self.s)*self.Sm-self.v) +\
-                                                self.ol*(np.exp(-self.s)*self.Sp-self.n)
+                        curr_w_arr[-1,0,:,:] += (self.exp_il*self.Sm-self.il*self.v) +\
+                                                (self.exp_ol*self.Sp-self.ol*self.n)
                     if (j is 0) and (i is not 0): # Prevents interaction between ends
                         curr_w_arr[self.N2d,0,:,:] = self.z
                         curr_w_arr[2*self.N2d,0,:,:] = self.z
                         curr_w_arr[3*self.N2d,0,:,:] = self.z
                         curr_w_arr[4*self.N2d,0,:,:] = self.z
                     if i is 0:
-                        curr_w_arr[-1,0,:,:] += self.ib*(np.exp(-self.s)*self.Sm-self.v) +\
-                                                self.ob*(np.exp(-self.s)*self.Sp-self.n)
+                        curr_w_arr[-1,0,:,:] += self.exp_ib*self.Sm-self.ib*self.v +\
+                                                self.exp_ob*self.Sp-self.ob*self.n
                     if j is self.N2d-1:
-                        curr_w_arr[-1,0,:,:] += self.ir*(np.exp(-self.s)*self.Sm-self.v) +\
-                                                self.outr*(np.exp(-self.s)*self.Sp-self.n)
+                        curr_w_arr[-1,0,:,:] += self.exp_ir*self.Sm-self.ir*self.v +\
+                                                self.exp_or*self.Sp-self.outr*self.n
                     if i is self.N2d-1:
-                        curr_w_arr[-1,0,:,:] += self.it*(np.exp(-self.s)*self.Sm-self.v) +\
-                                                self.ot*(np.exp(-self.s)*self.Sp-self.n)
+                        curr_w_arr[-1,0,:,:] += self.exp_it*self.Sm-self.it*self.v +\
+                                                self.exp_ot*self.Sp-self.ot*self.n
                     if (i is 0) and (j is 0):
                         self.W.insert(len(self.W),np.expand_dims(curr_w_arr[-1,:],0))
                     elif (i is self.N2d-1) and (j is self.N2d-1):
