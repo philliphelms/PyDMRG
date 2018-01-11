@@ -486,6 +486,7 @@ if vary_s_comp_sep:
         E_dmrg[i] = x.kernel()
         E[i] = x.exact_diag()
         E_mf[i] = x.mean_field()
+    # CGF PLOT
     fig1 = plt.figure()
     plot_ed = plt.plot(s_vec,E,label='Exact Diag')
     plot_mf = plt.plot(s_vec,E_mf,label='Mean Field')
@@ -495,15 +496,44 @@ if vary_s_comp_sep:
     plt.xlabel('$s$')
     plt.ylabel('CGF')
     plt.show()
+    # CGF ERROR PLOT
     fig2 = plt.figure()
-    plot_mf = plt.semilogy(s_vec,np.abs(E-E_mf),label='Mean Field Error')
-    plot_dmrg = plt.semilogy(s_vec,np.abs(E-E_dmrg)+1e-16,label='DMRG Error')
+    plot_mf = plt.semilogy(s_vec,np.abs(E-E_mf)/E*100,label='Mean Field Error')
+    plot_dmrg = plt.semilogy(s_vec,np.abs(E-E_dmrg)/E*100,label='DMRG Error')
     plt.legend()
     plt.grid(True)
     plt.xlabel('$s$')
-    plt.ylabel('CGF Error')
+    plt.ylabel('\% CGF Error')
     plt.show()
-    fig2.savefig('vary_s_comp_sep_cgf_error.pdf')
+    # Current Plot
+    Ediff = E[1:]-E[:len(E)-1]
+    E_dmrg_diff = E_dmrg[1:]-E_dmrg[:len(E_dmrg)-1]
+    E_mf_diff = E_mf[1:]-E_mf[:len(E_mf)-1]
+    Sdiff = s_vec[1:]-s_vec[:len(s_vec)-1]
+    slope = -Ediff/(Sdiff)
+    slope_dmrg = -E_dmrg_diff/(Sdiff)
+    slope_mf = -E_mf_diff/(Sdiff)
+    fig3 = plt.figure()
+    plt.plot(s_vec[1:],slope,label='Exact Diag')
+    plt.plot(s_vec[1:],slope_dmrg,label='DMRG')
+    plt.plot(s_vec[1:],slope_mf,label='Mean Field')
+    plt.grid(True)
+    plt.legend()
+    plt.xlabel('$s$')
+    plt.ylabel('Current')
+    plt.show()
+    fig3.savefig('vary_s_comp_sep_current.pdf')
+    # Current Error Plot
+    fig4 = plt.figure()
+    plot_dmrg = plt.semilogy(s_vec[1:],np.abs(slope-slope_dmrg)/slope*100,label='DMRG Error')
+    plot_mf = plt.semilogy(s_vec[1:],np.abs(slope-slope_mf)/slope*100,label='MF Error')
+    plt.grid(True)
+    plt.legend()
+    plt.xlabel('$s$')
+    plt.ylabel('Current')
+    plt.show()
+    fig4.savefig('vary_s_comp_sep_current_error.pdf')
+
 
 
 if vary_maxBondDim_comp:
