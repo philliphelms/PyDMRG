@@ -10,7 +10,7 @@ from numpy import ma
 
 class MPS_OPT:
 
-    def __init__(self, N=10, d=2, maxBondDim=[10,20,30,40,50], tol=1e-5, maxIter=100,\
+    def __init__(self, N=10, d=2, maxBondDim=[10,20], tol=1e-5, maxIter=100,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
                  usePyscf=True,initialGuess=0.5,ed_limit=10,\
@@ -368,6 +368,7 @@ class MPS_OPT:
                     if self.verbose > 0:
                         print('#'*75+'\nConverged at E = {} for Bond Dimension = {}'.format(self.E,self.maxBondDimCurr)+'\n'+'#'*75)
                     self.finalEnergy = self.E
+                    self.bondDimEnergies[self.maxBondDimInd] = self.E
                     converged = True
                 else:
                     if self.verbose > 0:
@@ -408,8 +409,8 @@ class MPS_OPT:
                                               clumpSize=self.N,
                                               alpha=self.mpo.alpha,
                                               gamma=0,
-                                              beta=self.mpo.beta,
-                                              delta=0,
+                                              beta=0,
+                                              delta=self.mpo.beta,
                                               s=self.mpo.s,
                                               p=1,
                                               q=0,
@@ -442,8 +443,8 @@ class MPS_OPT:
                                               clumpSize=clumpSize,
                                               alpha=self.mpo.alpha,
                                               gamma=0,
-                                              beta=self.mpo.beta,
-                                              delta=0,
+                                              beta=0,
+                                              delta=self.mpo.beta,
                                               s=self.mpo.s,
                                               p=1,
                                               q=0,

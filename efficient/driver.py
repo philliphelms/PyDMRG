@@ -21,11 +21,13 @@ increase_maxBondDim = False      # TASEP, Slowly increases the maximum bond dime
 # Comparing DMRG, MF & ED
 vary_s_ed = False                # SEP, Exact Diagonalization Calculation of current and CGF
 vary_s_mf = False                # SEP, Mean Field Calculation of current and CGF
-vary_s_comp = False              # SEP, Calculations of current and CGF compared to ed & mf results
+vary_s_comp_tasep = False        # TASEP, Calculations of current and CGF compared to ed & mf results
+vary_s_comp_sep = True           # SEP, calculations of CGF & Current compared to ed & mf results
 vary_maxBondDim_comp = False     # SEP, Vary Maximum bond dimensions for 1D to find errors
 phaseDiagram_comp = False        # SEP, Create phase diagram via MF, ED & DMRG
 # Full 2D Comparison
-vary_maxBondDim_2d_comp = True  # 2DSEP, Vary Maximum bond dimensions for 2D to find errors
+vary_maxBondDim_2d_comp = False  # 2DSEP, Vary Maximum bond dimensions for 2D to find errors
+phaseDiagram2D = False           # Create a phase diagram for the 2D SSEP
 ##################################################
 
 
@@ -63,7 +65,7 @@ if vary_systemSize:
     plt.plot(N_vec,-current,'ro-',markersize=5,linewidth=3)
     plt.xlabel('$N$',fontsize=20)
     plt.ylabel('$J(N)/(N+1)$',fontsize=20)
-    fig1.savefig('VarySize.pdf')
+    fig1.savefig('varySize.pdf')
 
 if vary_s:
     # Run TASEP Current Calculations
@@ -105,10 +107,10 @@ if vary_s:
         plt.plot(s_vec[1:],slope/(N+1),col_vec[j]+'-',linewidth=3)
         plt.xlabel('$s$',fontsize=20)
         plt.ylabel('$\partial_s\mu/(N+1)$',fontsize=20)
-    fig1.savefig('VaryS_CGF.pdf')
+    fig1.savefig('varyS_CGF.pdf')
     fig2.savefig('varyS_scaledCGF.pdf')
-    fig3.savefig('VaryS_current.pdf')
-    fig4.savefig('VaryS_scaledCurrent.pdf')
+    fig3.savefig('varyS_current.pdf')
+    fig4.savefig('varyS_scaledCurrent.pdf')
 
 if vary_maxBondDim:
     N = 100
@@ -353,7 +355,7 @@ if vary_s_ed:
     plt.plot(s_vec,E,'-')
     plt.plot(s_vec,E_dmrg,':')
     plt.grid(True)
-    fig1.savefig('Vary_s_ed.pdf')
+    fig1.savefig('vary_s_ed.pdf')
 
 if vary_s_mf:
     # Recreate Ushnish plot
@@ -370,9 +372,9 @@ if vary_s_mf:
     plt.plot(s_vec,E,'-')
    # plt.plot(s_vec,E_dmrg,':')
     plt.grid(True)
-    fig1.savefig('Vary_s_mf.pdf')
+    fig1.savefig('vary_s_mf.pdf')
 
-if vary_s_comp:
+if vary_s_comp_tasep:
     # Run TASEP Current Calculations
     N_vec = np.array([10])#np.array([10,20,30,40,50,60])
     s_vec = np.linspace(-1,1,100)
@@ -462,12 +464,47 @@ if vary_s_comp:
         plt.xlabel('$s$',fontsize=20)
         plt.ylabel('Percent Error (Current)',fontsize=20)
         plt.legend(('DMRG','Mean Field'))
-    fig1.savefig('VaryS_CGF_comparison.pdf')
+    fig1.savefig('varyS_CGF_comparison.pdf')
     fig2.savefig('varyS_scaledCGF_comparison.pdf')
-    fig3.savefig('VaryS_scaledCurrent_comparison.pdf')
-    fig4.savefig('VaryS_current_comparison.pdf')
-    fig5.savefig('VaryS_comparison_CGFerror.pdf')
-    fig6.savefig('VaryS_comparison_currentError.pdf')
+    fig3.savefig('varyS_scaledCurrent_comparison.pdf')
+    fig4.savefig('varyS_current_comparison.pdf')
+    fig5.savefig('varyS_comparison_CGFerror.pdf')
+    fig6.savefig('varyS_comparison_currentError.pdf')
+
+if vary_s_comp_sep:
+    N = 10
+    s_vec = np.linspace(-2,2,100)
+    E_dmrg = np.zeros(s_vec.shape)
+    E = np.zeros(s_vec.shape)
+    E_mf = np.zeros(s_vec.shape)
+    for i in range(len(s_vec)):
+        x = mps_opt.MPS_OPT(N=N,
+                            hamType = "sep",
+                            hamParams = (0.9,0.1,0.5,0.5,0.1,0.9,s_vec[i]),
+                            #hamParams = (0.5,0.8,0.2,0.6,0.8,0.7,s_vec[i]),
+                            usePyscf = True)
+        E_dmrg[i] = x.kernel()
+        E[i] = x.exact_diag()
+        E_mf[i] = x.mean_field()
+    fig1 = plt.figure()
+    plot_ed = plt.plot(s_vec,E,label='Exact Diag')
+    plot_mf = plt.plot(s_vec,E_mf,label='Mean Field')
+    plot_dmrg = plt.plot(s_vec,E_dmrg,label='DMRG')
+    plt.legend()
+    plt.grid(True)
+    plt.xlabel('$s$')
+    plt.ylabel('CGF')
+    plt.show()
+    fig2 = plt.figure()
+    plot_mf = plt.semilogy(s_vec,np.abs(E-E_mf),label='Mean Field Error')
+    plot_dmrg = plt.semilogy(s_vec,np.abs(E-E_dmrg)+1e-16,label='DMRG Error')
+    plt.legend()
+    plt.grid(True)
+    plt.xlabel('$s$')
+    plt.ylabel('CGF Error')
+    plt.show()
+    fig2.savefig('vary_s_comp_sep_cgf_error.pdf')
+
 
 if vary_maxBondDim_comp:
     N = np.array([4,6,8,10])
@@ -601,8 +638,8 @@ if phaseDiagram_comp:
     f6.savefig('mf_phaseDiagram_error.pdf')
 
 if vary_maxBondDim_2d_comp:
-    N = 4
-    bondDimVec = [2,4,8]
+    N = 10
+    bondDimVec = [2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100]
     col_vec = ['r','y','g','b','c','k','m']
     # Run 1D Calculation for comparison
     Evec_1d = np.zeros(len(bondDimVec))
@@ -611,9 +648,11 @@ if vary_maxBondDim_2d_comp:
     x = mps_opt.MPS_OPT(N=N,
                         maxBondDim = bondDimVec,
                         hamParams = (0.35,-1,2/3),
+                        verbose=2,
                         hamType = 'tasep')
     x.kernel()
     Evec_1d = x.bondDimEnergies
+    print(Evec_1d)
     # Run exact Diagonalization for 1D
     print('Running Exact Diagonalization (1D)')
     E_ed = x.exact_diag()
@@ -623,29 +662,29 @@ if vary_maxBondDim_2d_comp:
     # Run 2D in opposite direction
     Evec_2d_notaligned = np.zeros(len(bondDimVec))
     print('Running misaligned 2D calculations')
-    for i in range(len(bondDimVec)):
-        x = mps_opt.MPS_OPT(N=N**2,
-                            maxBondDim = bondDimVec[i],
-                            hamType="sep_2d",
-                            plotExpVals=False,
-                            plotConv=False,
-                            verbose = 3,
-                            hamParams = (0,0,0,0,0,0,
-                                         1,0,0,0.35,2/3,0,-1))
-        Evec_2d_notaligned[i] = x.kernel()/N
-        plt.close("all")
+    x = mps_opt.MPS_OPT(N=N**2,
+                        maxBondDim = bondDimVec,
+                        hamType="sep_2d",
+                        plotExpVals=False,
+                        plotConv=False,
+                        verbose = 2,
+                        hamParams = (0,0,0,0,0,0,
+                                     1,0,0,0.35,2/3,0,-1))
+    x.kernel()
+    Evec_2d_notaligned = x.bondDimEnergies/N
     # Run 2D in aligned direction
     Evec_2d_aligned = np.zeros(len(bondDimVec))
     print('Running aligned 2D calculations')
-    for i in range(len(bondDimVec)):
-        x = mps_opt.MPS_OPT(N=N**2,
-                            maxBondDim = bondDimVec[i],
-                            hamType="sep_2d",
-                            plotExpVals=False,
-                            plotConv=False,
-                            hamParams = (0,1,0.35,0,0,2/3,      # jl,jr,il,ir,ol,or,
-                                         0,0,0,   0,0,0  ,-1))  # ju,jd,it,ib,ot,ob,s
-        Evec_2d_aligned[i] = x.kernel()/N
+    x = mps_opt.MPS_OPT(N=N**2,
+                        maxBondDim = bondDimVec,
+                        hamType="sep_2d",
+                        plotExpVals=False,
+                        plotConv=False,
+                        verbose=2,
+                        hamParams = (0,1,0.35,0,0,2/3,      # jl,jr,il,ir,ol,or,
+                                     0,0,0,   0,0,0  ,-1))  # ju,jd,it,ib,ot,ob,s
+    x.kernel()
+    Evec_2d_aligned = x.bondDimEnergies/N
     # Calculate Errors
     err_mf = np.abs(E_mf-E_ed)
     print(err_mf)
@@ -663,4 +702,9 @@ if vary_maxBondDim_2d_comp:
     plt.xlabel('Bond Dimension',fontsize=20)
     plt.ylabel('$E-E_{exact}$',fontsize=20)
     plt.legend(('Mean Field','1D DMRG','2D DMRG (aligned)','2D DMRG (not aligned)'))
-    fig1.savefig('varyMaxBondDim_'+str(bondDimVec[i])+'.pdf')
+    fig1.savefig('varyMaxBondDim_'+str(bondDimVec[-1])+'.pdf')
+
+if phaseDiagram2D:
+    N = 4
+    in_left = [0,0.25,0.5,0.75,1]
+    out_right = [0,0.25,0.5,0.75,1]
