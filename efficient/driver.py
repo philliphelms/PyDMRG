@@ -3,33 +3,34 @@ import time
 import mps_opt
 import matplotlib.pyplot as plt
 
-## Possible calculations:##################################################
-simple_tasep = False             # Simple case with tasep
-vary_systemSize = False          # TASEP, vary number of lattice sites
-vary_s = False                   # TASEP, calc J(s) and CGF(s)
-vary_maxBondDim = False          # TASEP, Vary the maximum bond dimensions
-phaseDiagram = False             # TASEP, create a phase diagram of the current vs. alpha & beta
-simpleHeis = False               # Heis, A simple test of the 1D heisenberg model calculation
-simpleFullSEP = False            # SEP, A simple test of the sep calulculation, should match simple_tasep
-reverseFullSEP = False           # SEP, The same as the simpleFullSEP test, but this time in the opposite direction
+## Possible calculations:#################################################################################################################
+simple_tasep = False                # Simple case with tasep
+vary_systemSize = False             # TASEP, vary number of lattice sites
+vary_s = False                      # TASEP, calc J(s) and CGF(s)
+vary_maxBondDim = False             # TASEP, Vary the maximum bond dimensions
+phaseDiagram = False                # TASEP, create a phase diagram of the current vs. alpha & beta
+simpleHeis = False                  # Heis, A simple test of the 1D heisenberg model calculation
+simpleFullSEP = False               # SEP, A simple test of the sep calulculation, should match simple_tasep
+reverseFullSEP = False              # SEP, The same as the simpleFullSEP test, but this time in the opposite direction
 heis2D = False # SOME PROBLEMS
-simpleIsing = False              # Ising, A simple calculation using the ising hamiltonian
-check_2d_tasep = False           # 2DSEP, Perform TASEP calcs aligned along the axis of a 2D SEP calculation (done in 4 directions)
-practice_2d_tasep = False        # 2DSEP, A simple example of an SEP
-test_ds = False                  # TASEP, Tests the spacing of s to calculate the current
-increase_maxBondDim = False      # TASEP, Slowly increases the maximum bond dimension
+simpleIsing = False                 # Ising, A simple calculation using the ising hamiltonian
+check_2d_tasep = False              # 2DSEP, Perform TASEP calcs aligned along the axis of a 2D SEP calculation (done in 4 directions)
+practice_2d_tasep = False           # 2DSEP, A simple example of an SEP
+test_ds = False                     # TASEP, Tests the spacing of s to calculate the current
+increase_maxBondDim = False         # TASEP, Slowly increases the maximum bond dimension
 # Comparing DMRG, MF & ED
-vary_s_ed = False                # SEP, Exact Diagonalization Calculation of current and CGF
-vary_s_mf = False                # SEP, Mean Field Calculation of current and CGF
-vary_s_comp_tasep = False        # TASEP, Calculations of current and CGF compared to ed & mf results
-vary_s_comp_sep = False          # SEP, calculations of CGF & Current compared to ed & mf results
-vary_maxBondDim_comp = False     # SEP, Vary Maximum bond dimensions for 1D to find errors
-phaseDiagram_comp = False        # SEP, Create phase diagram via MF, ED & DMRG
+vary_s_ed = False                   # SEP, Exact Diagonalization Calculation of current and CGF
+vary_s_mf = False                   # SEP, Mean Field Calculation of current and CGF
+vary_s_comp_tasep = False           # TASEP, Calculations of current and CGF compared to ed & mf results
+vary_s_comp_sep = False             # SEP, calculations of CGF & Current compared to ed & mf results
+vary_maxBondDim_comp = False        # SEP, Vary Maximum bond dimensions for 1D to find errors
+phaseDiagram_comp = False           # SEP, Create phase diagram via MF, ED & DMRG
 # Full 2D Comparison
-vary_maxBondDim_2d_comp = False  # 2DSEP, Vary Maximum bond dimensions for 2D to find errors
-vary_maxBondDim_2d_sep_comp = True # 2DSEP, Vary Max Bond Dimensions for 2D to find errors (using sep instead of tasep)
-phaseDiagram2D = False           # Create a phase diagram for the 2D SSEP
-##################################################
+vary_maxBondDim_2d_comp = False     # 2DSEP, Vary Maximum bond dimensions for 2D to find errors
+vary_maxBondDim_2d_sep_comp = False # 2DSEP, Vary Max Bond Dimensions for 2D to find errors (using sep instead of tasep)
+phaseDiagram_ssep_2D = True        # Create a phase diagram for the 2D SSEP
+phaseDiagram_ssep_1D = True        # Create a phase diagram for the 1D SSEP
+###########################################################################################################################################
 
 
 # Set Plotting parameters
@@ -779,7 +780,72 @@ if vary_maxBondDim_2d_sep_comp:
     plt.legend(('Mean Field','1D DMRG','2D DMRG (aligned)','2D DMRG (not aligned)'))
     fig1.savefig('varyMaxBondDim_'+str(bondDimVec[-1])+'.pdf')
 
-if phaseDiagram2D:
-    N = 4
-    in_left = [0,0.25,0.5,0.75,1]
-    out_right = [0,0.25,0.5,0.75,1]
+if phaseDiagram_ssep_2D:
+    N = 10
+    npts = 50
+    betaVec = np.linspace(0,1,npts)
+    alphaVec = np.linspace(0,1,npts)
+    s_vec = np.array([-0.1,0.1])
+    J_mat = np.zeros((npts,npts))
+    for i in range(len(betaVec)):
+        for j in range(len(alphaVec)):
+            print('-'*20+'\nalpha = {}%, beta = {}%\n'.format(j/len(alphaVec)*100,i/len(betaVec)*100))
+            print('alpha = {}, beta = {}\n'.format(alphaVec[j],betaVec[i])+'-'*20)
+            x = mps_opt.MPS_OPT(N=N**2,
+                                maxBondDim = [10,30],
+                                hamType = "sep_2d",
+                                verbose = 2,
+                                hamParams = (0.25,0.25,0,0,0,0,
+                                             0.25,0.25,alphaVec[j],betaVec[i],betaVec[i],alphaVec[j],s_vec[0]))
+            E1 = x.kernel()
+            x = mps_opt.MPS_OPT(N=N**2,
+                                maxBondDim = [10,30],
+                                hamType = "sep_2d",
+                                verbose = 2,
+                                hamParams = (0.25,0.25,0,0,0,0,
+                                             0.25,0.25,alphaVec[j],betaVec[i],betaVec[i],alphaVec[j],s_vec[1]))
+            E2 = x.kernel()
+            J_mat[i,j] = np.abs((E1-E2)/(s_vec[1]-s_vec[0])/N)
+    x,y = np.meshgrid(betaVec,alphaVec)
+    f = plt.figure()
+    plt.pcolor(x,y,J_mat)
+    plt.colorbar()
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.xlabel('alpha',fontsize=20)
+    plt.ylabel('beta',fontsize=20)
+    f.savefig('my_dmrg_phaseDiagram_ssep_2d.pdf')
+
+if phaseDiagram_ssep_1D:
+    N = 10
+    npts = 50
+    betaVec = np.linspace(0,1,npts)
+    alphaVec = np.linspace(0,1,npts)
+    s_vec = np.array([-0.1,0.1])
+    J_mat = np.zeros((npts,npts))
+    for i in range(len(betaVec)):
+        for j in range(len(alphaVec)):
+            print('-'*20+'\nalpha = {}%, beta = {}%\n'.format(j/len(alphaVec)*100,i/len(betaVec)*100))
+            print('alpha = {}, beta = {}\n'.format(alphaVec[j],betaVec[i])+'-'*20)
+            x = mps_opt.MPS_OPT(N=N,
+                                maxBondDim = [10,20,30],
+                                hamType = "sep",
+                                verbose = 0,
+                                hamParams = (alphaVec[j],betaVec[i],0.5,0.5,betaVec[i],alphaVec[j],s_vec[0]))
+            E1 = x.kernel()
+            x = mps_opt.MPS_OPT(N=N,
+                                maxBondDim = [10,20,30],
+                                hamType = "sep",
+                                verbose = 0,
+                                hamParams = (alphaVec[j],betaVec[i],0.5,0.5,betaVec[i],alphaVec[j],s_vec[1]))
+            E2 = x.kernel()
+            J_mat[i,j] = np.abs((E1-E2)/(s_vec[1]-s_vec[0])/N)
+    x,y = np.meshgrid(betaVec,alphaVec)
+    f = plt.figure()
+    plt.pcolor(x,y,J_mat)
+    plt.colorbar()
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.xlabel('alpha',fontsize=20)
+    plt.ylabel('beta',fontsize=20)
+    f.savefig('my_dmrg_phaseDiagram_ssep_1D.pdf')
