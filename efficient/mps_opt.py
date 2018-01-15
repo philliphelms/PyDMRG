@@ -10,7 +10,7 @@ from numpy import ma
 
 class MPS_OPT:
 
-    def __init__(self, N=10, d=2, maxBondDim=[10,20], tol=1e-5, maxIter=100,\
+    def __init__(self, N=10, d=2, maxBondDim=[10,20], tol=1e-5, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
                  usePyscf=True,initialGuess=0.5,ed_limit=10,\
@@ -382,8 +382,22 @@ class MPS_OPT:
                     totIterCnt += 1
                     currIterCnt = 0
             elif currIterCnt >= self.maxIter:
-                if self.verbose > 0:
-                    print('!'*75+'\nConvergence not acheived\n'+'\tE={}\n'.format(self.E)+'!'*75)
+                if self.maxBondDimInd is (len(self.maxBondDim)-1):
+                    if self.verbose > 0:
+                        print('!'*75+'\nConvergence not acheived\n'+'\tE={}\n'.format(self.E)+'!'*75)
+                    self.finalEnergy = self.E
+                    converged = True
+                else:
+                    if self.verbose > 0:
+                        print('-'*35+'\nNot Converged for Bond Dimension = {}\n at Energy = {}'.format(self.maxBondDimCurr,self.E)+'\n'+'-'*35)
+                    self.bondDimEnergies[self.maxBondDimInd] = self.E
+                    self.maxBondDimInd += 1
+                    self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
+                    self.increaseBondDim()
+                    self.generate_f()
+                    self.calc_initial_f()
+                    totIterCnt += 1
+                    currIterCnt = 0
                 self.finalEnergy = self.E
                 converged = True
             else:

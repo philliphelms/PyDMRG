@@ -27,9 +27,9 @@ vary_maxBondDim_comp = False        # SEP, Vary Maximum bond dimensions for 1D t
 phaseDiagram_comp = False           # SEP, Create phase diagram via MF, ED & DMRG
 # Full 2D Comparison
 vary_maxBondDim_2d_comp = False     # 2DSEP, Vary Maximum bond dimensions for 2D to find errors
-vary_maxBondDim_2d_sep_comp = False # 2DSEP, Vary Max Bond Dimensions for 2D to find errors (using sep instead of tasep)
-phaseDiagram_ssep_2D = True        # Create a phase diagram for the 2D SSEP
-phaseDiagram_ssep_1D = True        # Create a phase diagram for the 1D SSEP
+vary_maxBondDim_2d_sep_comp = True # 2DSEP, Vary Max Bond Dimensions for 2D to find errors (using sep instead of tasep)
+phaseDiagram_ssep_2D = False        # Create a phase diagram for the 2D SSEP
+phaseDiagram_ssep_1D = False        # Create a phase diagram for the 1D SSEP
 ###########################################################################################################################################
 
 
@@ -669,8 +669,7 @@ if phaseDiagram_comp:
 
 if vary_maxBondDim_2d_comp:
     N = 10
-    bondDimVec = [2,3,4,5,6,7,8,9,10,20,30,40,50,60,70,80,90,100]
-    col_vec = ['r','y','g','b','c','k','m']
+    bondDimVec = [2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200]
     # Run 1D Calculation for comparison
     Evec_1d = np.zeros(len(bondDimVec))
     diffVec = np.zeros(len(bondDimVec))
@@ -735,8 +734,8 @@ if vary_maxBondDim_2d_comp:
     fig1.savefig('varyMaxBondDim_'+str(bondDimVec[-1])+'.pdf')
 
 if vary_maxBondDim_2d_sep_comp:
-    N = 4
-    bondDimVec = [2,4,8,12,20,30]
+    N = 10
+    bondDimVec = [2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200]
     # Run 1D Calculation for comparison
     x = mps_opt.MPS_OPT(N=N,
                         maxBondDim = bondDimVec,
@@ -781,8 +780,8 @@ if vary_maxBondDim_2d_sep_comp:
     fig1.savefig('varyMaxBondDim_'+str(bondDimVec[-1])+'.pdf')
 
 if phaseDiagram_ssep_2D:
-    N = 10
-    npts = 50
+    N = 8
+    npts = 30
     betaVec = np.linspace(0,1,npts)
     alphaVec = np.linspace(0,1,npts)
     s_vec = np.array([-0.1,0.1])
