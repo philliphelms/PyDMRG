@@ -734,8 +734,8 @@ if vary_maxBondDim_2d_comp:
     fig1.savefig('varyMaxBondDim_'+str(bondDimVec[-1])+'.pdf')
 
 if vary_maxBondDim_2d_sep_comp:
-    N = 10
-    bondDimVec = [2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200]
+    N = 12
+    bondDimVec = [2,4,6]#,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100,110,120,130,140,150]
     # Run 1D Calculation for comparison
     x = mps_opt.MPS_OPT(N=N,
                         maxBondDim = bondDimVec,
@@ -746,6 +746,7 @@ if vary_maxBondDim_2d_sep_comp:
     E_ed = x.exact_diag()
     E_mf = x.mean_field()
     # Run 2D in opposite direction
+    print('\nRun 2D - Not Aligned\n')
     x = mps_opt.MPS_OPT(N=N**2,
                         maxBondDim = bondDimVec,
                         hamType="sep_2d",
@@ -754,6 +755,7 @@ if vary_maxBondDim_2d_sep_comp:
     x.kernel()
     Evec_2d_notaligned = x.bondDimEnergies/N
     # Run 2D in aligned direction
+    print('\nRun 2D - Aligned\n')
     x = mps_opt.MPS_OPT(N=N**2,
                         maxBondDim = bondDimVec,
                         hamType="sep_2d",
@@ -791,14 +793,14 @@ if phaseDiagram_ssep_2D:
             print('-'*20+'\nalpha = {}%, beta = {}%\n'.format(j/len(alphaVec)*100,i/len(betaVec)*100))
             print('alpha = {}, beta = {}\n'.format(alphaVec[j],betaVec[i])+'-'*20)
             x = mps_opt.MPS_OPT(N=N**2,
-                                maxBondDim = [10,30],
+                                maxBondDim = [10,30,50],
                                 hamType = "sep_2d",
                                 verbose = 2,
                                 hamParams = (0.25,0.25,0,0,0,0,
                                              0.25,0.25,alphaVec[j],betaVec[i],betaVec[i],alphaVec[j],s_vec[0]))
             E1 = x.kernel()
             x = mps_opt.MPS_OPT(N=N**2,
-                                maxBondDim = [10,30],
+                                maxBondDim = [10,30,50],
                                 hamType = "sep_2d",
                                 verbose = 2,
                                 hamParams = (0.25,0.25,0,0,0,0,

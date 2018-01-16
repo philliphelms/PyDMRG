@@ -13,7 +13,7 @@ class MPS_OPT:
     def __init__(self, N=10, d=2, maxBondDim=[10,20], tol=1e-5, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
-                 usePyscf=True,initialGuess=0.5,ed_limit=10,\
+                 usePyscf=True,initialGuess=0.5,ed_limit=12,\
                  saveResults=True,dataFolder='data/',verbose=2):
         # Import parameters
         self.N = N
@@ -385,6 +385,7 @@ class MPS_OPT:
                 if self.maxBondDimInd is (len(self.maxBondDim)-1):
                     if self.verbose > 0:
                         print('!'*75+'\nConvergence not acheived\n'+'\tE={}\n'.format(self.E)+'!'*75)
+                    self.bondDimEnergies[self.maxBondDimInd] = self.E
                     self.finalEnergy = self.E
                     converged = True
                 else:
@@ -398,8 +399,6 @@ class MPS_OPT:
                     self.calc_initial_f()
                     totIterCnt += 1
                     currIterCnt = 0
-                self.finalEnergy = self.E
-                converged = True
             else:
                 if self.verbose > 2:
                     print('\t'*1+'Energy Change {}\nNeeded <{}'.format(np.abs(self.E-E_prev),self.tol))
@@ -413,7 +412,7 @@ class MPS_OPT:
     # ADD THE ABILITY TO DO OTHER TYPES OF CALCULATIONS FROM THE MPS OBJECT
     def exact_diag(self,maxIter=10000,tol=1e-10):
         if self.N > self.ed_limit:
-            print('!'*50+'\nExact Diagonalization limited to systems of 10 or fewer sites\n'+'!'*50)
+            print('!'*50+'\nExact Diagonalization limited to systems of 12 or fewer sites\n'+'!'*50)
             return 0
         if not hasattr(self,'mpo'):
             self.generate_mpo()
