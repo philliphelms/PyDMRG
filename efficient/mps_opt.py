@@ -165,6 +165,9 @@ class MPS_OPT:
             # function([x]) => [array_like_x]
             if self.verbose > 6:
                 print('\t'*5+'Eigenvalue Iteration')
+            #tmp1 =  self.einsum('',self.F[i+1],x)
+            #tmp2 = self.einsum('',self.mpo.W[i],tmp1)
+            #return = self.einsum('',self.F[i],tmp2)
             return self.einsum('ij,j->i',H,x)
         def precond(dx,e,x0):
             # function(dx, e, x0) => array_like_dx
