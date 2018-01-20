@@ -4,7 +4,7 @@ import mps_opt
 import matplotlib.pyplot as plt
 
 ## Possible calculations:#################################################################################################################
-simple_tasep = False                # Simple case with tasep
+simple_tasep = True                # Simple case with tasep
 vary_systemSize = False             # TASEP, vary number of lattice sites
 vary_s = False                      # TASEP, calc J(s) and CGF(s)
 vary_maxBondDim = False             # TASEP, Vary the maximum bond dimensions
@@ -27,7 +27,7 @@ vary_maxBondDim_comp = False        # SEP, Vary Maximum bond dimensions for 1D t
 phaseDiagram_comp = False           # SEP, Create phase diagram via MF, ED & DMRG
 # Full 2D Comparison
 vary_maxBondDim_2d_comp = False     # 2DSEP, Vary Maximum bond dimensions for 2D to find errors
-vary_maxBondDim_2d_sep_comp = True # 2DSEP, Vary Max Bond Dimensions for 2D to find errors (using sep instead of tasep)
+vary_maxBondDim_2d_sep_comp = False # 2DSEP, Vary Max Bond Dimensions for 2D to find errors (using sep instead of tasep)
 phaseDiagram_ssep_2D = False        # Create a phase diagram for the 2D SSEP
 phaseDiagram_ssep_1D = False        # Create a phase diagram for the 1D SSEP
 ###########################################################################################################################################
@@ -47,6 +47,7 @@ if simple_tasep:
     x = mps_opt.MPS_OPT(N = 10,
                         hamType = 'tasep',
                         plotExpVals = True,
+                        maxBondDim = 8,
                         plotConv = True,
                         hamParams = (0.35,-1,2/3))
     x.kernel()

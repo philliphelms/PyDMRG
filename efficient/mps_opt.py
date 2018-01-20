@@ -145,30 +145,42 @@ class MPS_OPT:
                 print('\t'*3+'at site {}'.format(i))
             self.F[i] = self.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(self.M[i]),self.mpo.W[i],self.M[i],self.F[i+1])
 
-    def local_optimization(self,i):
+    def local_optimization(self,i,direction):
         if self.verbose > 3:
             print('\t'*2+'Local optimization at site {}'.format(i))
         if self.usePyscf:
-            return self.pyscf_optimization(i)
+            return self.pyscf_optimization(i,direction)
         else:
-            return self.slow_optimization(i)
+            return self.slow_optimization(i,direction)
 
-    def pyscf_optimization(self,i):
+    def pyscf_optimization(self,i,direction):
         if self.verbose > 5:
             print('\t'*4+'Using Pyscf optimization routine')
-        H = self.einsum('jlp,lmin,kmq->ijknpq',self.F[i],self.mpo.W[i],self.F[i+1])
-        (n1,n2,n3,n4,n5,n6) = H.shape
-        H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
+        bad_scaling = True
+        if bad_scaling:
+            H = self.einsum('jlp,lmin,kmq->ijknpq',self.F[i],self.mpo.W[i],self.F[i+1])
+            (n1,n2,n3,n4,n5,n6) = H.shape
+            H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
-            H = -H
+            if bad_scaling:
+                H = -H
         def opt_fun(x):
             # function([x]) => [array_like_x]
             if self.verbose > 6:
                 print('\t'*5+'Eigenvalue Iteration')
-            #tmp1 =  self.einsum('',self.F[i+1],x)
-            #tmp2 = self.einsum('',self.mpo.W[i],tmp1)
-            #return = self.einsum('',self.F[i],tmp2)
-            return self.einsum('ij,j->i',H,x)
+            # Might need a direction here to specify the reshaping of x
+            if not bad_scaling:
+                if direction is 'right':
+                    (n1,n2,n3) = self.M[i].shape
+                if direction is 'left':
+                    M_reshape = np.swapaxes(self.M[i],0,1)
+                    (n1,n2,n3) = M_reshape.shape
+                x = np.reshape(x,(n1,n2,n3))
+                in_sum1 =  self.einsum('',self.F[i+1],x)
+                #in_sum2 = self.einsum('',self.mpo.W[i],tmp1)
+                #return = self.einsum('',self.F[i],tmp2)
+            else:
+                return self.einsum('ij,j->i',H,x)
         def precond(dx,e,x0):
             # function(dx, e, x0) => array_like_dx
             return dx
@@ -180,7 +192,7 @@ class MPS_OPT:
         return E
 
 
-    def slow_optimization(self,i):
+    def slow_optimization(self,i,direction):
         if self.verbose > 5:
             print('\t'*4+'Using slow optimization routine')
         H = self.einsum('jlp,lmin,kmq->ijknpq',self.F[i],self.mpo.W[i],self.F[i+1])
@@ -349,22 +361,28 @@ class MPS_OPT:
             if self.verbose > 1:
                 print('\t'*0+'Right Sweep {}'.format(totIterCnt))
             for i in range(int(self.N-1)):
-                self.E = self.local_optimization(i)
+                self.E = self.local_optimization(i,'right')
                 self.calc_observables(i)
                 self.normalize(i,'right')
                 self.update_f(i,'right')
                 self.plot_observables()
                 self.plot_convergence(i)
+                print('F_shape = {}'.format(self.F[i].shape))
+                print('M_shape = {}'.format(self.M[i].shape))
+                print('W_shape = {}'.format(self.mpo.W[i].shape))
             # Left Sweep ---------------------------
             if self.verbose > 1:
                 print('\t'*0+'Left Sweep {}'.format(totIterCnt))
             for i in range(int(self.N-1),0,-1):
-                self.E = self.local_optimization(i)
+                self.E = self.local_optimization(i,'left')
                 self.calc_observables(i)
                 self.normalize(i,'left')
                 self.update_f(i,'left')
                 self.plot_observables()
                 self.plot_convergence(i)
+                print('F_shape = {}'.format(self.F[i].shape))
+                print('M_shape = {}'.format(self.M[i].shape))
+                print('W_shape = {}'.format(self.mpo.W[i].shape))
             # Check Convergence --------------------
             if np.abs(self.E-E_prev) < self.tol:
                 if self.maxBondDimInd is (len(self.maxBondDim)-1):
