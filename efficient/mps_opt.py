@@ -23,8 +23,6 @@ class MPS_OPT:
             self.maxBondDim = maxBondDim
         else:
             self.maxBondDim = [maxBondDim]
-        self.inside_iter_time = np.zeros(len(self.maxBondDim))
-        self.inside_iter_cnt = np.zeros(len(self.maxBondDim))
         self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
         if isinstance(tol,list):
             self.tol = tol
@@ -55,6 +53,12 @@ class MPS_OPT:
         self.initialGuess = initialGuess
         self.ed_limit = ed_limit
 
+        self.inside_iter_time = np.zeros(len(self.maxBondDim))
+        self.inside_iter_cnt = np.zeros(len(self.maxBondDim))
+        self.outside_iter_time = np.zeros(len(self.maxBondDim))
+        self.outside_iter_cnt = np.zeros(len(self.maxBondDim))
+        self.time_total = time.time()
+
         self.exp_val_figure=False
         self.conv_figure=False
 
@@ -66,7 +70,7 @@ class MPS_OPT:
         self.bondDimEnergies = np.zeros(len(self.maxBondDim))
 
     def generate_mps(self):
-        if self.verbose > 3:
+        if self.verbose > 4:
             print('\t'*2+'Generating MPS')
         self.M = []
         for i in range(int(self.N/2)):
@@ -89,15 +93,15 @@ class MPS_OPT:
                 self.M.insert(len(self.M),self.initialGuess*np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
 
     def generate_mpo(self):
-        if self.verbose > 3:
+        if self.verbose > 4:
             print('\t'*2+'Generating MPO')
         self.mpo = mpo.MPO(self.hamType,self.hamParams,self.N)
 
     def right_canonicalize_mps(self):
-        if self.verbose > 3:
+        if self.verbose > 4:
             print('\t'*2+'Performing Right Canonicalization')
         for i in range(1,len(self.M))[::-1]:
-            if self.verbose > 4:
+            if self.verbose > 5:
                 print('\t'*3+'at site {}'.format(i))
             self.normalize(i,'left')
         # Sloppy fix to prevent super large values in initial matrix
@@ -105,7 +109,7 @@ class MPS_OPT:
         self.M[0] = np.swapaxes(self.M[-1],1,2)
 
     def generate_f(self):
-        if self.verbose > 3:
+        if self.verbose > 4:
             print('\t'*2+'Generating initial F arrays')
         self.F = []
         self.F.insert(len(self.F),np.array([[[1]]]))
@@ -116,7 +120,7 @@ class MPS_OPT:
         self.F.insert(len(self.F),np.array([[[1]]]))
 
     def normalize(self,i,direction):
-        if self.verbose > 3:
+        if self.verbose > 4:
             print('\t'*2+'Normalization at site {} in direction: {}'.format(i,direction))
         if direction is 'right':
             (n1,n2,n3) = self.M[i].shape
@@ -150,14 +154,14 @@ class MPS_OPT:
 
     def calc_initial_f(self):
         if self.verbose > 3:
-            print('\t'*2+'Calculating initial F')
+            print('\t'*2+'Calculating all entries in F')
         for i in range(int(self.N)-1,0,-1):
             if self.verbose > 4:
                 print('\t'*3+'at site {}'.format(i))
             self.F[i] = self.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(self.M[i]),self.mpo.W[i],self.M[i],self.F[i+1])
 
     def local_optimization(self,i):
-        if self.verbose > 3:
+        if self.verbose > 4:
             print('\t'*2+'Local optimization at site {}'.format(i))
         if self.usePyscf:
             #return self.pyscf_optimization_badScaling(i)
@@ -186,13 +190,13 @@ class MPS_OPT:
         E,v = self.eig(opt_fun,np.reshape(self.M[i],(-1)),precond)
         self.M[i] = np.reshape(v,(n1,n2,n3))
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): E = -E
-        if self.verbose > 2:
-            print('\t'+'Current Energy = {}'.format(E))
+        if self.verbose > 3:
+            print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(i,E))
         return E
 
     def pyscf_optimization_badScaling(self,i):
         if self.verbose > 5:
-            print('\t'*4+'Using Pyscf optimization routine')
+            print('\t'*4+'Using Pyscf optimization routine with incorrect scaling')
         H = self.einsum('jlp,lmin,kmq->ijknpq',self.F[i],self.mpo.W[i],self.F[i+1])
         (n1,n2,n3,n4,n5,n6) = H.shape
         H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
@@ -209,8 +213,8 @@ class MPS_OPT:
         E,v = self.eig(opt_fun,np.reshape(self.M[i],(-1)),precond)
         self.M[i] = np.reshape(v,(n1,n2,n3))
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): E = -E
-        if self.verbose > 2:
-            print('\t'+'Current Energy = {}'.format(E))
+        if self.verbose > 3:
+            print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(i,E))
         return E
 
     def slow_optimization(self,i):
@@ -231,12 +235,12 @@ class MPS_OPT:
         E = u_sort[ind]
         v = v[:,ind]
         self.M[i] = np.reshape(v,(n1,n2,n3))
-        if self.verbose > 2:
-            print('\t'+'Current Energy = {}'.format(E))
+        if self.verbose > 3:
+            print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(i,E))
         return E
 
     def update_f(self,i,direction):
-        if self.verbose > 3:
+        if self.verbose > 4:
             print('\t'*2+'Updating F at site {}'.format(i))
         if direction is 'right':
             self.F[i+1] = self.einsum('jlp,ijk,lmin,npq->kmq',self.F[i],np.conj(self.M[i]),self.mpo.W[i],self.M[i])
@@ -246,7 +250,7 @@ class MPS_OPT:
             raise NameError('Direction must be left or right')
 
     def calc_observables(self,site):
-        if self.verbose > 3:
+        if self.verbose > 5:
             print('\t'*2+'Calculating Observables')
         if (self.hamType is "heis") or (self.hamType is "heis_2d") or (self.hamType is 'ising'):
             self.calc_spin_x[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sx,self.M[site])
@@ -341,7 +345,7 @@ class MPS_OPT:
             plt.pause(0.0001)
 
     def saveFinalResults(self,calcType):
-        if self.verbose > 3:
+        if self.verbose > 5:
             print('\t'*2+'Writing final results to output file')
         if self.saveResults:
             # Create Filename:
@@ -381,7 +385,7 @@ class MPS_OPT:
         self.E = E_prev
         while not converged:
             # Right Sweep --------------------------
-            if self.verbose > 1:
+            if self.verbose > 2:
                 print('\t'*0+'Right Sweep {}, E = {}'.format(totIterCnt,self.E))
             for i in range(int(self.N-1)):
                 inside_t1 = time.time()
@@ -395,7 +399,7 @@ class MPS_OPT:
                 self.inside_iter_time[self.maxBondDimInd] += inside_t2-inside_t1
                 self.inside_iter_cnt[self.maxBondDimInd] += 1
             # Left Sweep ---------------------------
-            if self.verbose > 1:
+            if self.verbose > 2:
                 print('\t'*0+'Left Sweep  {}, E = {}'.format(totIterCnt,self.E))
             for i in range(int(self.N-1),0,-1):
                 inside_t1 = time.time()
@@ -409,20 +413,36 @@ class MPS_OPT:
                 self.inside_iter_time[self.maxBondDimInd] += inside_t2-inside_t1
                 self.inside_iter_cnt[self.maxBondDimInd] += 1
             # Check Convergence --------------------
+            self.tf = time.time()
+            self.outside_iter_time[self.maxBondDimInd] += tf-t0
+            self.outside_iter_cnt[self.maxBondDimInd] += 1
+            self.t0 = time.time()
             if np.abs(self.E-E_prev) < self.tol[self.maxBondDimInd]:
                 if self.maxBondDimInd is (len(self.maxBondDim)-1):
-                    if self.verbose > 0:
-                        print('#'*75+'\nConverged at E = {} for Bond Dimension = {}\nAverage time per iteration = {}'\
-                              .format(self.E,self.maxBondDimCurr,self.inside_iter_time[self.maxBondDimInd]/self.inside_iter_cnt[self.maxBondDimInd])\
-                              +'\n'+'#'*75)
                     self.finalEnergy = self.E
                     self.bondDimEnergies[self.maxBondDimInd] = self.E
+                    self.time_total = time.time() - self.time_total
                     converged = True
-                else:
                     if self.verbose > 0:
-                        print('-'*35+'\nConverged for Bond Dimension = {}\n at Energy = {}\nAverage time per iteration = {}'\
-                              .format(self.maxBondDimCurr,self.E,self.inside_iter_time[self.maxBondDimInd]/self.inside_iter_cnt[self.maxBondDimInd]\
-                              )+'\n'+'-'*35)
+                        print('#'*75)
+                        print('\nConverged at E = {}'.format(self.finalEnergy))
+                        if self.verbose > 1:
+                            print('\n  Final Bond Dimension = {}'.format(self.maxBondDimCurr))
+                            print('\n  Avg time per iter for final M = {}'.format(self.inside_iter_time[self.maxBondDimInd]/\
+                                                                                  self.inside_iter_cnt [self.maxBondDimInd]))
+                            print('\n  Total Time = {}\n'.format(self.time_total))
+                        print('#'*75)
+                else:
+                    if self.verbose > 1:
+                        print('-'*45)
+                        print('\nConverged at E = {}'.format(self.E))
+                        if self.verbose > 2:
+                            print('\n  Current Bond Dimension = {}'.format(self.maxBondDimCurr))
+                            print('\n  Avg time per inner iter = {}'.format(self.inside_iter_time[self.maxBondDimInd]/\
+                                                                            self.inside_iter_cnt [self.maxBondDimInd]))
+                            print('\n  Total time for M({}) = {}'.format(self.maxBondDimCurr,self.outside_iter_time[self.maxBondDimInd]))
+                            print('\n  Required number of iters = {}\n'.format(self.outside_iter_cnt[self.maxBondDimInd]))
+                        print('-'*45)
                     self.bondDimEnergies[self.maxBondDimInd] = self.E
                     self.maxBondDimInd += 1
                     self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
@@ -433,16 +453,29 @@ class MPS_OPT:
                     currIterCnt = 0
             elif currIterCnt >= self.maxIter[self.maxBondDimInd]-1:
                 if self.maxBondDimInd is (len(self.maxBondDim)-1):
-                    if self.verbose > 0:
-                        print('!'*75+'\nConvergence not acheived\n'+'\tE={}\n'.format(self.E)+'!'*75)
                     self.bondDimEnergies[self.maxBondDimInd] = self.E
                     self.finalEnergy = self.E
                     converged = True
-                else:
                     if self.verbose > 0:
-                        print('-'*35+'\nNot Converged for Bond Dimension = {}\n at Energy = {}\nAverage time per iteration = {}'\
-                              .format(self.maxBondDimCurr,self.E,self.inside_iter_time[self.maxBondDimInd]/self.inside_iter_cnt[self.maxBondDimInd])\
-                              +'\n'+'-'*35)
+                        print('!'*75)
+                        print('\nNot Converged at E = {}'.format(self.finalEnergy))
+                        if self.verbose > 1:
+                            print('\n  Final Bond Dimension = {}'.format(self.maxBondDimCurr))
+                            print('\n  Avg time per iter for final M = {}'.format(self.inside_iter_time[self.maxBondDimInd]/\
+                                                                                  self.inside_iter_cnt [self.maxBondDimInd]))
+                            print('\n  Total Time = {}\n'.format(self.time_total))
+                        print('!'*75)
+                else:
+                    if self.verbose > 1:
+                        print('-'*45)
+                        print('\nConverged at E = {}'.format(self.E))
+                        if self.verbose > 2:
+                            print('\n  Current Bond Dimension = {}'.format(self.maxBondDimCurr))
+                            print('\n  Avg time per inner iter = {}'.format(self.inside_iter_time[self.maxBondDimInd]/\
+                                                                            self.inside_iter_cnt [self.maxBondDimInd]))
+                            print('\n  Total time for M({}) = {}'.format(self.maxBondDimCurr,self.outside_iter_time[self.maxBondDimInd]))
+                            print('\n  Required number of iters = {}\n'.format(self.outside_iter_cnt[self.maxBondDimInd]))
+                        print('-'*45)
                     self.bondDimEnergies[self.maxBondDimInd] = self.E
                     self.maxBondDimInd += 1
                     self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
@@ -452,7 +485,7 @@ class MPS_OPT:
                     totIterCnt += 1
                     currIterCnt = 0
             else:
-                if self.verbose > 2:
+                if self.verbose > 3:
                     print('\t'*1+'Energy Change {}\nNeeded <{}'.format(np.abs(self.E-E_prev),self.tol[self.maxBondDimInd]))
                 E_prev = self.E
                 currIterCnt += 1
