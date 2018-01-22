@@ -736,39 +736,42 @@ if vary_maxBondDim_2d_comp:
 
 if vary_maxBondDim_2d_sep_comp:
     N = 12
-<<<<<<< HEAD
-    bondDimVec = [2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200,\
-                  220,240,260,280,300,320,340,360,380,400,450,500,550,600,700,800,900,1000]
-=======
     bondDimVec = [2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200,210,\
                   220,230,240,250,260,270,280,290,300,400,500,600,700,800,900,1000]
->>>>>>> e779e7f86b6a385994af356ff69876deb91c0abc
+    tol = [1e-1]*(len(bondDimVec)-1)
+    tol.insert(-1,1e-10)
+    maxIter = [2]*(len(bondDimVec)-1)
+    maxIter.insert(-1,10)
+
     # Run 1D Calculation for comparison
     x = mps_opt.MPS_OPT(N=N,
                         maxBondDim = bondDimVec,
-                        hamType = "sep",
-                        hamParams = (0.9,0.1,0.5,0.5,0.1,0.9,-1))
+                        hamType    = "sep",
+                        hamParams  = (0.9,0.1,0.5,0.5,0.1,0.9,-1))
     x.kernel()
     Evec_1d = x.bondDimEnergies
     E_ed = x.exact_diag()
     E_mf = x.mean_field()
     # Run 2D in opposite direction
     print('\nRun 2D - Not Aligned\n')
-    x = mps_opt.MPS_OPT(N=N**2,
+    x = mps_opt.MPS_OPT(N          = N**2,
                         maxBondDim = bondDimVec,
-                        hamType="sep_2d",
-                        maxIter = 2,
-                        hamParams = (0,0,0,0,0,0,
-                                     0.5,0.5,0.9,0.1,0.1,0.9,-1))
+                        hamType    ="sep_2d",
+                        maxIter    = maxIter,
+                        tol        = tol,
+                        hamParams  = (0,0,0,0,0,0,
+                                      0.5,0.5,0.9,0.1,0.1,0.9,-1))
     x.kernel()
     Evec_2d_notaligned = x.bondDimEnergies/N
     # Run 2D in aligned direction
     print('\nRun 2D - Aligned\n')
     x = mps_opt.MPS_OPT(N=N**2,
                         maxBondDim = bondDimVec,
-                        hamType="sep_2d",
-                        maxIter = 2,
-                        hamParams = (0.5,0.5,0.9,0.1,0.1,0.9,      # jl,jr,il,ir,ol,or,
+                        hamType    = "sep_2d",
+                        verbose    = 3,
+                        maxIter    = maxIter,
+                        tol        = tol,
+                        hamParams  = (0.5,0.5,0.9,0.1,0.1,0.9,      # jl,jr,il,ir,ol,or,
                                      0,0,0,   0,0,0  ,-1))         # ju,jd,it,ib,ot,ob,s
     x.kernel()
     Evec_2d_aligned = x.bondDimEnergies/N

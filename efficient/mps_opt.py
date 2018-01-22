@@ -10,7 +10,7 @@ from numpy import ma
 
 class MPS_OPT:
 
-    def __init__(self, N=10, d=2, maxBondDim=[10,20], tol=1e-5, maxIter=10,\
+    def __init__(self, N=10, d=2, maxBondDim=[10,50,100], tol=1e-10, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
                  usePyscf=True,initialGuess=0.5,ed_limit=12,\
@@ -23,11 +23,20 @@ class MPS_OPT:
             self.maxBondDim = maxBondDim
         else:
             self.maxBondDim = [maxBondDim]
-        self.iter_time = np.zeros(len(self.maxBondDim))
-        self.iter_cnt = np.zeros(len(self.maxBondDim))
+        self.inside_iter_time = np.zeros(len(self.maxBondDim))
+        self.inside_iter_cnt = np.zeros(len(self.maxBondDim))
         self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
-        self.tol = tol
-        self.maxIter = maxIter
+        if isinstance(tol,list):
+            self.tol = tol
+        else:
+            self.tol = [tol]*len(self.maxBondDim)
+        if isinstance(maxIter,list):
+            self.maxIter = maxIter
+        else:
+            self.maxIter = [maxIter]*len(self.maxBondDim)
+        print(len(self.maxIter))
+        print(len(self.maxBondDim))
+        assert(len(self.maxIter) is len(self.maxBondDim))
         self.hamType = hamType
         self.hamParams = hamParams
         self.plotExpVals = plotExpVals
@@ -147,15 +156,16 @@ class MPS_OPT:
                 print('\t'*3+'at site {}'.format(i))
             self.F[i] = self.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(self.M[i]),self.mpo.W[i],self.M[i],self.F[i+1])
 
-    def local_optimization(self,i,direction):
+    def local_optimization(self,i):
         if self.verbose > 3:
             print('\t'*2+'Local optimization at site {}'.format(i))
         if self.usePyscf:
-            return self.pyscf_optimization(i,direction)
+            #return self.pyscf_optimization_badScaling(i)
+            return self.pyscf_optimization(i)
         else:
-            return self.slow_optimization(i,direction)
+            return self.slow_optimization(i)
 
-    def pyscf_optimization(self,i,direction):
+    def pyscf_optimization(self,i):
         if self.verbose > 5:
             print('\t'*4+'Using Pyscf optimization routine')
         (n1,n2,n3) = self.M[i].shape
@@ -180,8 +190,30 @@ class MPS_OPT:
             print('\t'+'Current Energy = {}'.format(E))
         return E
 
+    def pyscf_optimization_badScaling(self,i):
+        if self.verbose > 5:
+            print('\t'*4+'Using Pyscf optimization routine')
+        H = self.einsum('jlp,lmin,kmq->ijknpq',self.F[i],self.mpo.W[i],self.F[i+1])
+        (n1,n2,n3,n4,n5,n6) = H.shape
+        H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
+        if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
+            H = -H
+        def opt_fun(x):
+            # function([x]) => [array_like_x]
+            if self.verbose > 6:
+                print('\t'*5+'Eigenvalue Iteration')
+            return self.einsum('ij,j->i',H,x)
+        def precond(dx,e,x0):
+            # function(dx, e, x0) => array_like_dx
+            return dx
+        E,v = self.eig(opt_fun,np.reshape(self.M[i],(-1)),precond)
+        self.M[i] = np.reshape(v,(n1,n2,n3))
+        if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): E = -E
+        if self.verbose > 2:
+            print('\t'+'Current Energy = {}'.format(E))
+        return E
 
-    def slow_optimization(self,i,direction):
+    def slow_optimization(self,i):
         if self.verbose > 5:
             print('\t'*4+'Using slow optimization routine')
         H = self.einsum('jlp,lmin,kmq->ijknpq',self.F[i],self.mpo.W[i],self.F[i+1])
@@ -335,6 +367,7 @@ class MPS_OPT:
                          E_ed = self.E_ed)
 
     def kernel(self):
+        t0 = time.time()
         self.generate_mps()
         self.right_canonicalize_mps()
         self.generate_mpo()
@@ -345,41 +378,42 @@ class MPS_OPT:
         totIterCnt = 0
         self.calc_observables(0)
         E_prev = self.energy_contraction(0)
+        self.E = E_prev
         while not converged:
             # Right Sweep --------------------------
             if self.verbose > 1:
-                print('\t'*0+'Right Sweep {}'.format(totIterCnt))
+                print('\t'*0+'Right Sweep {}, E = {}'.format(totIterCnt,self.E))
             for i in range(int(self.N-1)):
-                t1 = time.time()
-                self.E = self.local_optimization(i,'right')
+                inside_t1 = time.time()
+                self.E = self.local_optimization(i)
                 self.calc_observables(i)
                 self.normalize(i,'right')
                 self.update_f(i,'right')
                 self.plot_observables()
                 self.plot_convergence(i)
-                t2 = time.time()
-                self.iter_time[self.maxBondDimInd] += t2-t1
-                self.iter_cnt[self.maxBondDimInd] += 1
+                inside_t2 = time.time()
+                self.inside_iter_time[self.maxBondDimInd] += inside_t2-inside_t1
+                self.inside_iter_cnt[self.maxBondDimInd] += 1
             # Left Sweep ---------------------------
             if self.verbose > 1:
-                print('\t'*0+'Left Sweep {}'.format(totIterCnt))
+                print('\t'*0+'Left Sweep  {}, E = {}'.format(totIterCnt,self.E))
             for i in range(int(self.N-1),0,-1):
-                t1 = time.time()
-                self.E = self.local_optimization(i,'left')
+                inside_t1 = time.time()
+                self.E = self.local_optimization(i)
                 self.calc_observables(i)
                 self.normalize(i,'left')
                 self.update_f(i,'left')
                 self.plot_observables()
                 self.plot_convergence(i)
-                t2 = time.time()
-                self.iter_time[self.maxBondDimInd] += t2-t1
-                self.iter_cnt[self.maxBondDimInd] += 1
+                inside_t2 = time.time()
+                self.inside_iter_time[self.maxBondDimInd] += inside_t2-inside_t1
+                self.inside_iter_cnt[self.maxBondDimInd] += 1
             # Check Convergence --------------------
-            if np.abs(self.E-E_prev) < self.tol:
+            if np.abs(self.E-E_prev) < self.tol[self.maxBondDimInd]:
                 if self.maxBondDimInd is (len(self.maxBondDim)-1):
                     if self.verbose > 0:
                         print('#'*75+'\nConverged at E = {} for Bond Dimension = {}\nAverage time per iteration = {}'\
-                              .format(self.E,self.maxBondDimCurr,self.iter_time[self.maxBondDimInd]/self.iter_cnt[self.maxBondDimInd])\
+                              .format(self.E,self.maxBondDimCurr,self.inside_iter_time[self.maxBondDimInd]/self.inside_iter_cnt[self.maxBondDimInd])\
                               +'\n'+'#'*75)
                     self.finalEnergy = self.E
                     self.bondDimEnergies[self.maxBondDimInd] = self.E
@@ -387,7 +421,7 @@ class MPS_OPT:
                 else:
                     if self.verbose > 0:
                         print('-'*35+'\nConverged for Bond Dimension = {}\n at Energy = {}\nAverage time per iteration = {}'\
-                              .format(self.maxBondDimCurr,self.E,self.iter_time[self.maxBondDimInd]/self.iter_cnt[self.maxBondDimInd]\
+                              .format(self.maxBondDimCurr,self.E,self.inside_iter_time[self.maxBondDimInd]/self.inside_iter_cnt[self.maxBondDimInd]\
                               )+'\n'+'-'*35)
                     self.bondDimEnergies[self.maxBondDimInd] = self.E
                     self.maxBondDimInd += 1
@@ -397,7 +431,7 @@ class MPS_OPT:
                     self.calc_initial_f()
                     totIterCnt += 1
                     currIterCnt = 0
-            elif currIterCnt >= self.maxIter-1:
+            elif currIterCnt >= self.maxIter[self.maxBondDimInd]-1:
                 if self.maxBondDimInd is (len(self.maxBondDim)-1):
                     if self.verbose > 0:
                         print('!'*75+'\nConvergence not acheived\n'+'\tE={}\n'.format(self.E)+'!'*75)
@@ -407,7 +441,7 @@ class MPS_OPT:
                 else:
                     if self.verbose > 0:
                         print('-'*35+'\nNot Converged for Bond Dimension = {}\n at Energy = {}\nAverage time per iteration = {}'\
-                              .format(self.maxBondDimCurr,self.E,self.iter_time[self.maxBondDimInd]/self.iter_cnt[self.maxBondDimInd])\
+                              .format(self.maxBondDimCurr,self.E,self.inside_iter_time[self.maxBondDimInd]/self.inside_iter_cnt[self.maxBondDimInd])\
                               +'\n'+'-'*35)
                     self.bondDimEnergies[self.maxBondDimInd] = self.E
                     self.maxBondDimInd += 1
@@ -419,7 +453,7 @@ class MPS_OPT:
                     currIterCnt = 0
             else:
                 if self.verbose > 2:
-                    print('\t'*1+'Energy Change {}\nNeeded <{}'.format(np.abs(self.E-E_prev),self.tol))
+                    print('\t'*1+'Energy Change {}\nNeeded <{}'.format(np.abs(self.E-E_prev),self.tol[self.maxBondDimInd]))
                 E_prev = self.E
                 currIterCnt += 1
                 totIterCnt += 1
