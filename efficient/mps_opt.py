@@ -311,7 +311,7 @@ class MPS_OPT:
             print('\t'*2+'Writing final results to output file')
         if self.saveResults:
             # Create Filename:
-            filename = 'results_'+self.hamType+'_N'+str(self.N)+'_M'+str(self.maxBondDim)
+            filename = 'results_'+self.hamType+'_N'+str(self.N)+'_M'+str(self.maxBondDim[-1])
             for i in range(len(self.hamParams)):
                 filename += ('_'+str(self.hamParams[i]))
             if calcType is 'dmrg':
@@ -383,7 +383,7 @@ class MPS_OPT:
                     self.calc_initial_f()
                     totIterCnt += 1
                     currIterCnt = 0
-            elif currIterCnt >= self.maxIter:
+            elif currIterCnt >= self.maxIter-1:
                 if self.maxBondDimInd is (len(self.maxBondDim)-1):
                     if self.verbose > 0:
                         print('!'*75+'\nConvergence not acheived\n'+'\tE={}\n'.format(self.E)+'!'*75)

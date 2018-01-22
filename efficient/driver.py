@@ -4,7 +4,7 @@ import mps_opt
 import matplotlib.pyplot as plt
 
 ## Possible calculations:#################################################################################################################
-simple_tasep = True                # Simple case with tasep
+simple_tasep = False                # Simple case with tasep
 vary_systemSize = False             # TASEP, vary number of lattice sites
 vary_s = False                      # TASEP, calc J(s) and CGF(s)
 vary_maxBondDim = False             # TASEP, Vary the maximum bond dimensions
@@ -27,7 +27,7 @@ vary_maxBondDim_comp = False        # SEP, Vary Maximum bond dimensions for 1D t
 phaseDiagram_comp = False           # SEP, Create phase diagram via MF, ED & DMRG
 # Full 2D Comparison
 vary_maxBondDim_2d_comp = False     # 2DSEP, Vary Maximum bond dimensions for 2D to find errors
-vary_maxBondDim_2d_sep_comp = False # 2DSEP, Vary Max Bond Dimensions for 2D to find errors (using sep instead of tasep)
+vary_maxBondDim_2d_sep_comp = True # 2DSEP, Vary Max Bond Dimensions for 2D to find errors (using sep instead of tasep)
 phaseDiagram_ssep_2D = False        # Create a phase diagram for the 2D SSEP
 phaseDiagram_ssep_1D = False        # Create a phase diagram for the 1D SSEP
 ###########################################################################################################################################
@@ -736,7 +736,8 @@ if vary_maxBondDim_2d_comp:
 
 if vary_maxBondDim_2d_sep_comp:
     N = 12
-    bondDimVec = [2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100,110,120,130,140,150]
+    bondDimVec = [2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200,\
+                  220,240,260,280,300,320,340,360,380,400,450,500,550,600,700,800,900,1000]
     # Run 1D Calculation for comparison
     x = mps_opt.MPS_OPT(N=N,
                         maxBondDim = bondDimVec,
@@ -751,6 +752,7 @@ if vary_maxBondDim_2d_sep_comp:
     x = mps_opt.MPS_OPT(N=N**2,
                         maxBondDim = bondDimVec,
                         hamType="sep_2d",
+                        maxIter = 2,
                         hamParams = (0,0,0,0,0,0,
                                      0.5,0.5,0.9,0.1,0.1,0.9,-1))
     x.kernel()
@@ -760,6 +762,7 @@ if vary_maxBondDim_2d_sep_comp:
     x = mps_opt.MPS_OPT(N=N**2,
                         maxBondDim = bondDimVec,
                         hamType="sep_2d",
+                        maxIter = 2,
                         hamParams = (0.5,0.5,0.9,0.1,0.1,0.9,      # jl,jr,il,ir,ol,or,
                                      0,0,0,   0,0,0  ,-1))         # ju,jd,it,ib,ot,ob,s
     x.kernel()
