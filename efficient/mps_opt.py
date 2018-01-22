@@ -14,7 +14,7 @@ class MPS_OPT:
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
                  usePyscf=True,initialGuess=0.5,ed_limit=12,\
-                 saveResults=True,dataFolder='data/',verbose=2):
+                 saveResults=True,dataFolder='data/',verbose=3):
         # Import parameters
         self.N = N
         self.d = d
@@ -371,7 +371,7 @@ class MPS_OPT:
                          E_ed = self.E_ed)
 
     def kernel(self):
-        t0 = time.time()
+        self.t0 = time.time()
         self.generate_mps()
         self.right_canonicalize_mps()
         self.generate_mpo()
@@ -414,7 +414,7 @@ class MPS_OPT:
                 self.inside_iter_cnt[self.maxBondDimInd] += 1
             # Check Convergence --------------------
             self.tf = time.time()
-            self.outside_iter_time[self.maxBondDimInd] += tf-t0
+            self.outside_iter_time[self.maxBondDimInd] += self.tf-self.t0
             self.outside_iter_cnt[self.maxBondDimInd] += 1
             self.t0 = time.time()
             if np.abs(self.E-E_prev) < self.tol[self.maxBondDimInd]:
@@ -424,25 +424,25 @@ class MPS_OPT:
                     self.time_total = time.time() - self.time_total
                     converged = True
                     if self.verbose > 0:
-                        print('#'*75)
-                        print('\nConverged at E = {}'.format(self.finalEnergy))
+                        print('\n'+'#'*75)
+                        print('Converged at E = {}'.format(self.finalEnergy))
                         if self.verbose > 1:
-                            print('\n  Final Bond Dimension = {}'.format(self.maxBondDimCurr))
-                            print('\n  Avg time per iter for final M = {}'.format(self.inside_iter_time[self.maxBondDimInd]/\
+                            print('  Final Bond Dimension = {}'.format(self.maxBondDimCurr))
+                            print('  Avg time per iter for final M = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
                                                                                   self.inside_iter_cnt [self.maxBondDimInd]))
-                            print('\n  Total Time = {}\n'.format(self.time_total))
-                        print('#'*75)
+                            print('  Total Time = {} s'.format(self.time_total))
+                        print('#'*75+'\n')
                 else:
                     if self.verbose > 1:
-                        print('-'*45)
-                        print('\nConverged at E = {}'.format(self.E))
+                        print('\n'+'-'*45)
+                        print('Converged at E = {}'.format(self.E))
                         if self.verbose > 2:
-                            print('\n  Current Bond Dimension = {}'.format(self.maxBondDimCurr))
-                            print('\n  Avg time per inner iter = {}'.format(self.inside_iter_time[self.maxBondDimInd]/\
+                            print('  Current Bond Dimension = {}'.format(self.maxBondDimCurr))
+                            print('  Avg time per inner iter = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
                                                                             self.inside_iter_cnt [self.maxBondDimInd]))
-                            print('\n  Total time for M({}) = {}'.format(self.maxBondDimCurr,self.outside_iter_time[self.maxBondDimInd]))
-                            print('\n  Required number of iters = {}\n'.format(self.outside_iter_cnt[self.maxBondDimInd]))
-                        print('-'*45)
+                            print('  Total time for M({}) = {} s'.format(self.maxBondDimCurr,self.outside_iter_time[self.maxBondDimInd]))
+                            print('  Required number of iters = {}'.format(self.outside_iter_cnt[self.maxBondDimInd]))
+                        print('-'*45+'\n')
                     self.bondDimEnergies[self.maxBondDimInd] = self.E
                     self.maxBondDimInd += 1
                     self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
@@ -457,25 +457,25 @@ class MPS_OPT:
                     self.finalEnergy = self.E
                     converged = True
                     if self.verbose > 0:
-                        print('!'*75)
-                        print('\nNot Converged at E = {}'.format(self.finalEnergy))
+                        print('\n'+'!'*75)
+                        print('Not Converged at E = {}'.format(self.finalEnergy))
                         if self.verbose > 1:
-                            print('\n  Final Bond Dimension = {}'.format(self.maxBondDimCurr))
-                            print('\n  Avg time per iter for final M = {}'.format(self.inside_iter_time[self.maxBondDimInd]/\
+                            print('  Final Bond Dimension = {}'.format(self.maxBondDimCurr))
+                            print('  Avg time per iter for final M = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
                                                                                   self.inside_iter_cnt [self.maxBondDimInd]))
-                            print('\n  Total Time = {}\n'.format(self.time_total))
-                        print('!'*75)
+                            print('  Total Time = {} s'.format(self.time_total))
+                        print('!'*75+'\n')
                 else:
                     if self.verbose > 1:
-                        print('-'*45)
-                        print('\nConverged at E = {}'.format(self.E))
+                        print('\n'+'-'*45)
+                        print('Converged at E = {}'.format(self.E))
                         if self.verbose > 2:
-                            print('\n  Current Bond Dimension = {}'.format(self.maxBondDimCurr))
-                            print('\n  Avg time per inner iter = {}'.format(self.inside_iter_time[self.maxBondDimInd]/\
+                            print('  Current Bond Dimension = {}'.format(self.maxBondDimCurr))
+                            print('  Avg time per inner iter = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
                                                                             self.inside_iter_cnt [self.maxBondDimInd]))
-                            print('\n  Total time for M({}) = {}'.format(self.maxBondDimCurr,self.outside_iter_time[self.maxBondDimInd]))
-                            print('\n  Required number of iters = {}\n'.format(self.outside_iter_cnt[self.maxBondDimInd]))
-                        print('-'*45)
+                            print('  Total time for M({}) = {} s'.format(self.maxBondDimCurr,self.outside_iter_time[self.maxBondDimInd]))
+                            print('  Required number of iters = {}'.format(self.outside_iter_cnt[self.maxBondDimInd]))
+                        print('-'*45+'\n')
                     self.bondDimEnergies[self.maxBondDimInd] = self.E
                     self.maxBondDimInd += 1
                     self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
