@@ -23,6 +23,8 @@ class MPS_OPT:
             self.maxBondDim = maxBondDim
         else:
             self.maxBondDim = [maxBondDim]
+        self.iter_time = np.zeros(len(self.maxBondDim))
+        self.iter_cnt = np.zeros(len(self.maxBondDim))
         self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
         self.tol = tol
         self.maxIter = maxIter
@@ -348,33 +350,45 @@ class MPS_OPT:
             if self.verbose > 1:
                 print('\t'*0+'Right Sweep {}'.format(totIterCnt))
             for i in range(int(self.N-1)):
+                t1 = time.time()
                 self.E = self.local_optimization(i,'right')
                 self.calc_observables(i)
                 self.normalize(i,'right')
                 self.update_f(i,'right')
                 self.plot_observables()
                 self.plot_convergence(i)
+                t2 = time.time()
+                self.iter_time[self.maxBondDimInd] += t2-t1
+                self.iter_cnt[self.maxBondDimInd] += 1
             # Left Sweep ---------------------------
             if self.verbose > 1:
                 print('\t'*0+'Left Sweep {}'.format(totIterCnt))
             for i in range(int(self.N-1),0,-1):
+                t1 = time.time()
                 self.E = self.local_optimization(i,'left')
                 self.calc_observables(i)
                 self.normalize(i,'left')
                 self.update_f(i,'left')
                 self.plot_observables()
                 self.plot_convergence(i)
+                t2 = time.time()
+                self.iter_time[self.maxBondDimInd] += t2-t1
+                self.iter_cnt[self.maxBondDimInd] += 1
             # Check Convergence --------------------
             if np.abs(self.E-E_prev) < self.tol:
                 if self.maxBondDimInd is (len(self.maxBondDim)-1):
                     if self.verbose > 0:
-                        print('#'*75+'\nConverged at E = {} for Bond Dimension = {}'.format(self.E,self.maxBondDimCurr)+'\n'+'#'*75)
+                        print('#'*75+'\nConverged at E = {} for Bond Dimension = {}\nAverage time per iteration = {}'\
+                              .format(self.E,self.maxBondDimCurr,self.iter_time[self.maxBondDimInd]/self.iter_cnt[self.maxBondDimInd])\
+                              +'\n'+'#'*75)
                     self.finalEnergy = self.E
                     self.bondDimEnergies[self.maxBondDimInd] = self.E
                     converged = True
                 else:
                     if self.verbose > 0:
-                        print('-'*35+'\nConverged for Bond Dimension = {}\n at Energy = {}'.format(self.maxBondDimCurr,self.E)+'\n'+'-'*35)
+                        print('-'*35+'\nConverged for Bond Dimension = {}\n at Energy = {}\nAverage time per iteration = {}'\
+                              .format(self.maxBondDimCurr,self.E,self.iter_time[self.maxBondDimInd]/self.iter_cnt[self.maxBondDimInd]\
+                              )+'\n'+'-'*35)
                     self.bondDimEnergies[self.maxBondDimInd] = self.E
                     self.maxBondDimInd += 1
                     self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
@@ -392,7 +406,9 @@ class MPS_OPT:
                     converged = True
                 else:
                     if self.verbose > 0:
-                        print('-'*35+'\nNot Converged for Bond Dimension = {}\n at Energy = {}'.format(self.maxBondDimCurr,self.E)+'\n'+'-'*35)
+                        print('-'*35+'\nNot Converged for Bond Dimension = {}\n at Energy = {}\nAverage time per iteration = {}'\
+                              .format(self.maxBondDimCurr,self.E,self.iter_time[self.maxBondDimInd]/self.iter_cnt[self.maxBondDimInd])\
+                              +'\n'+'-'*35)
                     self.bondDimEnergies[self.maxBondDimInd] = self.E
                     self.maxBondDimInd += 1
                     self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
