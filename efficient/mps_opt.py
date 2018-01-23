@@ -14,7 +14,7 @@ class MPS_OPT:
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
                  usePyscf=True,initialGuess=0.5,ed_limit=12,\
-                 saveResults=True,dataFolder='data/',verbose=3):
+                 saveResults=False,dataFolder='data/',verbose=3):
         # Import parameters
         self.N = N
         self.d = d
