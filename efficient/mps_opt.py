@@ -156,7 +156,6 @@ class MPS_OPT:
             tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[i+1],self.M[i])
             tmp_sum2 = self.einsum('ydbe,acde->abcy',self.mpo.W[i],tmp_sum1)
             self.F[i] = self.einsum('bxc,abcy->xya',np.conj(self.M[i]),tmp_sum2)
-            #self.F[i] = self.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(self.M[i]),self.mpo.W[i],self.M[i],self.F[i+1])
 
     def update_f(self,i,direction):
         if self.verbose > 4:
@@ -165,13 +164,10 @@ class MPS_OPT:
             tmp_sum1 = self.einsum('jlp,ijk->iklp',self.F[i],np.conj(self.M[i]))
             tmp_sum2 = self.einsum('lmin,iklp->kmnp',self.mpo.W[i],tmp_sum1)
             self.F[i+1] = self.einsum('npq,kmnp->kmq',self.M[i],tmp_sum2)
-            #self.F[i+1] = self.einsum('jlp,ijk,lmin,npq->kmq',self.F[i],np.conj(self.M[i]),self.mpo.W[i],self.M[i])
         elif direction is 'left':
             tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[i+1],self.M[i])
             tmp_sum2 = self.einsum('ydbe,acde->abcy',self.mpo.W[i],tmp_sum1)
             self.F[i] = self.einsum('bxc,abcy->xya',np.conj(self.M[i]),tmp_sum2)
-            #self.F[i] = self.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(self.M[i]),self.mpo.W[i],self.M[i],self.F[i+1])
-            #self.F[i] = self.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(self.M[i]),self.mpo.W[i],self.M[i],self.F[i+1])
         else:
             raise NameError('Direction must be left or right')
 
@@ -179,7 +175,6 @@ class MPS_OPT:
         if self.verbose > 4:
             print('\t'*2+'Local optimization at site {}'.format(i))
         if self.usePyscf:
-            #return self.pyscf_optimization_badScaling(i)
             return self.pyscf_optimization(i)
         else:
             return self.slow_optimization(i)
@@ -199,29 +194,6 @@ class MPS_OPT:
             else:
                 fin_sum = self.einsum('pnm,noim->opi',self.F[i],in_sum2)
             return np.reshape(fin_sum,-1)
-        def precond(dx,e,x0):
-            # function(dx, e, x0) => array_like_dx
-            return dx
-        E,v = self.eig(opt_fun,np.reshape(self.M[i],(-1)),precond)
-        self.M[i] = np.reshape(v,(n1,n2,n3))
-        if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): E = -E
-        if self.verbose > 3:
-            print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(i,E))
-        return E
-
-    def pyscf_optimization_badScaling(self,i):
-        if self.verbose > 5:
-            print('\t'*4+'Using Pyscf optimization routine with incorrect scaling')
-        H = self.einsum('jlp,lmin,kmq->ijknpq',self.F[i],self.mpo.W[i],self.F[i+1])
-        (n1,n2,n3,n4,n5,n6) = H.shape
-        H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
-        if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
-            H = -H
-        def opt_fun(x):
-            # function([x]) => [array_like_x]
-            if self.verbose > 6:
-                print('\t'*5+'Eigenvalue Iteration')
-            return self.einsum('ij,j->i',H,x)
         def precond(dx,e,x0):
             # function(dx, e, x0) => array_like_dx
             return dx
