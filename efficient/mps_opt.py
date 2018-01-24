@@ -153,7 +153,27 @@ class MPS_OPT:
         for i in range(int(self.N)-1,0,-1):
             if self.verbose > 4:
                 print('\t'*3+'at site {}'.format(i))
-            self.F[i] = self.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(self.M[i]),self.mpo.W[i],self.M[i],self.F[i+1])
+            tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[i+1],self.M[i])
+            tmp_sum2 = self.einsum('ydbe,acde->abcy',self.mpo.W[i],tmp_sum1)
+            self.F[i] = self.einsum('bxc,abcy->xya',np.conj(self.M[i]),tmp_sum2)
+            #self.F[i] = self.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(self.M[i]),self.mpo.W[i],self.M[i],self.F[i+1])
+
+    def update_f(self,i,direction):
+        if self.verbose > 4:
+            print('\t'*2+'Updating F at site {}'.format(i))
+        if direction is 'right':
+            tmp_sum1 = self.einsum('jlp,ijk->iklp',self.F[i],np.conj(self.M[i]))
+            tmp_sum2 = self.einsum('lmin,iklp->kmnp',self.mpo.W[i],tmp_sum1)
+            self.F[i+1] = self.einsum('npq,kmnp->kmq',self.M[i],tmp_sum2)
+            #self.F[i+1] = self.einsum('jlp,ijk,lmin,npq->kmq',self.F[i],np.conj(self.M[i]),self.mpo.W[i],self.M[i])
+        elif direction is 'left':
+            tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[i+1],self.M[i])
+            tmp_sum2 = self.einsum('ydbe,acde->abcy',self.mpo.W[i],tmp_sum1)
+            self.F[i] = self.einsum('bxc,abcy->xya',np.conj(self.M[i]),tmp_sum2)
+            #self.F[i] = self.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(self.M[i]),self.mpo.W[i],self.M[i],self.F[i+1])
+            #self.F[i] = self.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(self.M[i]),self.mpo.W[i],self.M[i],self.F[i+1])
+        else:
+            raise NameError('Direction must be left or right')
 
     def local_optimization(self,i):
         if self.verbose > 4:
@@ -233,16 +253,6 @@ class MPS_OPT:
         if self.verbose > 3:
             print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(i,E))
         return E
-
-    def update_f(self,i,direction):
-        if self.verbose > 4:
-            print('\t'*2+'Updating F at site {}'.format(i))
-        if direction is 'right':
-            self.F[i+1] = self.einsum('jlp,ijk,lmin,npq->kmq',self.F[i],np.conj(self.M[i]),self.mpo.W[i],self.M[i])
-        elif direction is 'left':
-            self.F[i] = self.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(self.M[i]),self.mpo.W[i],self.M[i],self.F[i+1])
-        else:
-            raise NameError('Direction must be left or right')
 
     def calc_observables(self,site):
         if self.verbose > 5:
