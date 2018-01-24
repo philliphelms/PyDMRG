@@ -3,10 +3,7 @@ import matplotlib.pyplot as plt
 import time
 import mpo
 import warnings
-from scipy.linalg import eig as fullEig
-from scipy.sparse.linalg import eigs as arnoldiEig
 from mpl_toolkits.mplot3d import axes3d
-from numpy import ma
 
 class MPS_OPT:
 
@@ -32,8 +29,6 @@ class MPS_OPT:
             self.maxIter = maxIter
         else:
             self.maxIter = [maxIter]*len(self.maxBondDim)
-        print(len(self.maxIter))
-        print(len(self.maxBondDim))
         assert(len(self.maxIter) is len(self.maxBondDim))
         self.hamType = hamType
         self.hamParams = hamParams

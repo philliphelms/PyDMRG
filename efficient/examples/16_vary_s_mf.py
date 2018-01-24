@@ -28,6 +28,7 @@ for i in range(len(s_vec)):
                         hamParams = (0.9,0.1,0.5,0.5,0.9,0.1,s_vec[i]),
                         usePyscf = False)
     E[i] = x.mean_field()
+fig1 = plt.figure()
 plt.plot(s_vec,E,'-')
 # plt.plot(s_vec,E_dmrg,':')
 plt.grid(True)

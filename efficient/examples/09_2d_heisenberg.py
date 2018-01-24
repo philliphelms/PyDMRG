@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 
 #-----------------------------------------------------------------------------
 # Run a simple calculation for a 2D Heisenberg Model
+# DOESN'T WORK CORRECTLY!!!
 #-----------------------------------------------------------------------------
 
 # Set Plotting parameters

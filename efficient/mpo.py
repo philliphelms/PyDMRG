@@ -102,7 +102,7 @@ class MPO:
             # Create W
             self.W = []
             self.W.insert(len(self.W),np.expand_dims(self.w_arr[-1,:],0))
-            for i in range(self.N2d**2):
+            for i in range(self.N2d**2-2):
                 if (i+1)%self.N2d:
                     self.W.insert(len(self.W),self.border_w_arr)
                 else:
