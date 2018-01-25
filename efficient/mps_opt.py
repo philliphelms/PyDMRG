@@ -175,9 +175,11 @@ class MPS_OPT:
         if self.verbose > 4:
             print('\t'*2+'Local optimization at site {}'.format(i))
         if self.usePyscf:
-            return self.pyscf_optimization(i)
+            #return self.pyscf_optimization(i)
+            return self.tensor_dot_optimization(i)
         else:
-            return self.slow_optimization(i)
+            return self.tensor_dot_optimization(i)
+            #return self.slow_optimization(i)
 
     def pyscf_optimization(self,i):
         if self.verbose > 5:
@@ -196,6 +198,33 @@ class MPS_OPT:
             return np.reshape(fin_sum,-1)
         def precond(dx,e,x0):
             # function(dx, e, x0) => array_like_dx
+            return dx
+        E,v = self.eig(opt_fun,np.reshape(self.M[i],(-1)),precond)
+        self.M[i] = np.reshape(v,(n1,n2,n3))
+        if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): E = -E
+        if self.verbose > 3:
+            print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(i,E))
+        return E
+
+    def tensor_dot_optimization(self,i):
+        if self.verbose > 5:
+            print('\t'*4+'Using Tensor Dot Optimization Routine')
+        (n1,n2,n3) = self.M[i].shape
+        def opt_fun(x):
+            if self.verbose > 6:
+                print('\t'*5+'Eigenvalue Iteration')
+            x_reshape = np.reshape(x,(n1,n2,n3))
+            in_sum1 = np.tensordot(self.F[i+1],x_reshape,axes=([2],[2]))
+            in_sum2 = np.tensordot(self.mpo.W[i],in_sum1,axes=([1,3],[1,2]))
+            if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
+                fin_sum = -np.tensordot(self.F[i],in_sum2,axes=([1,2],[0,3]))
+                fin_sum = np.swapaxes(fin_sum,0,1)
+            else:
+                fin_sum = -np.tensordot(self.F[i],in_sum2,axes=([1,2],[0,3]))
+                fin_sum = np.swapaxes(fin_sum,0,1)
+            return np.reshape(fin_sum,-1)
+        def precond(dx,e,x0):
+            # function(dx,e,x0) => array_like_dx
             return dx
         E,v = self.eig(opt_fun,np.reshape(self.M[i],(-1)),precond)
         self.M[i] = np.reshape(v,(n1,n2,n3))
