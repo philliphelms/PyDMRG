@@ -40,7 +40,10 @@ class MPS_OPT:
         if usePyscf:
             from pyscf import lib
             self.einsum = lib.einsum
-            self.eig = lib.eig
+            if (self.hamType is "heis") or (self.hamType is "heis_2d") or (self.hamType is 'ising'):
+                self.eig = lib.eigh
+            else:
+                self.eig = lib.eig
         else:
             self.einsum = np.einsum
             self.eig = np.linalg.eig

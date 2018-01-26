@@ -4,7 +4,7 @@ import pstats
 
 x = mps_opt.MPS_OPT(N=10**2,
                     hamType = "heis_2d",
-                    maxBondDim=100,
+                    maxBondDim=500,
                     maxIter = 3,
                     verbose = 5,
                     hamParams = (1,0))

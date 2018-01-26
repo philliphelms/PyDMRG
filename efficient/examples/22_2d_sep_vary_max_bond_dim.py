@@ -17,10 +17,11 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=100)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
+
 N = 12
-bondDimVec = 500
+bondDimVec = 1000
 tol = 1e-10
-maxIter = 5
+maxIter = 3
 #tol = [1e-1]*(len(bondDimVec)-1)
 #tol.insert(-1,1e-10)
 #maxIter = [2]*(len(bondDimVec)-1)
@@ -35,6 +36,7 @@ x.kernel()
 Evec_1d = x.bondDimEnergies
 #E_ed = x.exact_diag()
 #E_mf = x.mean_field()
+
 # Run 2D in opposite direction
 print('\nRun 2D - Not Aligned\n')
 x = mps_opt.MPS_OPT(N          = N**2,
@@ -46,6 +48,7 @@ x = mps_opt.MPS_OPT(N          = N**2,
                                   0.5,0.5,0.9,0.1,0.1,0.9,-1))
 x.kernel()
 Evec_2d_notaligned = x.bondDimEnergies/N
+"""
 # Run 2D in aligned direction
 print('\nRun 2D - Aligned\n')
 x = mps_opt.MPS_OPT(N=N**2,
@@ -75,3 +78,4 @@ plt.xlabel('Bond Dimension',fontsize=20)
 plt.ylabel('$E-E_{exact}$',fontsize=20)
 plt.legend(('Mean Field','1D DMRG','2D DMRG (aligned)','2D DMRG (not aligned)'))
 fig1.savefig('varyMaxBondDim_'+str(bondDimVec[-1])+'.pdf')
+"""
