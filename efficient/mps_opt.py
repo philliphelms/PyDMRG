@@ -210,7 +210,9 @@ class MPS_OPT:
         if self.verbose > 5:
             print('\t'*4+'Using Tensor Dot Optimization Routine')
         (n1,n2,n3) = self.M[i].shape
+        self.num_opt_fun_calls = 0
         def opt_fun(x):
+            self.num_opt_fun_calls += 1
             if self.verbose > 6:
                 print('\t'*5+'Eigenvalue Iteration')
             x_reshape = np.reshape(x,(n1,n2,n3))
@@ -223,14 +225,20 @@ class MPS_OPT:
                 fin_sum = -np.tensordot(self.F[i],in_sum2,axes=([1,2],[0,3]))
                 fin_sum = np.swapaxes(fin_sum,0,1)
             return np.reshape(fin_sum,-1)
+        #H = self.einsum('jlp,lmin,kmq->ijknpq',self.F[i],self.mpo.W[i],self.F[i+1])
+        #(n1,n2,n3,n4,n5,n6) = H.shape
+        #H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
+        #hDiag = np.diag(H)
         def precond(dx,e,x0):
             # function(dx,e,x0) => array_like_dx
             return dx
+            #return dx/(hDiag-e+1e-100)
         E,v = self.eig(opt_fun,np.reshape(self.M[i],(-1)),precond)
         self.M[i] = np.reshape(v,(n1,n2,n3))
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): E = -E
         if self.verbose > 3:
             print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(i,E))
+            print('\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
         return E
 
     def slow_optimization(self,i):
