@@ -41,7 +41,6 @@ class MPS_OPT:
             from pyscf import lib
             self.einsum = lib.einsum
             if (self.hamType is "heis") or (self.hamType is "heis_2d") or (self.hamType is 'ising'):
-                print('Using correct Optimization!')
                 self.eig = lib.eigh
             else:
                 self.eig = lib.eig
