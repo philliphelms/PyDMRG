@@ -10,7 +10,7 @@ class MPS_OPT:
     def __init__(self, N=10, d=2, maxBondDim=[10,50,100], tol=1e-10, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
-                 usePyscf=True,initialGuess=0.5,ed_limit=12,\
+                 usePyscf=True,initialGuess=0.5,ed_limit=12,max_eig_iter=5,\
                  saveResults=False,dataFolder='data/',verbose=3):
         # Import parameters
         self.N = N
@@ -41,6 +41,7 @@ class MPS_OPT:
             from pyscf import lib
             self.einsum = lib.einsum
             if (self.hamType is "heis") or (self.hamType is "heis_2d") or (self.hamType is 'ising'):
+                print('Using correct Optimization!')
                 self.eig = lib.eigh
             else:
                 self.eig = lib.eig
@@ -50,6 +51,7 @@ class MPS_OPT:
         self.usePyscf = usePyscf
         self.initialGuess = initialGuess
         self.ed_limit = ed_limit
+        self.max_eig_iter = max_eig_iter
 
         self.inside_iter_time = np.zeros(len(self.maxBondDim))
         self.inside_iter_cnt = np.zeros(len(self.maxBondDim))
@@ -181,8 +183,8 @@ class MPS_OPT:
             return self.pyscf_optimization(i)
             #return self.tensor_dot_optimization(i)
         else:
-            return self.tensor_dot_optimization(i)
-            #return self.slow_optimization(i)
+            #return self.tensor_dot_optimization(i)
+            return self.slow_optimization(i)
 
     def pyscf_optimization(self,i):
         if self.verbose > 5:
@@ -204,13 +206,36 @@ class MPS_OPT:
         def precond(dx,e,x0):
             # function(dx, e, x0) => array_like_dx
             return dx
-        E,v = self.eig(opt_fun,np.reshape(self.M[i],(-1)),precond,max_cycle=100)
+        E,v = self.eig(opt_fun,np.reshape(self.M[i],(-1)),precond,max_cycle=self.max_eig_iter)
         self.M[i] = np.reshape(v,(n1,n2,n3))
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): E = -E
         if self.verbose > 3:
             print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(i,E))
             print('\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
         return E
+
+#    def pyscf_optimization(self,i):
+#        if self.verbose > 5:
+#            print('\t'*4+'Using Pyscf optimization routine')
+#        H = self.einsum('jlp,lmin,kmq->ijknpq',self.F[i],self.mpo.W[i],self.F[i+1])
+#        (n1,n2,n3,n4,n5,n6) = H.shape
+#        H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
+#        if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
+#            H = -H
+#        def opt_fun(x):
+#            # function([x]) => [array_like_x]
+#            if self.verbose > 6:
+#                print('\t'*5+'Eigenvalue Iteration')
+#            return self.einsum('ij,j->i',H,x)
+#        def precond(dx,e,x0):
+#            # function(dx, e, x0) => array_like_dx
+#            return dx
+#        E,v = self.eig(opt_fun,np.reshape(self.M[i],(-1)),precond)
+#        self.M[i] = np.reshape(v,(n1,n2,n3))
+#        if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): E = -E
+#        if self.verbose > 2:
+#            print('\t'+'Current Energy = {}'.format(E))
+#        return E
 
     def tensor_dot_optimization(self,i):
         if self.verbose > 5:
@@ -476,6 +501,7 @@ class MPS_OPT:
                     self.bondDimEnergies[self.maxBondDimInd] = self.E
                     self.finalEnergy = self.E
                     converged = True
+                    self.time_total = time.time() - self.time_total
                     if self.verbose > 0:
                         print('\n'+'!'*75)
                         print('Not Converged at E = {}'.format(self.finalEnergy))
