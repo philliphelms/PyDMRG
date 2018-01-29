@@ -178,8 +178,8 @@ class MPS_OPT:
         if self.verbose > 4:
             print('\t'*2+'Local optimization at site {}'.format(i))
         if self.usePyscf:
-            #return self.pyscf_optimization(i)
-            return self.tensor_dot_optimization(i)
+            return self.pyscf_optimization(i)
+            #return self.tensor_dot_optimization(i)
         else:
             return self.tensor_dot_optimization(i)
             #return self.slow_optimization(i)
@@ -188,7 +188,9 @@ class MPS_OPT:
         if self.verbose > 5:
             print('\t'*4+'Using Pyscf optimization routine')
         (n1,n2,n3) = self.M[i].shape
+        self.num_opt_fun_calls = 0
         def opt_fun(x):
+            self.num_opt_fun_calls += 1
             if self.verbose > 6:
                 print('\t'*5+'Eigenvalue Iteration')
             x_reshape = np.reshape(x,(n1,n2,n3))
@@ -202,11 +204,12 @@ class MPS_OPT:
         def precond(dx,e,x0):
             # function(dx, e, x0) => array_like_dx
             return dx
-        E,v = self.eig(opt_fun,np.reshape(self.M[i],(-1)),precond)
+        E,v = self.eig(opt_fun,np.reshape(self.M[i],(-1)),precond,max_cycle=100)
         self.M[i] = np.reshape(v,(n1,n2,n3))
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): E = -E
         if self.verbose > 3:
             print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(i,E))
+            print('\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
         return E
 
     def tensor_dot_optimization(self,i):
