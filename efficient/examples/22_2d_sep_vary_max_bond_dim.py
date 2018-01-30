@@ -21,10 +21,10 @@ plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
 N = int(argv[1])
 bondDimVec = int(argv[2])
-#N = 10
-#bondDimVec = 100
+#N = 12
+#bondDimVec = [100,200,300,400,500,600,700,800,900,1000]
 tol = 1e-10
-maxIter = 5
+maxIter = 3
 #tol = [1e-1]*(len(bondDimVec)-1)
 #tol.insert(-1,1e-10)
 #maxIter = [2]*(len(bondDimVec)-1)

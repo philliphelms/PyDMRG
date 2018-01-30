@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-N=`seq 14 1 14`
+N=`seq 12 1 12`
 M=`seq 100 100 1000`
 
 for i in ${N[*]}; do
