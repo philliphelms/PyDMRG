@@ -100,8 +100,14 @@ class MPS_OPT:
         if self.verbose > 4:
             print('\t'*2+'Performing Right Canonicalization')
         for i in range(1,len(self.M))[::-1]:
-            if self.verbose > 5:
-                print('\t'*3+'at site {}'.format(i))
+            if self.initialGuess is "zeros":
+                self.M[i] = np.zeros(self.M[i].shape)
+            elif self.initialGuess is "ones":
+                self.M[i] = np.ones(self.M[i].shape)
+            elif self.initialGuess is "rand":
+                self.M[i] = np.random.rand(self.M[i].shape)
+            else:
+                self.M[i] = self.initialGuess*np.ones(self.M[i].shape)
             self.normalize(i,'left')
         # Sloppy fix to prevent super large values in initial matrix
         #self.M[0] = np.copy(self.M[-1])
@@ -137,6 +143,17 @@ class MPS_OPT:
             self.M[i-1] = self.einsum('klj,ji,i->kli',self.M[i-1],U,s)
         else:
             raise NameError('Direction must be left or right')
+        if self.verbose > 5:
+            try:
+                print('\t'*3+'Number of Infinite/NaNs = {}'.format(np.sum(np.isinf(self.M[i]))+np.sum(np.isinf(self.M[i+1]))+np.sum(np.isinf(self.M[i-1]))+\
+                                                                   np.sum(np.isnan(self.M[i]))+np.sum(np.isnan(self.M[i+1]))+np.sum(np.isnan(self.M[i-1]))))
+            except:
+                try:
+                    print('\t'*3+'Number of Infinite/NaNs = {}'.format(np.sum(np.isinf(self.M[i]))+np.sum(np.isinf(self.M[i+1]))+\
+                                                                       np.sum(np.isnan(self.M[i]))+np.sum(np.isnan(self.M[i+1]))))
+                except:
+                    print('\t'*3+'Number of Infinite/NaNs = {}'.format(np.sum(np.isinf(self.M[i]))+np.sum(np.isinf(self.M[i-1]))+\
+                                                                       np.sum(np.isnan(self.M[i]))+np.sum(np.isnan(self.M[i-1]))))
 
     def increaseBondDim(self):
         if self.verbose > 3:
@@ -187,7 +204,7 @@ class MPS_OPT:
 
     def pyscf_optimization(self,i):
         if self.verbose > 5:
-            print('\t'*4+'Using Pyscf optimization routine')
+            print('\t'*3+'Using Pyscf optimization routine')
         (n1,n2,n3) = self.M[i].shape
         self.num_opt_fun_calls = 0
         def opt_fun(x):
@@ -210,12 +227,13 @@ class MPS_OPT:
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): E = -E
         if self.verbose > 3:
             print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(i,E))
-            print('\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
+            if self.verbose > 4:
+                print('\t\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
         return E
 
 #    def pyscf_optimization(self,i):
 #        if self.verbose > 5:
-#            print('\t'*4+'Using Pyscf optimization routine')
+#            print('\t'*3+'Using Pyscf optimization routine')
 #        H = self.einsum('jlp,lmin,kmq->ijknpq',self.F[i],self.mpo.W[i],self.F[i+1])
 #        (n1,n2,n3,n4,n5,n6) = H.shape
 #        H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
@@ -238,7 +256,7 @@ class MPS_OPT:
 
     def tensor_dot_optimization(self,i):
         if self.verbose > 5:
-            print('\t'*4+'Using Tensor Dot Optimization Routine')
+            print('\t'*3+'Using Tensor Dot Optimization Routine')
         (n1,n2,n3) = self.M[i].shape
         self.num_opt_fun_calls = 0
         def opt_fun(x):
@@ -268,7 +286,8 @@ class MPS_OPT:
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): E = -E
         if self.verbose > 3:
             print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(i,E))
-            print('\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
+            if self.verbose > 4:
+                print('\t\t\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
         return E
 
     def slow_optimization(self,i):

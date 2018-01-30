@@ -1,0 +1,38 @@
+
+Intel MKL ERROR: Parameter 4 was incorrect on entry to DLASCL.
+
+Intel MKL ERROR: Parameter 4 was incorrect on entry to DLASCL.
+Right Sweep 0, E = 2.9701850812141246
+Left Sweep  0, E = 2.9366173619066696
+Right Sweep 1, E = 2.944467608949744
+Left Sweep  1, E = 2.944670574400898
+Right Sweep 2, E = 2.945292185632837
+Left Sweep  2, E = 2.945356398907891
+Right Sweep 3, E = 2.9453545180567833
+Left Sweep  3, E = 2.9453553296444586
+Right Sweep 4, E = 2.9453563928906616
+Left Sweep  4, E = 2.945356223743386
+Right Sweep 5, E = 2.9453562109497877
+Left Sweep  5, E = 2.9453562222781557
+Right Sweep 6, E = 2.9453562239737905
+Left Sweep  6, E = 2.9453562239737883
+
+###########################################################################
+Converged at E = 2.9453562239737927
+  Final Bond Dimension = 700
+  Avg time per iter for final M = 0.0027626661153940055 s
+  Total Time = 0.518308162689209 s
+###########################################################################
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+Exact Diagonalization limited to systems of 12 or fewer sites
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+Mean Field Convergence Achevied after 111 iterations
+==================================================
+E = (2.694934943059186-1.931217719028632e-17j)
+==================================================
+
+Run 2D - Not Aligned
+
