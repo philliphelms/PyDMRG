@@ -10,7 +10,7 @@ class MPS_OPT:
     def __init__(self, N=10, d=2, maxBondDim=[10,50,100], tol=1e-10, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
-                 usePyscf=True,initialGuess=0.5,ed_limit=12,max_eig_iter=5,\
+                 usePyscf=True,initialGuess=0.1,ed_limit=12,max_eig_iter=5,\
                  saveResults=False,dataFolder='data/',verbose=3):
         # Import parameters
         self.N = N
@@ -100,14 +100,6 @@ class MPS_OPT:
         if self.verbose > 4:
             print('\t'*2+'Performing Right Canonicalization')
         for i in range(1,len(self.M))[::-1]:
-            if self.initialGuess is "zeros":
-                self.M[i] = np.zeros(self.M[i].shape)
-            elif self.initialGuess is "ones":
-                self.M[i] = np.ones(self.M[i].shape)
-            elif self.initialGuess is "rand":
-                self.M[i] = np.random.rand(self.M[i].shape)
-            else:
-                self.M[i] = self.initialGuess*np.ones(self.M[i].shape)
             self.normalize(i,'left')
         # Sloppy fix to prevent super large values in initial matrix
         #self.M[0] = np.copy(self.M[-1])
