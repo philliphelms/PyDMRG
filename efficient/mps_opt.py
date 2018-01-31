@@ -524,7 +524,7 @@ class MPS_OPT:
                 else:
                     if self.verbose > 1:
                         print('\n'+'-'*45)
-                        print('Converged at E = {}'.format(self.E))
+                        print('Not Converged at E = {}'.format(self.E))
                         if self.verbose > 2:
                             print('  Current Bond Dimension = {}'.format(self.maxBondDimCurr))
                             print('  Avg time per inner iter = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\

@@ -266,16 +266,23 @@ class MPO:
         else:
             raise ValueError("Specified Hamiltonian type is not supported")
     
-    def return_full_ham(self):
+    def return_full_ham(self,verbose=2):
         # This function calculates the full hamiltonian matrix
         # As a warning, it is computationally expensive 
         H = np.zeros((self.N**2,self.N**2))
+        if verbose > 0:
+            print('Hamiltonian Size: {}'.format(H.shape))
         for i in range(self.N**2):
+            if verbose > 1:
+                print('\ti-Loop Progress: {}%'.format(i/self.N**2*100))
             i_occ = list(map(lambda x: int(x),'0'*(self.N-len(bin(i)[2:]))+bin(i)[2:]))
             for j in range(self.N**2):
+                print('\t\tj-Loop Progress: {}%'.format(j/self.N**2*100))
                 j_occ = list(map(lambda x: int(x),'0'*(self.N-len(bin(j)[2:]))+bin(j)[2:]))
                 tmp_mat = np.array([[1]])
                 for k in range(self.N):
+                    if verbose > 3:
+                        print('\t\t\tk-Loop progress: {}%'.format(k/self.N*100))
                     tmp_mat = np.einsum('ij,jk->ik',tmp_mat,self.W[k][:,:,i_occ[k],j_occ[k]])
                 H[i,j] = tmp_mat[[0]]
         return H
