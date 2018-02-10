@@ -4,7 +4,7 @@ import numpy as np
 # Model
 alpha = 0.35  # In at left
 beta = 2/3    # Exit at right
-s = 0         # Exponential weighting
+s = -1        # Exponential weighting
 gamma = 0     # Exit at left
 delta = 0     # In at right
 p = 1         # Jump right
@@ -100,22 +100,22 @@ while not converged:
     print('\t\tCurrent Energy = {}'.format(E))
     M[0] = np.reshape(v,(2,1,2))
     # Right Normalize
-    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
-                        np.conj(M[0]),W[0],M[0],\
-                        np.conj(M[1]),W[1],M[1],\
-                        np.conj(M[2]),W[2],M[2],\
-                        np.conj(M[3]),W[3],M[3])
-    print('\t\tCheck Energy = {}'.format(E_check))
+#    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
+#                        np.conj(M[0]),W[0],M[0],\
+#                        np.conj(M[1]),W[1],M[1],\
+#                        np.conj(M[2]),W[2],M[2],\
+#                        np.conj(M[3]),W[3],M[3])
+#    print('\t\tCheck Energy = {}'.format(E_check))
     M_reshape = np.reshape(M[0],(2,2))
     (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
     M[0] = np.reshape(U,(2,1,2))
     M[1] = np.einsum('i,ij,kjl->kil',s,V,M[1])
-    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
-                        np.conj(M[0]),W[0],M[0],\
-                        np.conj(M[1]),W[1],M[1],\
-                        np.conj(M[2]),W[2],M[2],\
-                        np.conj(M[3]),W[3],M[3])
-    print('\t\tCheck Energy = {}'.format(E_check))
+#    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
+#                        np.conj(M[0]),W[0],M[0],\
+#                        np.conj(M[1]),W[1],M[1],\
+#                        np.conj(M[2]),W[2],M[2],\
+#                        np.conj(M[3]),W[3],M[3])
+#    print('\t\tCheck Energy = {}'.format(E_check))
     # Update F
     F[1] = np.einsum('jlp,ijk,lmin,npq->kmq',F[0],np.conj(M[0]),W[0],M[0])
     # NEXT SITE
@@ -130,22 +130,22 @@ while not converged:
     print('\t\tCurrent Energy = {}'.format(E))
     M[1] = np.reshape(v,(2,2,4))
     # Right Normalize
-    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
-                        np.conj(M[0]),W[0],M[0],\
-                        np.conj(M[1]),W[1],M[1],\
-                        np.conj(M[2]),W[2],M[2],\
-                        np.conj(M[3]),W[3],M[3])
-    print('\t\tCheck Energy = {}'.format(E_check))
+#    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
+#                        np.conj(M[0]),W[0],M[0],\
+#                        np.conj(M[1]),W[1],M[1],\
+#                        np.conj(M[2]),W[2],M[2],\
+#                        np.conj(M[3]),W[3],M[3])
+#    print('\t\tCheck Energy = {}'.format(E_check))
     M_reshape = np.reshape(M[1],(4,4))
     (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
     M[1] = np.reshape(U,(2,2,4))
     M[2] = np.einsum('i,ij,kjl->kil',s,V,M[2])
-    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
-                        np.conj(M[0]),W[0],M[0],\
-                        np.conj(M[1]),W[1],M[1],\
-                        np.conj(M[2]),W[2],M[2],\
-                        np.conj(M[3]),W[3],M[3])
-    print('\t\tCheck Energy = {}'.format(E_check))
+#    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
+#                        np.conj(M[0]),W[0],M[0],\
+#                        np.conj(M[1]),W[1],M[1],\
+#                        np.conj(M[2]),W[2],M[2],\
+#                        np.conj(M[3]),W[3],M[3])
+#    print('\t\tCheck Energy = {}'.format(E_check))
     # Update F
     F[2] = np.einsum('jlp,ijk,lmin,npq->kmq',F[1],np.conj(M[1]),W[1],M[1])
     # NEXT SITE
@@ -160,22 +160,22 @@ while not converged:
     print('\t\tCurrent Energy = {}'.format(E))
     M[2] = np.reshape(v,(2,4,2))
     # Right Normalize
-    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
-                        np.conj(M[0]),W[0],M[0],\
-                        np.conj(M[1]),W[1],M[1],\
-                        np.conj(M[2]),W[2],M[2],\
-                        np.conj(M[3]),W[3],M[3])
-    print('\t\tCheck Energy = {}'.format(E_check))
+#    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
+#                        np.conj(M[0]),W[0],M[0],\
+#                        np.conj(M[1]),W[1],M[1],\
+#                        np.conj(M[2]),W[2],M[2],\
+#                        np.conj(M[3]),W[3],M[3])
+#    print('\t\tCheck Energy = {}'.format(E_check))
     M_reshape = np.reshape(M[2],(8,2))
     (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
     M[2] = np.reshape(U,(2,4,2))
     M[3] = np.einsum('i,ij,kjl->kil',s,V,M[3])
-    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
-                        np.conj(M[0]),W[0],M[0],\
-                        np.conj(M[1]),W[1],M[1],\
-                        np.conj(M[2]),W[2],M[2],\
-                        np.conj(M[3]),W[3],M[3])
-    print('\t\tCheck Energy = {}'.format(E_check))
+#    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
+#                        np.conj(M[0]),W[0],M[0],\
+#                        np.conj(M[1]),W[1],M[1],\
+#                        np.conj(M[2]),W[2],M[2],\
+#                        np.conj(M[3]),W[3],M[3])
+#    print('\t\tCheck Energy = {}'.format(E_check))
     # Update F
     F[3] = np.einsum('jlp,ijk,lmin,npq->kmq',F[2],np.conj(M[2]),W[2],M[2])
 # Left Sweep -----------------------------
@@ -192,24 +192,24 @@ while not converged:
     print('\t\tCurrent Energy = {}'.format(E))
     M[3] = np.reshape(v,(2,2,1))
     # Right Normalize 
-    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
-                        np.conj(M[0]),W[0],M[0],\
-                        np.conj(M[1]),W[1],M[1],\
-                        np.conj(M[2]),W[2],M[2],\
-                        np.conj(M[3]),W[3],M[3])
-    print('\t\tCheck Energy = {}'.format(E_check))
+#    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
+#                        np.conj(M[0]),W[0],M[0],\
+#                        np.conj(M[1]),W[1],M[1],\
+#                        np.conj(M[2]),W[2],M[2],\
+#                        np.conj(M[3]),W[3],M[3])
+#    print('\t\tCheck Energy = {}'.format(E_check))
     M_reshape = np.swapaxes(M[3],0,1)
     M_reshape = np.reshape(M_reshape,(2,2))
     (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
     M_reshape = np.reshape(V,(2,2,1))
     M[3] = np.swapaxes(M_reshape,0,1)
     M[2] = np.einsum('klj,ji,i->kli',M[2],U,s)
-    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
-                        np.conj(M[0]),W[0],M[0],\
-                        np.conj(M[1]),W[1],M[1],\
-                        np.conj(M[2]),W[2],M[2],\
-                        np.conj(M[3]),W[3],M[3])
-    print('\t\tCheck Energy = {}'.format(E_check))
+#    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
+#                        np.conj(M[0]),W[0],M[0],\
+#                        np.conj(M[1]),W[1],M[1],\
+#                        np.conj(M[2]),W[2],M[2],\
+#                        np.conj(M[3]),W[3],M[3])
+#    print('\t\tCheck Energy = {}'.format(E_check))
     # Update F
     F[3] = np.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(M[3]),W[3],M[3],F[4])
     # NEXT SITE
@@ -224,24 +224,24 @@ while not converged:
     print('\t\tCurrent Energy = {}'.format(E))
     M[2] = np.reshape(v,(2,4,2))
     # Right Normalize 
-    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
-                        np.conj(M[0]),W[0],M[0],\
-                        np.conj(M[1]),W[1],M[1],\
-                        np.conj(M[2]),W[2],M[2],\
-                        np.conj(M[3]),W[3],M[3])
-    print('\t\tCheck Energy = {}'.format(E_check))
+#    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
+#                        np.conj(M[0]),W[0],M[0],\
+#                        np.conj(M[1]),W[1],M[1],\
+#                        np.conj(M[2]),W[2],M[2],\
+#                        np.conj(M[3]),W[3],M[3])
+#    print('\t\tCheck Energy = {}'.format(E_check))
     M_reshape = np.swapaxes(M[2],0,1)
     M_reshape = np.reshape(M_reshape,(4,4))
     (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
     M_reshape = np.reshape(V,(4,2,2))
     M[2] = np.swapaxes(M_reshape,0,1)
     M[1] = np.einsum('klj,ji,i->kli',M[1],U,s)
-    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
-                        np.conj(M[0]),W[0],M[0],\
-                        np.conj(M[1]),W[1],M[1],\
-                        np.conj(M[2]),W[2],M[2],\
-                        np.conj(M[3]),W[3],M[3])
-    print('\t\tCheck Energy = {}'.format(E_check))
+#    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
+#                        np.conj(M[0]),W[0],M[0],\
+#                        np.conj(M[1]),W[1],M[1],\
+#                        np.conj(M[2]),W[2],M[2],\
+#                        np.conj(M[3]),W[3],M[3])
+#    print('\t\tCheck Energy = {}'.format(E_check))
     # Update F
     F[2] = np.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(M[2]),W[2],M[2],F[3])
     # NEXT SITE
@@ -256,24 +256,24 @@ while not converged:
     print('\t\tCurrent Energy = {}'.format(E))
     M[1] = np.reshape(v,(2,2,4))
     # Right Normalize 
-    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
-                        np.conj(M[0]),W[0],M[0],\
-                        np.conj(M[1]),W[1],M[1],\
-                        np.conj(M[2]),W[2],M[2],\
-                        np.conj(M[3]),W[3],M[3])
-    print('\t\tCheck Energy = {}'.format(E_check))
+#    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
+#                        np.conj(M[0]),W[0],M[0],\
+#                        np.conj(M[1]),W[1],M[1],\
+#                        np.conj(M[2]),W[2],M[2],\
+#                        np.conj(M[3]),W[3],M[3])
+#    print('\t\tCheck Energy = {}'.format(E_check))
     M_reshape = np.swapaxes(M[1],0,1)
     M_reshape = np.reshape(M_reshape,(2,8))
     (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
     M_reshape = np.reshape(V,(2,2,4))
     M[1] = np.swapaxes(M_reshape,0,1)
     M[0] = np.einsum('klj,ji,i->kli',M[0],U,s)
-    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
-                        np.conj(M[0]),W[0],M[0],\
-                        np.conj(M[1]),W[1],M[1],\
-                        np.conj(M[2]),W[2],M[2],\
-                        np.conj(M[3]),W[3],M[3])
-    print('\t\tCheck Energy = {}'.format(E_check))
+#    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
+#                        np.conj(M[0]),W[0],M[0],\
+#                        np.conj(M[1]),W[1],M[1],\
+#                        np.conj(M[2]),W[2],M[2],\
+#                        np.conj(M[3]),W[3],M[3])
+#    print('\t\tCheck Energy = {}'.format(E_check))
     # Update F
     F[1] = np.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(M[1]),W[1],M[1],F[2])
 # Convergence Test -----------------------
