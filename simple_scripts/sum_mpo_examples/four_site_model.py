@@ -13,6 +13,7 @@ q = 0         # Jump Left
 # Optimization
 tol = 1e-5
 maxIter = 10
+
 ##############################################
 
 ######## Prereqs #############################
@@ -43,6 +44,7 @@ ops.insert(len(ops),[I,I,-n,v])
 # Exit Operator ------------------------------
 ops.insert(len(ops),[I,I,I,beta*(np.exp(-s)*Sp-n)])
 
+print(ops[1])
 nops = len(ops)
 ##############################################
 # Create F

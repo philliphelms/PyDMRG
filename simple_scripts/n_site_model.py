@@ -2,7 +2,7 @@ import numpy as np
 
 ######## Inputs ##############################
 # SEP Model
-N = 10
+N = 20
 alpha = 0.35  # In at left
 beta = 2/3    # Exit at right
 s = -1        # Exponential weighting
@@ -13,7 +13,7 @@ q = 0         # Jump Left
 # Optimization
 tol = 1e-5
 maxIter = 10
-maxBondDim = 8
+maxBondDim = 16
 ##############################################
 
 ######## Prereqs #############################
@@ -72,7 +72,6 @@ while not converged:
         H = np.einsum('jlp,lmin,kmq->ijknpq',F[i],W[i],F[i+1])
         (n1,n2,n3,n4,n5,n6) = H.shape
         H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
-        print(H)
         u,v = np.linalg.eig(H)
         # select max eigenvalue
         max_ind = np.argsort(u)[-1]
