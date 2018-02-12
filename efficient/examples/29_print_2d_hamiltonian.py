@@ -22,7 +22,7 @@ plt.style.use('fivethirtyeight') #'fivethirtyeight') #'ggplot'
 #-----------------------------------------------------------------------------
 # 1D SEP
 #-----------------------------------------------------------------------------
-N = 10
+N =6
 x = mps_opt.MPS_OPT(N=N**2,
                     hamType = "sep",
                     hamParams = (np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand()))

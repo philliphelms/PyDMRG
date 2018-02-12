@@ -19,10 +19,10 @@ np.set_printoptions(precision=100)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
 
-#N = int(argv[1])
-#bondDimVec = int(argv[2])
-N = 12
-bondDimVec = [100,200,300,400,500,600,700,800,900,1000]
+N = int(argv[1])
+bondDimVec = int(argv[2])
+#N = 12
+#bondDimVec = [100,200,300,400,500,600,700,800,900,1000]
 tol = 1e-10
 maxIter = 3
 #tol = [1e-1]*(len(bondDimVec)-1)
@@ -47,8 +47,8 @@ x = mps_opt.MPS_OPT(N          = N**2,
                     maxBondDim = bondDimVec,
                     hamType    ="sep_2d",
                     maxIter    = maxIter,
-                    max_eig_iter = 1000,
-                    verbose = 4,
+                    max_eig_iter = 5,
+                    verbose = 10,
                     tol        = tol,
                     hamParams  = (0,0,0,0,0,0,
                                   0.5,0.5,0.9,0.1,0.1,0.9,-1))

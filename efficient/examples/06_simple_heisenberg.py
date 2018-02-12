@@ -21,5 +21,6 @@ x = mps_opt.MPS_OPT(N=int(N),
                     hamType = "heis",
                     plotExpVals = True,
                     plotConv = True,
+                    periodic_x = True,
                     hamParams = (1,0))
 E = x.kernel()

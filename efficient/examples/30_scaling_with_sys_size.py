@@ -25,10 +25,10 @@ max_eig_iter = 5
 tol = 1e-16
 verbose = 3
 # Calculate scaling for 1D system
-N = np.array([10,20,30,40,50,60,70,80,90,100])#,110,120,130,140,150,160,170,180,190,200])
+N = np.array([10,20,30,40,50,60,70,80,90,100,110,120,130,140])
 t_vec = np.zeros(N.shape)
 for i in range(len(N)):
-    print('2D System: Size = {}'.format(N[i]))
+    print('1D System: Size = {}'.format(N[i]))
     x = mps_opt.MPS_OPT(N=N[i],
                         maxBondDim = maxBondDim,
                         maxIter = maxIter,
@@ -41,6 +41,7 @@ for i in range(len(N)):
     x.kernel()
     t2 = time.clock()
     t_vec[i] = t2-t1
+    print('Computational Time = {}'.format(t_vec[i]))
 
 # Calculate scaling for 2D system
 N_vec_2d = np.array([2,4,6,8,10,12])#,14,16,18,20])
@@ -61,16 +62,12 @@ for i in range(len(N_vec_2d)):
     x.kernel()
     t2 = time.clock()
     t_vec_2d[i] = t2-t1
+    print('Computational Time = {}'.format(t_vec_2d[i]))
 
-plt.figure()
+fig1 = plt.figure()
 plt.plot(N,t_vec,'ro')
+plt.plot(N_vec_2d**2,t_vec_2d,'bo')
 plt.xlabel('$N$')
 plt.ylabel('Time')
-plt.show()
-
-plt.figure()
-plt.plot(N_vec_2d**2,t_vec_2d,'ro')
-plt.xlabel('$N$')
-plt.ylabel('Time')
-plt.show()
-
+plt.legend(('1D SEP','2D SEP'))
+fig1.savefig('scaling_with_system_length.pdf')

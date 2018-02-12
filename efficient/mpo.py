@@ -2,7 +2,7 @@ import numpy as np
 
 class MPO:
 
-    def __init__(self, hamType, param, N):
+    def __init__(self, hamType, param, N,periodic_x=False,periodic_y=False):
         """
         hamType choices:
             heis - Heisenberg Model
@@ -22,96 +22,127 @@ class MPO:
         """
         self.hamType = hamType
         self.N = N
+        self.periodic_x = periodic_x
+        self.periodic_y = periodic_y
         # Define various operators
         self.Sp = np.array([[0,1],
-                             [0,0]])
+                            [0,0]])
         self.Sm = np.array([[0,0],
-                             [1,0]])
+                            [1,0]])
         self.Sz = np.array([[0.5,0],
-                             [0,-0.5]])
+                            [0,-0.5]])
         self.Sx = np.array([[0,0.5],
-                             [0.5,0]])
+                            [0.5,0]])
         self.Sy = 1/(2j)*np.array([[0,1],
-                                     [-1,0]])
+                                   [-1,0]])
         self.n = np.array([[0,0],
                            [0,1]])
         self.v = np.array([[1,0],
                            [0,0]])
         self.I = np.eye(2)
         self.z = np.zeros([2,2])
-        # Creat hamiltonian based on operator type
+        # Create hamiltonian based on operator type
         if hamType is "heis":
             self.J = param[0]
             self.h = param[1]
-            self.w_arr = np.array([[self.I,           self.z,      self.z,      self.z,   self.z],
-                                   [self.Sp,         self.z,      self.z,      self.z,   self.z],
-                                   [self.Sm,         self.z,      self.z,      self.z,   self.z],
-                                   [self.Sz,         self.z,      self.z,      self.z,   self.z],
-                                   [-self.h*self.Sz, self.J/2.*self.Sm, self.J/2.*self.Sp, self.J*self.Sz, self.I       ]])
-            self.W = []
-            self.W.insert(len(self.W),np.expand_dims(self.w_arr[-1,:],0))
-            for i in range(int(self.N-2)):
-                self.W.insert(len(self.W),self.w_arr)
-            self.W.insert(len(self.W),np.expand_dims(self.w_arr[:,0],1))
+            self.ops = []
+            # Add two site terms
+            if self.J != 0:
+                for i in range(self.N-1):
+                    tmp_op1 = [None]*self.N
+                    tmp_op2 = [None]*self.N
+                    tmp_op3 = [None]*self.N
+                    tmp_op1[i] = self.J/2*self.Sm
+                    tmp_op2[i] = self.J/2*self.Sp
+                    tmp_op3[i] = self.J*self.Sz
+                    tmp_op1[i+1] = self.Sp
+                    tmp_op2[i+1] = self.Sm
+                    tmp_op3[i+1] = self.Sz
+                    self.ops.insert(len(self.ops),tmp_op1)
+                    self.ops.insert(len(self.ops),tmp_op2)
+                    self.ops.insert(len(self.ops),tmp_op3)
+                # Include periodic terms
+                if self.periodic_x:
+                    tmp_op1 = [None]*self.N
+                    tmp_op2 = [None]*self.N
+                    tmp_op3 = [None]*self.N
+                    tmp_op1[-1] = self.J/2*self.Sm
+                    tmp_op2[-1] = self.J/2*self.Sp
+                    tmp_op3[-1] = self.J*self.Sz
+                    tmp_op1[0] = self.Sp
+                    tmp_op2[0] = self.Sm
+                    tmp_op3[0] = self.Sz
+                    self.ops.insert(len(self.ops),tmp_op1)
+                    self.ops.insert(len(self.ops),tmp_op2)
+                    self.ops.insert(len(self.ops),tmp_op3)
+            # Add one site terms
+            if self.h != 0:
+                for i in range(self.N):
+                    tmp_op1 = []
+                    for j in range(self.N):
+                        if i == j:
+                            tmp_op1.insert(len(tmp_op1),-self.h*self.Sz)
+                        else:
+                            tmp_op1.insert(len(tmp_op1),None)
+                    self.ops.insert(len(self.ops),tmp_op1)
         elif hamType is "heis_2d":
-            self.N2d = int(np.sqrt(self.N))
+            self.Nx = self.N[0]
+            self.Ny = self.N[1]
+            self.N = self.Nx*self.Ny
             self.J = param[0]
             self.h = param[1]
-            ham_dim = 8+(self.N2d-2)*3
-            self.w_arr = np.zeros((ham_dim,ham_dim,2,2))
-            # Build first column
-            self.w_arr[0,0,:,:] = self.I
-            self.w_arr[1,0,:,:] = self.Sp
-            self.w_arr[self.N2d,0,:,:] = self.Sp
-            self.w_arr[self.N2d+1,0,:,:] = self.Sm
-            self.w_arr[2*self.N2d,0,:,:] = self.Sm
-            self.w_arr[2*self.N2d+1,0,:,:] = self.Sz
-            self.w_arr[3*self.N2d,0,:,:] = self.Sz
-            self.w_arr[-1,0,:,:] = -self.h*self.Sz
-            # Build Interior
-            col_ind = 1
-            row_ind = 2
-            for i in range(self.N2d-1):
-                self.w_arr[row_ind,col_ind,:,:] = self.I
-                col_ind += 1
-                row_ind += 1
-            col_ind += 1
-            row_ind += 1
-            for i in range(self.N2d-1):
-                self.w_arr[row_ind,col_ind,:,:] = self.I
-                col_ind += 1
-                row_ind += 1
-            col_ind += 1
-            row_ind += 1
-            for i in range(self.N2d-1):
-                self.w_arr[row_ind,col_ind,:,:] = self.I
-                col_ind += 1
-                row_ind += 1
-            col_ind += 1
-            row_ind += 1
-            # Build bottom row
-            self.w_arr[-1,self.N2d,:,:] = self.J/2*self.Sm
-            self.w_arr[-1,2*self.N2d,:,:] = self.J/2*self.Sp
-            self.w_arr[-1,3*self.N2d,:,:] = self.J*self.Sz
-            self.w_arr[-1,3*self.N2d+1,:,:] = self.I
-            # Create alternate array for points at top boundary
-            self.border_w_arr = self.w_arr
-            self.border_w_arr[self.N2d,0,:,:] = self.z
-            self.border_w_arr[2*self.N2d,0,:,:] = self.z
-            self.border_w_arr[3*self.N2d,0,:,:] = self.z
-            # Create W
-            self.W = []
-            self.W.insert(len(self.W),np.expand_dims(self.w_arr[-1,:],0))
-            for i in range(self.N2d**2-2):
-                if (i+1)%self.N2d:
-                    self.W.insert(len(self.W),self.border_w_arr)
-                else:
-                    self.W.insert(len(self.W),self.w_arr)
-            self.W.insert(len(self.W),np.expand_dims(self.w_arr[:,0],1))
+            # Build Two site terms
+            self.ops = []
+            if self.J != 0:
+                coupled_sites = []
+                # Determine all coupled sites along x-axis
+                for i in range(self.Ny):
+                    for j in range(self.Nx-1):
+                        coupled_sites.insert(0,[j+self.Nx*(i),j+1+self.Nx*(i)])
+                # Determine all coupled sites along y-axis
+                for i in range(self.Nx):
+                    for j in range(self.Ny-1):
+                        coupled_sites.insert(0,[i+self.Nx*(j),i+self.Nx*(j+1)])
+                # Determine periodic coupling along x-axis
+                if self.periodic_x:
+                    for i in range(Ny):
+                        coupled_sites.insert(0,[Nx*(i+1)-1,Nx*i])
+                # Determine periodic coupling along y-axis
+                if self.periodic_y:
+                    for i in range(Nx):
+                        coupled_sites.insert(0,[Nx*(Ny-1)+i,i])
+                # Build All two-site Operators
+                for i in range(len(coupled_sites)):
+                    inds = coupled_sites[i]
+                    tmp_op1 = [None]*self.N
+                    tmp_op2 = [None]*self.N
+                    tmp_op3 = [None]*self.N
+                    tmp_op1[inds[0]] = self.J/2*self.Sm
+                    tmp_op2[inds[0]] = self.J/2*self.Sp
+                    tmp_op3[inds[0]] = self.J*self.Sz
+                    tmp_op1[inds[1]] = self.Sp
+                    tmp_op2[inds[1]] = self.Sm
+                    tmp_op3[inds[1]] = self.Sz
+                    self.ops.insert(len(self.ops),tmp_op1)
+                    self.ops.insert(len(self.ops),tmp_op2)
+                    self.ops.insert(len(self.ops),tmp_op3)
+            # Add one site terms
+            if self.h != 0:
+                for i in range(self.N):
+                    tmp_op1 = []
+                    for j in range(self.N):
+                        if i == j:
+                            tmp_op1.insert(len(tmp_op1),-self.h*self.Sz)
+                        else:
+                            tmp_op1.insert(len(tmp_op1),None)
+                    self.ops.insert(len(self.ops),tmp_op1)
         elif hamType is "tasep":
             self.alpha = param[0]
             self.s = param[1]
             self.beta = param[2]
+            
+
+
             self.W = []
             self.W.insert(len(self.W),np.array([[self.alpha*(np.exp(-self.s)*self.Sm-self.v),
                                                  np.exp(-self.s)*self.Sp,
@@ -265,6 +296,7 @@ class MPO:
             self.W.insert(len(self.W),np.expand_dims(self.w_arr[:,0],1))
         else:
             raise ValueError("Specified Hamiltonian type is not supported")
+        self.nops = len(self.ops)
     
     def return_full_ham(self,verbose=2):
         # This function calculates the full hamiltonian matrix
@@ -277,7 +309,8 @@ class MPO:
                 print('\ti-Loop Progress: {}%'.format(i/self.N**2*100))
             i_occ = list(map(lambda x: int(x),'0'*(self.N-len(bin(i)[2:]))+bin(i)[2:]))
             for j in range(self.N**2):
-                print('\t\tj-Loop Progress: {}%'.format(j/self.N**2*100))
+                if verbose > 2:
+                    print('\t\tj-Loop Progress: {}%'.format(j/self.N**2*100))
                 j_occ = list(map(lambda x: int(x),'0'*(self.N-len(bin(j)[2:]))+bin(j)[2:]))
                 tmp_mat = np.array([[1]])
                 for k in range(self.N):
