@@ -232,7 +232,9 @@ class MPO:
                 self.ops.insert(len(self.ops),tmp_op2)
         elif hamType is "sep_2d":
             # Collect Parameters
-            self.N2d = int(np.sqrt(self.N))
+            self.Nx = self.N[0]
+            self.Ny = self.N[1]
+            self.N = self.Nx*self.Ny
             self.jl = param[0]
             self.jr = param[1]
             self.il = param[2]
@@ -259,36 +261,67 @@ class MPO:
             self.exp_ib = self.ib*np.exp(self.s)   # Moving Up
             self.exp_ot = self.ot*np.exp(self.s)   # Moving Up
             self.exp_ob = self.ob*np.exp(-self.s)  # Moving Down
-            # Create container for mpo
-            ham_dim = 10+(self.N2d-2)*4
-            self.w_arr = np.zeros((ham_dim,ham_dim,2,2))
-            # Build generic first column
-            self.w_arr[0,0,:,:] = self.I
-            self.w_arr[1,0,:,:] = self.exp_ju*self.Sm
-            self.w_arr[self.N2d,0,:,:] = self.exp_jr*self.Sm
-            self.w_arr[self.N2d+1,0,:,:] = self.ju*self.v
-            self.w_arr[2*self.N2d,0,:,:] = self.jr*self.v
-            self.w_arr[2*self.N2d+1,0,:,:] = self.exp_jd*self.Sp
-            self.w_arr[3*self.N2d,0,:,:] = self.exp_jl*self.Sp
-            self.w_arr[3*self.N2d+1,0,:,:] = self.jd*self.n
-            self.w_arr[4*self.N2d,0,:,:] = self.jl*self.n
-            # Build generic interior
-            col_ind = 1
-            row_ind = 2
-            for j in range(4):
-                for i in range(self.N2d-1):
-                    self.w_arr[row_ind,col_ind,:,:] = self.I
-                    col_ind += 1
-                    row_ind += 1
-                col_ind += 1
-                row_ind += 1
-            # Build bottom row
-            self.w_arr[-1,self.N2d,:,:] = self.Sp
-            self.w_arr[-1,2*self.N2d,:,:] = -self.n
-            self.w_arr[-1,3*self.N2d,:,:] = self.Sm
-            self.w_arr[-1,4*self.N2d,:,:] = -self.v
-            self.w_arr[-1,4*self.N2d+1,:,:] = self.I
-            self.W = []
+            # Build Two site terms
+            self.ops = []
+            if self.J != 0:
+                coupled_sites = []
+                # Determine all coupled sites along x-axis
+                for i in range(self.Ny):
+                    for j in range(self.Nx-1):
+                        coupled_sites.insert(0,[j+self.Nx*(i),j+1+self.Nx*(i),'horz'])
+                # Determine all coupled sites along y-axis
+                for i in range(self.Nx):
+                    for j in range(self.Ny-1):
+                        coupled_sites.insert(0,[i+self.Nx*(j),i+self.Nx*(j+1),'vert'])
+                # Determine periodic coupling along x-axis
+                if self.periodic_x:
+                    for i in range(Ny):
+                        coupled_sites.insert(0,[Nx*(i+1)-1,Nx*i,'horz'])
+                # Determine periodic coupling along y-axis
+                if self.periodic_y:
+                    for i in range(Nx):
+                        coupled_sites.insert(0,[Nx*(Ny-1)+i,i],'vert')
+                # Build All two-site Operators
+                for i in range(len(coupled_sites)):
+                    inds = coupled_sites[i][:1]
+                    if coupled_sites[i][2] is 'horz':
+                        if jr != 0:
+                            tmp_op1 = [None]*self.N
+                            tmp_op1[inds[0]] = self.jr*self.Sm
+                            tmp_op1[inds[1]] = self.Sp
+                            tmp_op2 = [None]*self.N
+                            tmp_op2[inds[0]] = self.jr*self.v
+                            tmp_op2[inds[1]] = -self.n
+                            self.ops.insert(len(self.ops),tmp_op1)
+                            self.ops.insert(len(self.ops),tmp_op2)
+                        if jl != 0:
+                            tmp_op3 = [None]*self.N
+                            tmp_op3[inds[0]] = self.jl*self.Sp
+                            tmp_op3[inds[1]] = self.Sm
+                            tmp_op4 = [None]*self.N
+                            tmp_op4[inds[0]] = self.jl*self.n
+                            tmp_op4[inds[1]] = -self.v
+                            self.ops.insert(len(self.ops),tmp_op3)
+                            self.ops.insert(len(self.ops),tmp_op4)
+                    else:
+                        if ju != 0:
+                            tmp_op1 = [None]*self.N
+                            tmp_op1[inds[0]] = self.ju*self.Sm
+                            tmp_op1[inds[1]] = self.Sp
+                            tmp_op2 = [None]*self.N
+                            tmp_op2[inds[0]] = self.ju*self.v
+                            tmp_op2[inds[1]] = -self.n
+                            self.ops.insert(len(self.ops),tmp_op1)
+                            self.ops.insert(len(self.ops),tmp_op2)
+                        if jd != 0:
+                            tmp_op3 = [None]*self.N
+                            tmp_op3[inds[0]] = self.jd*self.Sp
+                            tmp_op3[inds[1]] = self.Sm
+                            tmp_op4 = [None]*self.N
+                            tmp_op4[inds[0]] = self.jd*self.n
+                            tmp_op4[inds[1]] = -self.v
+                            self.ops.insert(len(self.ops),tmp_op3)
+                            self.ops.insert(len(self.ops),tmp_op4)
             for i in range(self.N2d):
                 for j in range(self.N2d):
                     # copy generic mpo
