@@ -17,12 +17,13 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=100)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-N = 10
-x = mps_opt.MPS_OPT(N=[N,N],
+x = mps_opt.MPS_OPT(N=[3,12],
                     hamType = "heis_2d",
                     verbose = 4,
                     plotExpVals = True,
                     plotConv = True,
-                    maxBondDim=200,
+                    periodic_x = True,
+                    periodic_y = False,
+                    maxBondDim=50,
                     hamParams = (1,0))
 E = x.kernel()

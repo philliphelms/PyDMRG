@@ -7,7 +7,7 @@ from mpl_toolkits.mplot3d import axes3d
 
 class MPS_OPT:
 
-    def __init__(self, N=10, d=2, maxBondDim=[10,50,100], tol=1e-10, maxIter=10,\
+    def __init__(self, N=10, d=2, maxBondDim=[10,50,100], tol=1e-10, maxIter=3,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
                  usePyscf=True,initialGuess=0.01,ed_limit=12,max_eig_iter=5,\
@@ -343,8 +343,8 @@ class MPS_OPT:
                 plt.draw()
             elif self.hamType is "heis_2d":
                 ax = self.exp_val_figure.gca(projection='3d')
-                x, y = np.meshgrid(np.arange((-self.mpo.Nx+1)/2,(self.mpo.Ny-1)/2+1),
-                                   np.arange((-self.mpo.Nx+1)/2,(self.mpo.Ny-1)/2+1))
+                x, y = np.meshgrid(np.arange((-self.mpo.Ny+1)/2,(self.mpo.Ny-1)/2+1),
+                                   np.arange((-self.mpo.Nx+1)/2,(self.mpo.Nx-1)/2+1))
                 ax.scatter(x,y,np.zeros((self.mpo.Nx,self.mpo.Ny)),color='k')
                 plt.quiver(x,y,np.zeros((self.mpo.Nx,self.mpo.Ny)),
                            np.reshape(self.calc_spin_x,x.shape),
@@ -541,6 +541,7 @@ class MPS_OPT:
             print('!'*50+'\nExact Diagonalization limited to systems of 12 or fewer sites\n'+'!'*50)
             return 0
         if not hasattr(self,'mpo'):
+            self.initialize_containers()
             self.generate_mpo()
         import exactDiag_meanField
         if self.hamType is 'tasep':
@@ -575,6 +576,7 @@ class MPS_OPT:
 
     def mean_field(self,maxIter=10000,tol=1e-10,clumpSize=2):
         if not hasattr(self,'mpo'):
+            self.initialize_containers()
             self.generate_mpo()
         import exactDiag_meanField
         if self.hamType is 'tasep':

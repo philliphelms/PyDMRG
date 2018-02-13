@@ -18,29 +18,29 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=100)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-N = 4
-x1 = mps_opt.MPS_OPT(N=N**2,
+N = 6
+x1 = mps_opt.MPS_OPT(N=[N,N],
                     hamType="sep_2d",
                     plotExpVals=True,
                     plotConv=True,
                     hamParams = (0,1,0.35,0,0,2/3,      # jl,jr,il,ir,ol,or,
                                  0,0,0,   0,0,0  ,-1))  # ju,jd,it,ib,ot,ob,s
 E1 = x1.kernel()
-x2 = mps_opt.MPS_OPT(N=N**2,
+x2 = mps_opt.MPS_OPT(N=[N,N],
                      hamType="sep_2d",
                      plotExpVals=True,
                      plotConv=True,
                      hamParams = (1,0,0,0.35,2/3,0,
                                   0,0,0,0   ,0  ,0,-1))
 E2 = x2.kernel()
-x3 = mps_opt.MPS_OPT(N=N**2,
+x3 = mps_opt.MPS_OPT(N=[N,N],
                      hamType="sep_2d",
                      plotExpVals=True,
                      plotConv=True,
                      hamParams = (0,0,0,0,0,0,
                                   1,0,0,0.35,2/3,0,-1))
 E3 = x3.kernel()
-x4 = mps_opt.MPS_OPT(N=N**2,
+x4 = mps_opt.MPS_OPT(N=[N,N],
                      hamType="sep_2d",
                      plotExpVals=True,
                      plotConv=True,
