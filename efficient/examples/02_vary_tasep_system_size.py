@@ -22,7 +22,7 @@ N_vec = np.array([10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180
 s = np.array([-0.01,0.01])
 current = np.zeros(len(N_vec))
 for i in range(len(N_vec)):
-    N = N_vec[i]
+    N = int(N_vec[i])
     print('Running Calcs for N={}'.format(N))
     x = mps_opt.MPS_OPT(N=N,hamType='tasep',hamParams=(3/5,s[0],2/3))
     E_left = x.kernel()

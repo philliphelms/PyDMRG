@@ -140,23 +140,33 @@ class MPO:
             self.alpha = param[0]
             self.s = param[1]
             self.beta = param[2]
-            
-
-
-            self.W = []
-            self.W.insert(len(self.W),np.array([[self.alpha*(np.exp(-self.s)*self.Sm-self.v),
-                                                 np.exp(-self.s)*self.Sp,
-                                                 -self.n,
-                                                 self.I]]))
-            for i in range(int(self.N-2)):
-                self.W.insert(len(self.W),np.array([[self.I,  self.z,                 self.z,  self.z],\
-                                                    [self.Sm, self.z,                 self.z,  self.z],\
-                                                    [self.v,  self.z,                 self.z,  self.z],\
-                                                    [self.z,  np.exp(-self.s)*self.Sp,-self.n, self.I]]))
-            self.W.insert(len(self.W),np.array([[self.I],
-                                                [self.Sm],
-                                                [self.v],
-                                                [self.beta*(np.exp(-self.s)*self.Sp-self.n)]]))
+            self.ops = []
+            for i in range(self.N-1):
+                tmp_op1 = [None]*self.N
+                tmp_op2 = [None]*self.N
+                tmp_op1[i] = np.exp(-self.s)*self.Sp
+                tmp_op2[i] = -self.n
+                tmp_op1[i+1] = self.Sm
+                tmp_op2[i+1] = self.v
+                self.ops.insert(len(self.ops),tmp_op1)
+                self.ops.insert(len(self.ops),tmp_op2)
+            # Include periodic terms
+            if self.periodic_x:
+                tmp_op1 = [None]*self.N
+                tmp_op2 = [None]*self.N
+                tmp_op1[-1] = np.exp(-self.s)*self.Sp
+                tmp_op2[-1] = -self.n
+                tmp_op1[0] = self.Sm
+                tmp_op2[0] = self.v
+                self.ops.insert(len(self.ops),tmp_op1)
+                self.ops.insert(len(self.ops),tmp_op2)
+            else:
+                tmp_op1 = [None]*self.N
+                tmp_op2 = [None]*self.N
+                tmp_op1[0] = self.alpha*(np.exp(-self.s)*self.Sm-self.v)
+                tmp_op2[-1] = self.beta*(np.exp(-self.s)*self.Sp-self.n)
+                self.ops.insert(len(self.ops),tmp_op1)
+                self.ops.insert(len(self.ops),tmp_op2)
         elif hamType is "sep":
             self.alpha = param[0]
             self.gamma = param[1]
@@ -172,29 +182,54 @@ class MPO:
             self.exp_q = self.q*np.exp(self.s)
             self.exp_beta = self.beta*np.exp(self.s)
             self.exp_delta = self.delta*np.exp(-self.s)
-            # Create MPO
-            self.W = []
-            self.W.insert(len(self.W),np.array([[(self.exp_alpha*self.Sm-self.alpha*self.v)+
-                                                 (self.exp_gamma*self.Sp-self.gamma*self.n),
-                                                 self.Sp,
-                                                 -self.n,
-                                                 self.Sm,
-                                                 -self.v,
-                                                 self.I]]))
-            for i in range(int(self.N-2)):
-                self.W.insert(len(self.W),np.array([[self.I,             self.z,  self.z,  self.z, self.z,  self.z],
-                                                    [self.exp_p*self.Sm, self.z,  self.z,  self.z, self.z,  self.z],
-                                                    [self.p*self.v,      self.z,  self.z,  self.z, self.z,  self.z],
-                                                    [self.exp_q*self.Sp, self.z,  self.z,  self.z, self.z,  self.z],
-                                                    [self.q*self.n,      self.z,  self.z,  self.z, self.z,  self.z],
-                                                    [self.z,             self.Sp, -self.n, self.Sm,-self.v, self.I]]))
-            self.W.insert(len(self.W),np.array([[self.I],
-                                                [self.exp_p*self.Sm],
-                                                [self.p*self.v],
-                                                [self.exp_q*self.Sp],
-                                                [self.q*self.n],
-                                                [(self.exp_beta*self.Sm-self.beta*self.v)+
-                                                 (self.exp_delta*self.Sp-self.delta*self.n)]]))
+            # Create List of All Operators
+            self.ops = []
+            for i in range(self.N-1):
+                if self.p != 0:
+                    tmp_op1 = [None]*self.N
+                    tmp_op2 = [None]*self.N
+                    tmp_op1[i] = self.Sp
+                    tmp_op2[i] = -self.n
+                    tmp_op1[i+1] = self.exp_p*self.Sm
+                    tmp_op2[i+1] = self.p*self.v
+                    self.ops.insert(len(self.ops),tmp_op1)
+                    self.ops.insert(len(self.ops),tmp_op2)
+                if self.q != 0:
+                    tmp_op3 = [None]*self.N
+                    tmp_op4 = [None]*self.N
+                    tmp_op3[i] = self.Sm
+                    tmp_op4[i] = -self.v
+                    tmp_op3[i+1] = self.exp_q*self.Sp
+                    tmp_op4[i+1] = self.q*self.n
+                    self.ops.insert(len(self.ops),tmp_op3)
+                    self.ops.insert(len(self.ops),tmp_op4)
+            # Include periodic terms
+            if self.periodic_x:
+                if self.p != 0:
+                    tmp_op1 = [None]*self.N
+                    tmp_op2 = [None]*self.N
+                    tmp_op1[-1] = self.Sp
+                    tmp_op2[-1] = -self.n
+                    tmp_op1[0] = self.exp_p*self.Sm
+                    tmp_op2[0] = self.p*self.v
+                    self.ops.insert(len(self.ops),tmp_op1)
+                    self.ops.insert(len(self.ops),tmp_op2)
+                if self.q != 0:
+                    tmp_op1 = [None]*self.N
+                    tmp_op2 = [None]*self.N
+                    tmp_op1[-1] = self.Sm
+                    tmp_op2[-1] = -self.v
+                    tmp_op1[0] = np.exp_q*self.Sp
+                    tmp_op2[0] = self.q*self.n
+                    self.ops.insert(len(self.ops),tmp_op1)
+                    self.ops.insert(len(self.ops),tmp_op2)
+            else:
+                tmp_op1 = [None]*self.N
+                tmp_op2 = [None]*self.N
+                tmp_op1[0] = (self.exp_alpha*self.Sm-self.alpha*self.v)+(self.exp_gamma*self.Sp-self.gamma*self.n)
+                tmp_op2[-1] = (self.exp_beta*self.Sm-self.beta*self.v)+(self.exp_delta*self.Sp-self.delta*self.n)
+                self.ops.insert(len(self.ops),tmp_op1)
+                self.ops.insert(len(self.ops),tmp_op2)
         elif hamType is "sep_2d":
             # Collect Parameters
             self.N2d = int(np.sqrt(self.N))
