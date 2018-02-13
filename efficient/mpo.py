@@ -274,10 +274,12 @@ class MPO:
                     coupled_sites.insert(0,[i+self.Nx*(j),i+self.Nx*(j+1),'vert'])
             # Determine periodic coupling along x-axis
             if self.periodic_x:
+                print('including periodicity in x-direction')
                 for i in range(Ny):
                     coupled_sites.insert(0,[Nx*(i+1)-1,Nx*i,'horz'])
             # Determine periodic coupling along y-axis
             if self.periodic_y:
+                print('including periodicity in y-direction')
                 for i in range(Nx):
                     coupled_sites.insert(0,[Nx*(Ny-1)+i,i],'vert')
             print(coupled_sites)
@@ -286,25 +288,34 @@ class MPO:
                 inds = coupled_sites[i][:2]
                 if coupled_sites[i][2] is 'horz':
                     if self.jr != 0:
+                        print('Jump Right Terms:')
+                        print('\t{}*Sm({})*Sp({})-{}v({})*n({})'.\
+                                format(self.exp_jr,inds[0],inds[1],self.jr,inds[0],inds[1]))
                         tmp_op1 = [None]*self.N
-                        tmp_op1[inds[0]] = self.exp_jr*self.Sm
-                        tmp_op1[inds[1]] = self.Sp
+                        tmp_op1[inds[0]] = self.exp_jr*self.Sp
+                        tmp_op1[inds[1]] = self.Sm
                         tmp_op2 = [None]*self.N
-                        tmp_op2[inds[0]] = self.jr*self.v
-                        tmp_op2[inds[1]] = -self.n
+                        tmp_op2[inds[0]] = self.jr*self.n
+                        tmp_op2[inds[1]] = -self.v
                         self.ops.insert(len(self.ops),tmp_op1)
                         self.ops.insert(len(self.ops),tmp_op2)
                     if self.jl != 0:
+                        print('Jump Left Terms:')
+                        print('\t{}*Sp({})*Sm({})-{}n({})*v({})'.\
+                                format(self.exp_jl,inds[0],inds[1],self.jl,inds[0],inds[1]))
                         tmp_op3 = [None]*self.N
-                        tmp_op3[inds[0]] = self.exp_jl*self.Sp
-                        tmp_op3[inds[1]] = self.Sm
+                        tmp_op3[inds[0]] = self.exp_jl*self.Sm
+                        tmp_op3[inds[1]] = self.Sp
                         tmp_op4 = [None]*self.N
-                        tmp_op4[inds[0]] = self.jl*self.n
-                        tmp_op4[inds[1]] = -self.v
+                        tmp_op4[inds[0]] = self.jl*self.v
+                        tmp_op4[inds[1]] = -self.n
                         self.ops.insert(len(self.ops),tmp_op3)
                         self.ops.insert(len(self.ops),tmp_op4)
                 else:
                     if self.ju != 0:
+                        print('Jump Up Terms:')
+                        print('\t{}*Sm({})*Sp({})-{}v({})*n({})'.\
+                                format(self.exp_ju,inds[0],inds[1],self.ju,inds[0],inds[1]))
                         tmp_op1 = [None]*self.N
                         tmp_op1[inds[0]] = self.exp_ju*self.Sm
                         tmp_op1[inds[1]] = self.Sp
@@ -314,6 +325,9 @@ class MPO:
                         self.ops.insert(len(self.ops),tmp_op1)
                         self.ops.insert(len(self.ops),tmp_op2)
                     if self.jd != 0:
+                        print('Jump Down Terms:')
+                        print('\t{}*Sp({})*Sm({})-{}n({})*v({})'.\
+                                format(self.exp_jd,inds[0],inds[1],self.jd,inds[0],inds[1]))
                         tmp_op3 = [None]*self.N
                         tmp_op3[inds[0]] = self.exp_jd*self.Sp
                         tmp_op3[inds[1]] = self.Sm
@@ -323,25 +337,35 @@ class MPO:
                         self.ops.insert(len(self.ops),tmp_op3)
                         self.ops.insert(len(self.ops),tmp_op4)
             if not self.periodic_x:
+                print('Adding x boundary conditions')
                 for i in range(self.Ny):
-                    print(self.Nx*i)
-                    print(self.Nx*(i+1)-1)
-                    tmp_op1 = [None]*self.N
-                    tmp_op1[self.Nx*i] = self.exp_il*self.Sm-self.il*self.v + self.exp_ol*self.Sp-self.ol*self.n
-                    tmp_op2 = [None]*self.N
-                    tmp_op2[self.Nx*(i+1)-1] = self.exp_ir*self.Sm-self.ir*self.v + self.exp_or*self.Sp-self.outr*self.n
-                    self.ops.insert(len(self.ops),tmp_op1)
-                    self.ops.insert(len(self.ops),tmp_op2)
+                    if self.il != 0 or self.ol != 0:
+                        print('\t{}*Sm({})-{}*v({})+{}*Sp({})-{}*n({})'.\
+                              format(self.exp_il,self.Nx*i,self.il,self.Nx*i,self.exp_ol,self.Nx*i,self.ol,self.Nx*i))
+                        tmp_op1 = [None]*self.N
+                        tmp_op1[self.Nx*i] = self.exp_il*self.Sm-self.il*self.v + self.exp_ol*self.Sp-self.ol*self.n
+                        self.ops.insert(len(self.ops),tmp_op1)
+                    if self.ir != 0 or self.outr != 0:
+                        print('\t{}*Sm({})-{}*v({})+{}*Sp({})-{}*n({})'.\
+                              format(self.exp_ir,self.Nx*(i+1)-1,self.ir,self.Nx*(i+1)-1,self.exp_or,self.Nx*(i+1)-1,self.outr,self.Nx*(i+1)-1))
+                        tmp_op2 = [None]*self.N
+                        tmp_op2[self.Nx*(i+1)-1] = self.exp_ir*self.Sm-self.ir*self.v + self.exp_or*self.Sp-self.outr*self.n
+                        self.ops.insert(len(self.ops),tmp_op2)
             if not self.periodic_y:
                 for i in range(self.Nx):
-                    print(i)
-                    print((self.Ny-1)*self.Nx+i)
-                    tmp_op1 = [None]*self.N
-                    tmp_op1[i] = self.exp_it*self.Sm-self.it*self.v + self.exp_ot*self.Sp-self.ot*self.n
-                    tmp_op2 = [None]*self.N
-                    tmp_op2[(self.Ny-1)*self.Nx+i] = self.exp_ib*self.Sm-self.ib*self.v + self.exp_ob*self.Sp-self.ob*self.n
-                    self.ops.insert(len(self.ops),tmp_op1)
-                    self.ops.insert(len(self.ops),tmp_op2)
+                    if self.it != 0 or self.ot != 0:
+                        print('\t{}*Sm({})-{}*v({})+{}*Sp({})-{}*n({})'.\
+                              format(self.exp_it,i,self.it,i,self.exp_ot,i,self.ot,i))
+                        tmp_op1 = [None]*self.N
+                        tmp_op1[i] = self.exp_it*self.Sm-self.it*self.v + self.exp_ot*self.Sp-self.ot*self.n
+                        self.ops.insert(len(self.ops),tmp_op1)
+                    if self.ib != 0 or self.ob != 0:
+                        print('\t{}*Sm({})-{}*v({})+{}*Sp({})-{}*n({})'.\
+                                format(self.exp_it,(self.Ny-1)*self.Nx+i,self.it,(self.Ny-1)*self.Nx+i,\
+                                       self.exp_ot,(self.Ny-1)*self.Nx+i,self.ot,(self.Ny-1)*self.Nx+i))
+                        tmp_op2 = [None]*self.N
+                        tmp_op2[(self.Ny-1)*self.Nx+i] = self.exp_ib*self.Sm-self.ib*self.v + self.exp_ob*self.Sp-self.ob*self.n
+                        self.ops.insert(len(self.ops),tmp_op2)
         elif hamType is "ising":
             self.J = param[0]
             self.h = param[1]
