@@ -19,7 +19,7 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=100)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-N = 10
+N = 12
 bondDimVec = [2,4,6,8,10,12,14,16,18,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200]
 # Run 1D Calculation for comparison
 Evec_1d = np.zeros(len(bondDimVec))

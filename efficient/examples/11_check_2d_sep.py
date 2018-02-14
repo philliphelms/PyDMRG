@@ -31,14 +31,14 @@ x2 = mps_opt.MPS_OPT(N=[N,N],
                      plotExpVals=True,
                      plotConv=True,
                      maxBondDim = 500,
-                     hamParams = (1,0,0,0.35,2/3,0,0,0,0,0,0,0,-1))
+                     hamParams = (1,0,0,0.35,2/3,0,0,0,0,0,0,0,1))
 E2 = x2.kernel()
 x3 = mps_opt.MPS_OPT(N=[N,N],
                      hamType="sep_2d",
                      plotExpVals=True,
                      plotConv=True,
                      maxBondDim = 500,
-                     hamParams = (0,0,0,0,0,0,1,0,0,0.35,2/3,0,-1))
+                     hamParams = (0,0,0,0,0,0,1,0,0,0.35,2/3,0,1))
 E3 = x3.kernel()
 x4 = mps_opt.MPS_OPT(N=[N,N],
                      hamType="sep_2d",
