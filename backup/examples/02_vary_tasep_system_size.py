@@ -24,9 +24,15 @@ current = np.zeros(len(N_vec))
 for i in range(len(N_vec)):
     N = N_vec[i]
     print('Running Calcs for N={}'.format(N))
-    x = mps_opt.MPS_OPT(N=N,hamType='tasep',hamParams=(3/5,s[0],2/3))
+    x = mps_opt.MPS_OPT(N=N,
+                        hamType='tasep',
+                        maxBondDim = 20,
+                        hamParams=(3/5,s[0],2/3))
     E_left = x.kernel()
-    x = mps_opt.MPS_OPT(N=N,hamType='tasep',hamParams=(3/5,s[1],2/3))
+    x = mps_opt.MPS_OPT(N=N,
+                        hamType='tasep',
+                        maxBondDim = 20,
+                        hamParams=(3/5,s[1],2/3))
     E_right = x.kernel()
     current[i] = (E_right-E_left)/(s[1]-s[0])/(N+1)
 fig1 = plt.figure()

@@ -18,15 +18,23 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=100)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-N_vec = np.array([10,20,30,40,50])#,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200])
+N_vec = np.array([10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200])
 s = np.array([-1,1])
 current = np.zeros(len(N_vec))
 for i in range(len(N_vec)):
     N = int(N_vec[i])
     print('Running Calcs for N={}'.format(N))
-    x = mps_opt.MPS_OPT(N=N,hamType='tasep',periodic_x=True,hamParams=(3/5,s[0],2/3))
+    x = mps_opt.MPS_OPT(N=N,
+                        hamType='tasep',
+                        periodic_x=False,
+                        maxBondDim = 20,
+                        hamParams=(3/5,s[0],2/3))
     E_left = x.kernel()
-    x = mps_opt.MPS_OPT(N=N,hamType='tasep',periodic_x=True,hamParams=(3/5,s[1],2/3))
+    x = mps_opt.MPS_OPT(N=N,
+                        hamType='tasep',
+                        periodic_x=False,
+                        maxBondDim = 20,
+                        hamParams=(3/5,s[1],2/3))
     E_right = x.kernel()
     current[i] = (E_right-E_left)/(s[1]-s[0])/(N+1)
 fig1 = plt.figure()

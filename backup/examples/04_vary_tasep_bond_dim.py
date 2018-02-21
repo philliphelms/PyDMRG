@@ -17,8 +17,8 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=100)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-N = 100
-bondDimVec = np.array([2, 4, 8, 10, 20, 50, 100, 250, 500])
+N = 20
+bondDimVec = np.array([2, 4, 6,8,10,12,14,16,18,20,30,40,50])
 Evec = np.zeros(len(bondDimVec))
 diffVec = np.zeros(len(bondDimVec))
 for i in range(len(bondDimVec)):

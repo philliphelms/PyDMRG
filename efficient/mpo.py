@@ -209,19 +209,19 @@ class MPO:
                 if self.p != 0:
                     tmp_op1 = [None]*self.N
                     tmp_op2 = [None]*self.N
-                    tmp_op1[-1] = self.Sp
-                    tmp_op2[-1] = -self.n
-                    tmp_op1[0] = self.exp_p*self.Sm
-                    tmp_op2[0] = self.p*self.v
+                    tmp_op1[-1] = self.exp_p*self.Sp
+                    tmp_op2[-1] = self.p*self.n
+                    tmp_op1[0] = self.Sm
+                    tmp_op2[0] = self.v
                     self.ops.insert(len(self.ops),tmp_op1)
                     self.ops.insert(len(self.ops),tmp_op2)
                 if self.q != 0:
                     tmp_op1 = [None]*self.N
                     tmp_op2 = [None]*self.N
-                    tmp_op1[-1] = self.Sm
-                    tmp_op2[-1] = -self.v
-                    tmp_op1[0] = np.exp_q*self.Sp
-                    tmp_op2[0] = self.q*self.n
+                    tmp_op1[-1] = self.exp_q*self.Sm
+                    tmp_op2[-1] = -self.q*self.v
+                    tmp_op1[0] = self.Sp
+                    tmp_op2[0] = self.n
                     self.ops.insert(len(self.ops),tmp_op1)
                     self.ops.insert(len(self.ops),tmp_op2)
             else:
