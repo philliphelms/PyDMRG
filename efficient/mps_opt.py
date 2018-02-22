@@ -11,7 +11,7 @@ class MPS_OPT:
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
                  usePyscf=True,initialGuess=0.01,ed_limit=12,max_eig_iter=5,\
-                 periodic_x=False,periodic_y=False,\
+                 periodic_x=False,periodic_y=False,add_noise=True,\
                  saveResults=False,dataFolder='data/',verbose=3):
         # Import parameters
         self.N = N
@@ -54,6 +54,7 @@ class MPS_OPT:
         self.max_eig_iter = max_eig_iter
         self.periodic_x = periodic_x
         self.periodic_y = periodic_y
+        self.add_noise = add_noise
 
     def initialize_containers(self):
         self.N_mpo = self.N
@@ -143,17 +144,6 @@ class MPS_OPT:
             self.M[i-1] = self.einsum('klj,ji,i->kli',self.M[i-1],U,s)
         else:
             raise NameError('Direction must be left or right')
-        if self.verbose > 5:
-            try:
-                print('\t'*3+'Number of Infinite/NaNs = {}'.format(np.sum(np.isinf(self.M[i]))+np.sum(np.isinf(self.M[i+1]))+np.sum(np.isinf(self.M[i-1]))+\
-                                                                   np.sum(np.isnan(self.M[i]))+np.sum(np.isnan(self.M[i+1]))+np.sum(np.isnan(self.M[i-1]))))
-            except:
-                try:
-                    print('\t'*3+'Number of Infinite/NaNs = {}'.format(np.sum(np.isinf(self.M[i]))+np.sum(np.isinf(self.M[i+1]))+\
-                                                                       np.sum(np.isnan(self.M[i]))+np.sum(np.isnan(self.M[i+1]))))
-                except:
-                    print('\t'*3+'Number of Infinite/NaNs = {}'.format(np.sum(np.isinf(self.M[i]))+np.sum(np.isinf(self.M[i-1]))+\
-                                                                       np.sum(np.isnan(self.M[i]))+np.sum(np.isnan(self.M[i-1]))))
 
     def increaseBondDim(self):
         if self.verbose > 3:
@@ -187,7 +177,7 @@ class MPS_OPT:
 
     def update_f(self,j,direction):
         if self.verbose > 4:
-            print('\t'*2+'Updating F at site {}'.format(i))
+            print('\t'*2+'Updating F at site {}'.format(j))
         if direction is 'right':
             for i in range(self.mpo.nops):
                 if self.mpo.ops[i][j] is None:
@@ -246,7 +236,16 @@ class MPS_OPT:
         def precond(dx,e,x0):
             # function(dx, e, x0) => array_like_dx
             return dx
-        E,v = self.eig(opt_fun,np.reshape(self.M[j],(-1)),precond,max_cycle=self.max_eig_iter)
+        if self.add_noise:
+            if self.verbose > 6:
+                print('\t\tAdding Noise')
+            max_noise = np.amax(self.M[j])*(10**(-self.totIterCnt*2))
+            noise = np.random.rand(n1,n2,n3)*max_noise #- 0.5
+            init_guess = self.M[j] + noise
+            init_guess = np.reshape(init_guess,-1)
+        else:
+            init_guess = np.reshape(self.M[j],-1)
+        E,v = self.eig(opt_fun,init_guess,precond,max_cycle=self.max_eig_iter)
         self.M[j] = np.reshape(v,(n1,n2,n3))
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): E = -E
         if self.verbose > 3:
@@ -418,15 +417,15 @@ class MPS_OPT:
         self.generate_f()
         self.calc_initial_f()
         converged = False
-        currIterCnt = 0
-        totIterCnt = 0
+        self.currIterCnt = 0
+        self.totIterCnt = 0
         self.calc_observables(0)
         E_prev = 0#self.energy_contraction(0)
         self.E = E_prev
         while not converged:
             # Right Sweep --------------------------
             if self.verbose > 2:
-                print('\t'*0+'Right Sweep {}, E = {}'.format(totIterCnt,self.E))
+                print('\t'*0+'Right Sweep {}, E = {}'.format(self.totIterCnt,self.E))
             for i in range(int(self.N-1)):
                 inside_t1 = time.time()
                 self.E = self.local_optimization(i)
@@ -440,7 +439,7 @@ class MPS_OPT:
                 self.inside_iter_cnt[self.maxBondDimInd] += 1
             # Left Sweep ---------------------------
             if self.verbose > 2:
-                print('\t'*0+'Left Sweep  {}, E = {}'.format(totIterCnt,self.E))
+                print('\t'*0+'Left Sweep  {}, E = {}'.format(self.totIterCnt,self.E))
             for i in range(int(self.N-1),0,-1):
                 inside_t1 = time.time()
                 self.E = self.local_optimization(i)
@@ -489,9 +488,9 @@ class MPS_OPT:
                     self.increaseBondDim()
                     self.generate_f()
                     self.calc_initial_f()
-                    totIterCnt += 1
-                    currIterCnt = 0
-            elif currIterCnt >= self.maxIter[self.maxBondDimInd]-1:
+                    self.totIterCnt += 1
+                    self.currIterCnt = 0
+            elif self.currIterCnt >= self.maxIter[self.maxBondDimInd]-1:
                 if self.maxBondDimInd is (len(self.maxBondDim)-1):
                     self.bondDimEnergies[self.maxBondDimInd] = self.E
                     self.finalEnergy = self.E
@@ -523,14 +522,14 @@ class MPS_OPT:
                     self.increaseBondDim()
                     self.generate_f()
                     self.calc_initial_f()
-                    totIterCnt += 1
-                    currIterCnt = 0
+                    self.totIterCnt += 1
+                    self.currIterCnt = 0
             else:
                 if self.verbose > 3:
                     print('\t'*1+'Energy Change {}\nNeeded <{}'.format(np.abs(self.E-E_prev),self.tol[self.maxBondDimInd]))
                 E_prev = self.E
-                currIterCnt += 1
-                totIterCnt += 1
+                self.currIterCnt += 1
+                self.totIterCnt += 1
         self.saveFinalResults('dmrg')
         return self.finalEnergy
 
