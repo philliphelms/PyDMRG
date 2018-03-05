@@ -28,14 +28,14 @@ for i in range(len(betaVec)):
     for j in range(len(alphaVec)):
         print('-'*20+'\nalpha = {}%, beta = {}%\n'.format(j/len(alphaVec)*100,i/len(betaVec)*100))
         print('alpha = {}, beta = {}\n'.format(alphaVec[j],betaVec[i])+'-'*20)
-        x = mps_opt.MPS_OPT(N=N**2,
+        x = mps_opt.MPS_OPT(N=[N,N],
                             maxBondDim = [10,30,50],
                             hamType = "sep_2d",
                             verbose = 2,
                             hamParams = (0.25,0.25,0,0,0,0,
                                          0.25,0.25,alphaVec[j],betaVec[i],betaVec[i],alphaVec[j],s_vec[0]))
         E1 = x.kernel()
-        x = mps_opt.MPS_OPT(N=N**2,
+        x = mps_opt.MPS_OPT(N=[N,N],
                             maxBondDim = [10,30,50],
                             hamType = "sep_2d",
                             verbose = 2,

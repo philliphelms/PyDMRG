@@ -117,12 +117,12 @@ class MPS_OPT:
         self.F = []
         for i in range(self.mpo.nops):
             F_tmp = []
-            F_tmp.insert(len(F_tmp),np.array([[1]]))
+            F_tmp.insert(len(F_tmp),np.array([[[1]]]))
             for j in range(int(self.N/2)):
-                F_tmp.insert(len(F_tmp),np.zeros((min(self.d**(j+1),self.maxBondDimCurr),min(self.d**(j+1),self.maxBondDimCurr))))
+                F_tmp.insert(len(F_tmp),np.zeros((min(self.d**(j+1),self.maxBondDimCurr),2,min(self.d**(j+1),self.maxBondDimCurr))))
             for j in range(int(self.N/2)-1,0,-1):
-                F_tmp.insert(len(F_tmp),np.zeros((min(self.d**(j),self.maxBondDimCurr),min(self.d**j,self.maxBondDimCurr))))
-            F_tmp.insert(len(F_tmp),np.array([[1]]))
+                F_tmp.insert(len(F_tmp),np.zeros((min(self.d**(j),self.maxBondDimCurr),2,min(self.d**j,self.maxBondDimCurr))))
+            F_tmp.insert(len(F_tmp),np.array([[[1]]]))
             self.F.insert(len(self.F),F_tmp)
 
     def normalize(self,i,direction):
@@ -168,12 +168,12 @@ class MPS_OPT:
                 if self.verbose > 5:
                     print('\t'*3+'at site {}'.format(j))
                 if self.mpo.ops[i][j] is None:
-                    tmp_sum1 = self.einsum('cf,eaf->ace',self.F[i][j+1],self.M[j])
-                    self.F[i][j] = self.einsum('bxc,acb->xa',np.conj(self.M[j]),tmp_sum1)
+                    tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[i][j+1],self.M[j])
+                    self.F[i][j] = self.einsum('bxc,acyb->xya',np.conj(self.M[j]),tmp_sum1)
                 else:
-                    tmp_sum1 = self.einsum('cf,eaf->ace',self.F[i][j+1],self.M[j])
-                    tmp_sum2 = self.einsum('be,ace->abc',self.mpo.ops[i][j],tmp_sum1)
-                    self.F[i][j] = self.einsum('bxc,abc->xa',np.conj(self.M[j]),tmp_sum2)
+                    tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[i][j+1],self.M[j])
+                    tmp_sum2 = self.einsum('ydbe,acde->abcy',self.mpo.ops[i][j],tmp_sum1)
+                    self.F[i][j] = self.einsum('bxc,abcy->xya',np.conj(self.M[j]),tmp_sum2)
 
     def update_f(self,j,direction):
         if self.verbose > 4:
@@ -181,21 +181,21 @@ class MPS_OPT:
         if direction is 'right':
             for i in range(self.mpo.nops):
                 if self.mpo.ops[i][j] is None:
-                    tmp_sum1 = self.einsum('jp,ijk->ikp',self.F[i][j],np.conj(self.M[j]))
-                    self.F[i][j+1] = self.einsum('npq,nkp->kq',self.M[j],tmp_sum1)
+                    tmp_sum1 = self.einsum('jlp,ijk->iklp',self.F[i][j],np.conj(self.M[j]))
+                    self.F[i][j+1] = self.einsum('npq,nkmp->kmq',self.M[j],tmp_sum1)
                 else:
-                    tmp_sum1 = self.einsum('jp,ijk->ikp',self.F[i][j],np.conj(self.M[j]))
-                    tmp_sum2 = self.einsum('in,ikp->knp',self.mpo.ops[i][j],tmp_sum1)
-                    self.F[i][j+1] = self.einsum('npq,knp->kq',self.M[j],tmp_sum2)
+                    tmp_sum1 = self.einsum('jlp,ijk->iklp',self.F[i][j],np.conj(self.M[j]))
+                    tmp_sum2 = self.einsum('lmin,iklp->kmnp',self.mpo.ops[i][j],tmp_sum1)
+                    self.F[i][j+1] = self.einsum('npq,kmnp->kmq',self.M[j],tmp_sum2)
         elif direction is 'left':
             for i in range(self.mpo.nops):
                 if self.mpo.ops[i][j] is None:
-                    tmp_sum1 = self.einsum('cf,eaf->ace',self.F[i][j+1],self.M[j])
-                    self.F[i][j] = self.einsum('bxc,acb->xa',np.conj(self.M[j]),tmp_sum1)
+                    tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[i][j+1],self.M[j])
+                    self.F[i][j] = self.einsum('bxc,acyb->xya',np.conj(self.M[j]),tmp_sum1)
                 else:
-                    tmp_sum1 = self.einsum('cf,eaf->ace',self.F[i][j+1],self.M[j])
-                    tmp_sum2 = self.einsum('be,ace->abc',self.mpo.ops[i][j],tmp_sum1)
-                    self.F[i][j] = self.einsum('bxc,abc->xa',np.conj(self.M[j]),tmp_sum2)
+                    tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[i][j+1],self.M[j])
+                    tmp_sum2 = self.einsum('ydbe,acde->abcy',self.mpo.ops[i][j],tmp_sum1)
+                    self.F[i][j] = self.einsum('bxc,abcy->xya',np.conj(self.M[j]),tmp_sum2)
         else:
             raise NameError('Direction must be left or right')
 
@@ -220,18 +220,18 @@ class MPS_OPT:
             fin_sum = np.zeros(x_reshape.shape)
             for i in range(self.mpo.nops):
                 if self.mpo.ops[i][j] is None:
-                    in_sum1 =  self.einsum('ik,lmk->ilm',self.F[i][j+1],x_reshape)
+                    in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
                     if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
-                        fin_sum -= self.einsum('pm,iom->opi',self.F[i][j],in_sum1)
+                        fin_sum -= self.einsum('pnm,inom->opi',self.F[i][j],in_sum1)
                     else:
-                        fin_sum += self.einsum('pm,iom->opi',self.F[i][j],in_sum1)
+                        fin_sum += self.einsum('pnm,inom->opi',self.F[i][j],in_sum1)
                 else:
-                    in_sum1 =  self.einsum('ik,lmk->ilm',self.F[i][j+1],x_reshape)
-                    in_sum2 = self.einsum('ol,ilm->oim',self.mpo.ops[i][j],in_sum1)
+                    in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
+                    in_sum2 = self.einsum('njol,ijlm->noim',self.mpo.ops[i][j],in_sum1)
                     if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
-                        fin_sum -= self.einsum('pm,oim->opi',self.F[i][j],in_sum2)
+                        fin_sum -= self.einsum('pnm,noim->opi',self.F[i][j],in_sum2)
                     else:
-                        fin_sum += self.einsum('pm,oim->opi',self.F[i][j],in_sum2)
+                        fin_sum += self.einsum('pnm,noim->opi',self.F[i][j],in_sum2)
             return np.reshape(fin_sum,-1)
         def precond(dx,e,x0):
             # function(dx, e, x0) => array_like_dx
@@ -259,9 +259,9 @@ class MPS_OPT:
             print('\t'*4+'Using slow optimization routine')
         for j in range(nops):
             if j == 1:
-                H = self.einsum('jp,in,kq->ijknpq',self.F[j][i],self.mpo.ops[j][i],self.F[j][i+1])
+                H = self.einsum('jlp,lmin,kmq->ijknpq',self.F[j][i],self.mpo.ops[j][i],self.F[j][i+1])
             else:
-                H += self.einsum('jp,in,kq->ijknpq',self.F[j][i],self.mpo.ops[j][i],self.F[j][i+1])
+                H += self.einsum('jlp,lmin,kmq->ijknpq',self.F[j][i],self.mpo.ops[j][i],self.F[j][i+1])
         (n1,n2,n3,n4,n5,n6) = H.shape
         H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): H = -H
@@ -295,9 +295,9 @@ class MPS_OPT:
         E = 0
         for i in range(self.mpo.nops):
             if self.mpo.ops[i][j] is None:
-                E += self.einsum('ik,op,mio,nkp->',self.F[i][j],self.F[i][j+1],np.conjugate(self.M[j]),self.M[j])
+                E += self.einsum('ijk,olp,mio,nkp->',self.F[i][j],self.F[i][j+1],np.conjugate(self.M[j]),self.M[j])
             else:
-                E += self.einsum('ik,mn,op,mio,nkp->',self.F[i][j],self.mpo.ops[i][j],self.F[i][j+1],np.conjugate(self.M[j]),self.M[j])
+                E += self.einsum('ijk,jlmn,olp,mio,nkp->',self.F[i][j],self.mpo.ops[i][j],self.F[i][j+1],np.conjugate(self.M[j]),self.M[j])
         return E
 
     def plot_observables(self):

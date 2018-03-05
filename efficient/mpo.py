@@ -53,12 +53,12 @@ class MPO:
                     tmp_op1 = [None]*self.N
                     tmp_op2 = [None]*self.N
                     tmp_op3 = [None]*self.N
-                    tmp_op1[i] = self.J/2*self.Sm
-                    tmp_op2[i] = self.J/2*self.Sp
-                    tmp_op3[i] = self.J*self.Sz
-                    tmp_op1[i+1] = self.Sp
-                    tmp_op2[i+1] = self.Sm
-                    tmp_op3[i+1] = self.Sz
+                    tmp_op1[i] = np.array([[self.J/2*self.Sm]])
+                    tmp_op2[i] = np.array([[self.J/2*self.Sp]])
+                    tmp_op3[i] = np.array([[self.J*self.Sz]])
+                    tmp_op1[i+1] = np.array([[self.Sp]])
+                    tmp_op2[i+1] = np.array([[self.Sm]])
+                    tmp_op3[i+1] = np.array([[self.Sz]])
                     self.ops.insert(len(self.ops),tmp_op1)
                     self.ops.insert(len(self.ops),tmp_op2)
                     self.ops.insert(len(self.ops),tmp_op3)
@@ -67,12 +67,12 @@ class MPO:
                     tmp_op1 = [None]*self.N
                     tmp_op2 = [None]*self.N
                     tmp_op3 = [None]*self.N
-                    tmp_op1[-1] = self.J/2*self.Sm
-                    tmp_op2[-1] = self.J/2*self.Sp
-                    tmp_op3[-1] = self.J*self.Sz
-                    tmp_op1[0] = self.Sp
-                    tmp_op2[0] = self.Sm
-                    tmp_op3[0] = self.Sz
+                    tmp_op1[-1] = np.array([[self.J/2*self.Sm]])
+                    tmp_op2[-1] = np.array([[self.J/2*self.Sp]])
+                    tmp_op3[-1] = np.array([[self.J*self.Sz]])
+                    tmp_op1[0] = np.array([[self.Sp]])
+                    tmp_op2[0] = np.array([[self.Sm]])
+                    tmp_op3[0] = np.array([[self.Sz]])
                     self.ops.insert(len(self.ops),tmp_op1)
                     self.ops.insert(len(self.ops),tmp_op2)
                     self.ops.insert(len(self.ops),tmp_op3)
@@ -82,7 +82,7 @@ class MPO:
                     tmp_op1 = []
                     for j in range(self.N):
                         if i == j:
-                            tmp_op1.insert(len(tmp_op1),-self.h*self.Sz)
+                            tmp_op1.insert(len(tmp_op1),np.array([[-self.h*self.Sz]]))
                         else:
                             tmp_op1.insert(len(tmp_op1),None)
                     self.ops.insert(len(self.ops),tmp_op1)
@@ -118,12 +118,12 @@ class MPO:
                     tmp_op1 = [None]*self.N
                     tmp_op2 = [None]*self.N
                     tmp_op3 = [None]*self.N
-                    tmp_op1[inds[0]] = self.J/2*self.Sm
-                    tmp_op2[inds[0]] = self.J/2*self.Sp
-                    tmp_op3[inds[0]] = self.J*self.Sz
-                    tmp_op1[inds[1]] = self.Sp
-                    tmp_op2[inds[1]] = self.Sm
-                    tmp_op3[inds[1]] = self.Sz
+                    tmp_op1[inds[0]] = np.array([[self.J/2*self.Sm]])
+                    tmp_op2[inds[0]] = np.array([[self.J/2*self.Sp]])
+                    tmp_op3[inds[0]] = np.array([[self.J*self.Sz]])
+                    tmp_op1[inds[1]] = np.array([[self.Sp]])
+                    tmp_op2[inds[1]] = np.array([[self.Sm]])
+                    tmp_op3[inds[1]] = np.array([[self.Sz]])
                     self.ops.insert(len(self.ops),tmp_op1)
                     self.ops.insert(len(self.ops),tmp_op2)
                     self.ops.insert(len(self.ops),tmp_op3)
@@ -133,7 +133,7 @@ class MPO:
                     tmp_op1 = []
                     for j in range(self.N):
                         if i == j:
-                            tmp_op1.insert(len(tmp_op1),-self.h*self.Sz)
+                            tmp_op1.insert(len(tmp_op1),np.array([[-self.h*self.Sz]]))
                         else:
                             tmp_op1.insert(len(tmp_op1),None)
                     self.ops.insert(len(self.ops),tmp_op1)
@@ -145,27 +145,27 @@ class MPO:
             for i in range(self.N-1):
                 tmp_op1 = [None]*self.N
                 tmp_op2 = [None]*self.N
-                tmp_op1[i] = np.exp(-self.s)*self.Sp
-                tmp_op2[i] = -self.n
-                tmp_op1[i+1] = self.Sm
-                tmp_op2[i+1] = self.v
+                tmp_op1[i] = np.array([[np.exp(-self.s)*self.Sp]])
+                tmp_op2[i] = np.array([[-self.n]])
+                tmp_op1[i+1] = np.array([[self.Sm]])
+                tmp_op2[i+1] = np.array([[self.v]])
                 self.ops.insert(len(self.ops),tmp_op1)
                 self.ops.insert(len(self.ops),tmp_op2)
             # Include periodic terms
             if self.periodic_x:
                 tmp_op1 = [None]*self.N
                 tmp_op2 = [None]*self.N
-                tmp_op1[-1] = np.exp(-self.s)*self.Sp
-                tmp_op2[-1] = -self.n
-                tmp_op1[0] = self.Sm
-                tmp_op2[0] = self.v
+                tmp_op1[-1] = np.array([[np.exp(-self.s)*self.Sp]])
+                tmp_op2[-1] = np.array([[-self.n]])
+                tmp_op1[0] = np.array([[self.Sm]])
+                tmp_op2[0] = np.array([[self.v]])
                 self.ops.insert(len(self.ops),tmp_op1)
                 self.ops.insert(len(self.ops),tmp_op2)
             else:
                 tmp_op1 = [None]*self.N
                 tmp_op2 = [None]*self.N
-                tmp_op1[0] = self.alpha*(np.exp(-self.s)*self.Sm-self.v)
-                tmp_op2[-1] = self.beta*(np.exp(-self.s)*self.Sp-self.n)
+                tmp_op1[0] = np.array([[self.alpha*(np.exp(-self.s)*self.Sm-self.v)]])
+                tmp_op2[-1] = np.array([[self.beta*(np.exp(-self.s)*self.Sp-self.n)]])
                 self.ops.insert(len(self.ops),tmp_op1)
                 self.ops.insert(len(self.ops),tmp_op2)
         elif hamType is "sep":
@@ -189,19 +189,19 @@ class MPO:
                 if self.p != 0:
                     tmp_op1 = [None]*self.N
                     tmp_op2 = [None]*self.N
-                    tmp_op1[i] = self.Sp
-                    tmp_op2[i] = -self.n
-                    tmp_op1[i+1] = self.exp_p*self.Sm
-                    tmp_op2[i+1] = self.p*self.v
+                    tmp_op1[i] = np.array([[self.Sp]])
+                    tmp_op2[i] = np.array([[-self.n]])
+                    tmp_op1[i+1] = np.array([[self.exp_p*self.Sm]])
+                    tmp_op2[i+1] = np.array([[self.p*self.v]])
                     self.ops.insert(len(self.ops),tmp_op1)
                     self.ops.insert(len(self.ops),tmp_op2)
                 if self.q != 0:
                     tmp_op3 = [None]*self.N
                     tmp_op4 = [None]*self.N
-                    tmp_op3[i] = self.Sm
-                    tmp_op4[i] = -self.v
-                    tmp_op3[i+1] = self.exp_q*self.Sp
-                    tmp_op4[i+1] = self.q*self.n
+                    tmp_op3[i] = np.array([[self.Sm]])
+                    tmp_op4[i] = np.array([[-self.v]])
+                    tmp_op3[i+1] = np.array([[self.exp_q*self.Sp]])
+                    tmp_op4[i+1] = np.array([[self.q*self.n]])
                     self.ops.insert(len(self.ops),tmp_op3)
                     self.ops.insert(len(self.ops),tmp_op4)
             # Include periodic terms
@@ -209,26 +209,28 @@ class MPO:
                 if self.p != 0:
                     tmp_op1 = [None]*self.N
                     tmp_op2 = [None]*self.N
-                    tmp_op1[-1] = self.exp_p*self.Sp
-                    tmp_op2[-1] = self.p*self.n
-                    tmp_op1[0] = self.Sm
-                    tmp_op2[0] = self.v
+                    tmp_op1[-1] = np.array([[self.exp_p*self.Sp]])
+                    tmp_op2[-1] = np.array([[self.p*self.n]])
+                    tmp_op1[0] = np.array([[self.Sm]])
+                    tmp_op2[0] = np.array([[self.v]])
                     self.ops.insert(len(self.ops),tmp_op1)
                     self.ops.insert(len(self.ops),tmp_op2)
                 if self.q != 0:
                     tmp_op1 = [None]*self.N
                     tmp_op2 = [None]*self.N
-                    tmp_op1[-1] = self.exp_q*self.Sm
-                    tmp_op2[-1] = -self.q*self.v
-                    tmp_op1[0] = self.Sp
-                    tmp_op2[0] = self.n
+                    tmp_op1[-1] = np.array([[self.exp_q*self.Sm]])
+                    tmp_op2[-1] = np.array([[-self.q*self.v]])
+                    tmp_op1[0] = np.array([[self.Sp]])
+                    tmp_op2[0] = np.array([[self.n]])
                     self.ops.insert(len(self.ops),tmp_op1)
                     self.ops.insert(len(self.ops),tmp_op2)
             else:
                 tmp_op1 = [None]*self.N
                 tmp_op2 = [None]*self.N
-                tmp_op1[0] = (self.exp_alpha*self.Sm-self.alpha*self.v)+(self.exp_gamma*self.Sp-self.gamma*self.n)
-                tmp_op2[-1] = (self.exp_beta*self.Sm-self.beta*self.v)+(self.exp_delta*self.Sp-self.delta*self.n)
+                tmp_op1[0] = np.array([[(self.exp_alpha*self.Sm-self.alpha*self.v)\
+                                       +(self.exp_gamma*self.Sp-self.gamma*self.n)]])
+                tmp_op2[-1] = np.array([[(self.exp_beta*self.Sm-self.beta*self.v)\
+                                        +(self.exp_delta*self.Sp-self.delta*self.n)]])
                 self.ops.insert(len(self.ops),tmp_op1)
                 self.ops.insert(len(self.ops),tmp_op2)
         elif hamType is "sep_2d":
@@ -295,11 +297,11 @@ class MPO:
                             print('\t{}*Sm({})*Sp({})-{}v({})*n({})'.\
                                     format(self.exp_jr,inds[0],inds[1],self.jr,inds[0],inds[1]))
                         tmp_op1 = [None]*self.N
-                        tmp_op1[inds[0]] = self.exp_jr*self.Sp
-                        tmp_op1[inds[1]] = self.Sm
+                        tmp_op1[inds[0]] = np.array([[self.exp_jr*self.Sp]])
+                        tmp_op1[inds[1]] = np.array([[self.Sm]])
                         tmp_op2 = [None]*self.N
-                        tmp_op2[inds[0]] = self.jr*self.n
-                        tmp_op2[inds[1]] = -self.v
+                        tmp_op2[inds[0]] = np.array([[self.jr*self.n]])
+                        tmp_op2[inds[1]] = np.array([[-self.v]])
                         self.ops.insert(len(self.ops),tmp_op1)
                         self.ops.insert(len(self.ops),tmp_op2)
                     if self.jl != 0:
@@ -308,11 +310,11 @@ class MPO:
                             print('\t{}*Sp({})*Sm({})-{}n({})*v({})'.\
                                     format(self.exp_jl,inds[0],inds[1],self.jl,inds[0],inds[1]))
                         tmp_op3 = [None]*self.N
-                        tmp_op3[inds[0]] = self.exp_jl*self.Sm
-                        tmp_op3[inds[1]] = self.Sp
+                        tmp_op3[inds[0]] = np.array([[self.exp_jl*self.Sm]])
+                        tmp_op3[inds[1]] = np.array([[self.Sp]])
                         tmp_op4 = [None]*self.N
-                        tmp_op4[inds[0]] = self.jl*self.v
-                        tmp_op4[inds[1]] = -self.n
+                        tmp_op4[inds[0]] = np.array([[self.jl*self.v]])
+                        tmp_op4[inds[1]] = np.array([[-self.n]])
                         self.ops.insert(len(self.ops),tmp_op3)
                         self.ops.insert(len(self.ops),tmp_op4)
                 else:
@@ -322,11 +324,11 @@ class MPO:
                             print('\t{}*Sm({})*Sp({})-{}v({})*n({})'.\
                                 format(self.exp_ju,inds[0],inds[1],self.ju,inds[0],inds[1]))
                         tmp_op1 = [None]*self.N
-                        tmp_op1[inds[0]] = self.exp_ju*self.Sm
-                        tmp_op1[inds[1]] = self.Sp
+                        tmp_op1[inds[0]] = np.array([[self.exp_ju*self.Sm]])
+                        tmp_op1[inds[1]] = np.array([[self.Sp]])
                         tmp_op2 = [None]*self.N
-                        tmp_op2[inds[0]] = self.ju*self.v
-                        tmp_op2[inds[1]] = -self.n
+                        tmp_op2[inds[0]] = np.array([[self.ju*self.v]])
+                        tmp_op2[inds[1]] = np.array([[-self.n]])
                         self.ops.insert(len(self.ops),tmp_op1)
                         self.ops.insert(len(self.ops),tmp_op2)
                     if self.jd != 0:
@@ -335,11 +337,11 @@ class MPO:
                             print('\t{}*Sp({})*Sm({})-{}n({})*v({})'.\
                                 format(self.exp_jd,inds[0],inds[1],self.jd,inds[0],inds[1]))
                         tmp_op3 = [None]*self.N
-                        tmp_op3[inds[0]] = self.exp_jd*self.Sp
-                        tmp_op3[inds[1]] = self.Sm
+                        tmp_op3[inds[0]] = np.array([[self.exp_jd*self.Sp]])
+                        tmp_op3[inds[1]] = np.array([[self.Sm]])
                         tmp_op4 = [None]*self.N
-                        tmp_op4[inds[0]] = self.jd*self.n
-                        tmp_op4[inds[1]] = -self.v
+                        tmp_op4[inds[0]] = np.array([[self.jd*self.n]])
+                        tmp_op4[inds[1]] = np.array([[-self.v]])
                         self.ops.insert(len(self.ops),tmp_op3)
                         self.ops.insert(len(self.ops),tmp_op4)
             if not self.periodic_x:
@@ -351,14 +353,16 @@ class MPO:
                             print('\t{}*Sm({})-{}*v({})+{}*Sp({})-{}*n({})'.\
                                 format(self.exp_il,self.Nx*i,self.il,self.Nx*i,self.exp_ol,self.Nx*i,self.ol,self.Nx*i))
                         tmp_op1 = [None]*self.N
-                        tmp_op1[self.Nx*i] = self.exp_il*self.Sm-self.il*self.v + self.exp_ol*self.Sp-self.ol*self.n
+                        tmp_op1[self.Nx*i] = np.array([[self.exp_il*self.Sm-self.il*self.v\
+                                                      + self.exp_ol*self.Sp-self.ol*self.n]])
                         self.ops.insert(len(self.ops),tmp_op1)
                     if self.ir != 0 or self.outr != 0:
                         if self.verbose > 3:
                             print('\t{}*Sm({})-{}*v({})+{}*Sp({})-{}*n({})'.\
                               format(self.exp_ir,self.Nx*(i+1)-1,self.ir,self.Nx*(i+1)-1,self.exp_or,self.Nx*(i+1)-1,self.outr,self.Nx*(i+1)-1))
                         tmp_op2 = [None]*self.N
-                        tmp_op2[self.Nx*(i+1)-1] = self.exp_ir*self.Sm-self.ir*self.v + self.exp_or*self.Sp-self.outr*self.n
+                        tmp_op2[self.Nx*(i+1)-1] = np.array([[self.exp_ir*self.Sm-self.ir*self.v\
+                                                            + self.exp_or*self.Sp-self.outr*self.n]])
                         self.ops.insert(len(self.ops),tmp_op2)
             if not self.periodic_y:
                 for i in range(self.Nx):
@@ -367,7 +371,8 @@ class MPO:
                             print('\t{}*Sm({})-{}*v({})+{}*Sp({})-{}*n({})'.\
                               format(self.exp_it,i,self.it,i,self.exp_ot,i,self.ot,i))
                         tmp_op1 = [None]*self.N
-                        tmp_op1[i] = self.exp_it*self.Sm-self.it*self.v + self.exp_ot*self.Sp-self.ot*self.n
+                        tmp_op1[i] = np.array([[self.exp_it*self.Sm-self.it*self.v\
+                                              + self.exp_ot*self.Sp-self.ot*self.n]])
                         self.ops.insert(len(self.ops),tmp_op1)
                     if self.ib != 0 or self.ob != 0:
                         if self.verbose > 3:
@@ -375,7 +380,8 @@ class MPO:
                                 format(self.exp_it,(self.Ny-1)*self.Nx+i,self.it,(self.Ny-1)*self.Nx+i,\
                                        self.exp_ot,(self.Ny-1)*self.Nx+i,self.ot,(self.Ny-1)*self.Nx+i))
                         tmp_op2 = [None]*self.N
-                        tmp_op2[(self.Ny-1)*self.Nx+i] = self.exp_ib*self.Sm-self.ib*self.v + self.exp_ob*self.Sp-self.ob*self.n
+                        tmp_op2[(self.Ny-1)*self.Nx+i] = np.array([[self.exp_ib*self.Sm-self.ib*self.v\
+                                                                  + self.exp_ob*self.Sp-self.ob*self.n]])
                         self.ops.insert(len(self.ops),tmp_op2)
         elif hamType is "ising":
             self.J = param[0]
@@ -385,20 +391,20 @@ class MPO:
             if self.J != 0:
                 for i in range(self.N-1):
                     tmp_op1 = [None]*self.N
-                    tmp_op1[i] = self.Sz
-                    tmp_op1[i+1] = self.J*self.Sz
+                    tmp_op1[i] = np.array([[self.Sz]])
+                    tmp_op1[i+1] = np.array([[self.J*self.Sz]])
                     self.ops.insert(len(self.ops),tmp_op1)
                 # Include periodic terms
                 if self.periodic_x:
                     tmp_op1 = [None]*self.N
-                    tmp_op1[-1] = self.Sz
-                    tmp_op1[0] = self.J*self.Sz
+                    tmp_op1[-1] = np.array([[self.Sz]])
+                    tmp_op1[0] = np.array([[self.J*self.Sz]])
                     self.ops.insert(len(self.ops),tmp_op1)
             # Add one site terms
             if self.h != 0:
                 for i in range(self.N):
                     tmp_op1 = [None]*self.N
-                    tmp_op1[i] = -self.h*self.Sz
+                    tmp_op1[i] = np.array([[-self.h*self.Sz]])
                     self.ops.insert(len(self.ops),tmp_op1)
         else:
             raise ValueError("Specified Hamiltonian type is not supported")

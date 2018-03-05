@@ -25,7 +25,7 @@ max_eig_iter = 5
 tol = 1e-16
 verbose = 3
 # Calculate scaling for 1D system
-N = np.array([10,20,30,40,50,60,70,80,90,100,110,120,130,140])
+N = np.array([10,20,30,40,50,60,70,80,90,100,110,120,130,140],dtype=np.int)
 t_vec = np.zeros(N.shape)
 for i in range(len(N)):
     print('1D System: Size = {}'.format(N[i]))
@@ -48,7 +48,7 @@ N_vec_2d = np.array([2,4,6,8,10,12])#,14,16,18,20])
 t_vec_2d = np.zeros(N_vec_2d.shape)
 for i in range(len(N_vec_2d)):
     print('2D System: Size = {}'.format(N_vec_2d[i]**2))
-    x = mps_opt.MPS_OPT(N=N_vec_2d[i]**2,
+    x = mps_opt.MPS_OPT(N=[N_vec_2d[i],N_vec_2d[i]],
                         maxBondDim = maxBondDim,
                         maxIter = maxIter,
                         max_eig_iter = max_eig_iter,
