@@ -46,46 +46,33 @@ class MPO:
         if hamType is "heis":
             self.J = param[0]
             self.h = param[1]
+            w_arr = np.array([[self.I, self.z, self.z, self.z, self.z],
+                              [self.Sp, self.z, self.z, self.z, self.z],
+                              [self.Sm, self.z, self.z, self.z, self.z],
+                              [self.Sz, self.z, self.z, self.z, self.z],
+                              [-self.h*self.Sz, self.J/2.*self.Sm, self.J/2.*self.Sp, self.J*self.Sz, self.I ]])
             self.ops = []
-            # Add two site terms
-            if self.J != 0:
-                for i in range(self.N-1):
-                    tmp_op1 = [None]*self.N
-                    tmp_op2 = [None]*self.N
-                    tmp_op3 = [None]*self.N
-                    tmp_op1[i] = np.array([[self.J/2*self.Sm]])
-                    tmp_op2[i] = np.array([[self.J/2*self.Sp]])
-                    tmp_op3[i] = np.array([[self.J*self.Sz]])
-                    tmp_op1[i+1] = np.array([[self.Sp]])
-                    tmp_op2[i+1] = np.array([[self.Sm]])
-                    tmp_op3[i+1] = np.array([[self.Sz]])
-                    self.ops.insert(len(self.ops),tmp_op1)
-                    self.ops.insert(len(self.ops),tmp_op2)
-                    self.ops.insert(len(self.ops),tmp_op3)
-                # Include periodic terms
-                if self.periodic_x:
-                    tmp_op1 = [None]*self.N
-                    tmp_op2 = [None]*self.N
-                    tmp_op3 = [None]*self.N
-                    tmp_op1[-1] = np.array([[self.J/2*self.Sm]])
-                    tmp_op2[-1] = np.array([[self.J/2*self.Sp]])
-                    tmp_op3[-1] = np.array([[self.J*self.Sz]])
-                    tmp_op1[0] = np.array([[self.Sp]])
-                    tmp_op2[0] = np.array([[self.Sm]])
-                    tmp_op3[0] = np.array([[self.Sz]])
-                    self.ops.insert(len(self.ops),tmp_op1)
-                    self.ops.insert(len(self.ops),tmp_op2)
-                    self.ops.insert(len(self.ops),tmp_op3)
-            # Add one site terms
-            if self.h != 0:
-                for i in range(self.N):
-                    tmp_op1 = []
-                    for j in range(self.N):
-                        if i == j:
-                            tmp_op1.insert(len(tmp_op1),np.array([[-self.h*self.Sz]]))
-                        else:
-                            tmp_op1.insert(len(tmp_op1),None)
-                    self.ops.insert(len(self.ops),tmp_op1)
+            tmp_op = []
+            tmp_op = [None]*self.N
+            tmp_op[0] = np.expand_dims(w_arr[-1,:],0)
+            for i in range(1,self.N-1):
+                tmp_op[i] = w_arr
+            tmp_op[-1] = np.expand_dims(w_arr[:,0],1)
+            self.ops.insert(len(self.ops),tmp_op)
+            # Include periodic terms
+            if self.periodic_x:
+                tmp_op1 = [None]*self.N
+                tmp_op2 = [None]*self.N
+                tmp_op3 = [None]*self.N
+                tmp_op1[-1] = np.array([[self.J/2*self.Sm]])
+                tmp_op2[-1] = np.array([[self.J/2*self.Sp]])
+                tmp_op3[-1] = np.array([[self.J*self.Sz]])
+                tmp_op1[0] = np.array([[self.Sp]])
+                tmp_op2[0] = np.array([[self.Sm]])
+                tmp_op3[0] = np.array([[self.Sz]])
+                self.ops.insert(len(self.ops),tmp_op1)
+                self.ops.insert(len(self.ops),tmp_op2)
+                self.ops.insert(len(self.ops),tmp_op3)
         elif hamType is "heis_2d":
             self.Nx = self.N[0]
             self.Ny = self.N[1]
@@ -141,16 +128,22 @@ class MPO:
             self.alpha = param[0]
             self.s = param[1]
             self.beta = param[2]
+            w_arr = np.array([[self.I,  self.z,                  self.z, self.z],
+                              [self.Sm, self.z,                  self.z, self.z],
+                              [self.v,  self.z,                  self.z, self.z],
+                              [self.z,  np.exp(-self.s)*self.Sp,-self.n, self.I]])
             self.ops = []
-            for i in range(self.N-1):
-                tmp_op1 = [None]*self.N
-                tmp_op2 = [None]*self.N
-                tmp_op1[i] = np.array([[np.exp(-self.s)*self.Sp]])
-                tmp_op2[i] = np.array([[-self.n]])
-                tmp_op1[i+1] = np.array([[self.Sm]])
-                tmp_op2[i+1] = np.array([[self.v]])
-                self.ops.insert(len(self.ops),tmp_op1)
-                self.ops.insert(len(self.ops),tmp_op2)
+            tmp_op = []
+            tmp_op = [None]*self.N
+            if not self.periodic_x:
+                tmp_op[0] = np.array([[self.alpha*(np.exp(-self.s)*self.Sm-self.v),np.exp(-self.s)*self.Sp,-self.n,self.I]])
+                tmp_op[-1] = np.array([[self.I],[self.Sm],[self.v],[self.beta*(np.exp(-self.s)*self.Sp-self.n)]])
+            else:
+                tmp_op[0] = np.expand_dims(w_arr[-1,:],0)
+                tmp_op[-1] = np.expand_dims(w_arr[:,0],1)
+            for i in range(1,self.N-1):
+                tmp_op[i] = w_arr
+            self.ops.insert(len(self.ops),tmp_op)
             # Include periodic terms
             if self.periodic_x:
                 tmp_op1 = [None]*self.N
@@ -159,13 +152,6 @@ class MPO:
                 tmp_op2[-1] = np.array([[-self.n]])
                 tmp_op1[0] = np.array([[self.Sm]])
                 tmp_op2[0] = np.array([[self.v]])
-                self.ops.insert(len(self.ops),tmp_op1)
-                self.ops.insert(len(self.ops),tmp_op2)
-            else:
-                tmp_op1 = [None]*self.N
-                tmp_op2 = [None]*self.N
-                tmp_op1[0] = np.array([[self.alpha*(np.exp(-self.s)*self.Sm-self.v)]])
-                tmp_op2[-1] = np.array([[self.beta*(np.exp(-self.s)*self.Sp-self.n)]])
                 self.ops.insert(len(self.ops),tmp_op1)
                 self.ops.insert(len(self.ops),tmp_op2)
         elif hamType is "sep":
@@ -183,34 +169,41 @@ class MPO:
             self.exp_q = self.q*np.exp(self.s)
             self.exp_beta = self.beta*np.exp(self.s)
             self.exp_delta = self.delta*np.exp(-self.s)
-            # Create List of All Operators
+            # Construct generic operator array to use at each site
+            w_arr = np.array([[self.I, self.z, self.z, self.z, self.z, self.z],
+                              [self.exp_p*self.Sm, self.z, self.z, self.z, self.z, self.z],
+                              [self.p*self.v, self.z, self.z, self.z, self.z, self.z],
+                              [self.exp_q*self.Sp, self.z, self.z, self.z, self.z, self.z],
+                              [self.q*self.n, self.z, self.z, self.z, self.z, self.z],
+                              [self.z, self.Sp, -self.n, self.Sm,-self.v, self.I]])
             self.ops = []
-            for i in range(self.N-1):
-                if self.p != 0:
-                    tmp_op1 = [None]*self.N
-                    tmp_op2 = [None]*self.N
-                    tmp_op1[i] = np.array([[self.Sp]])
-                    tmp_op2[i] = np.array([[-self.n]])
-                    tmp_op1[i+1] = np.array([[self.exp_p*self.Sm]])
-                    tmp_op2[i+1] = np.array([[self.p*self.v]])
-                    self.ops.insert(len(self.ops),tmp_op1)
-                    self.ops.insert(len(self.ops),tmp_op2)
-                if self.q != 0:
-                    tmp_op3 = [None]*self.N
-                    tmp_op4 = [None]*self.N
-                    tmp_op3[i] = np.array([[self.Sm]])
-                    tmp_op4[i] = np.array([[-self.v]])
-                    tmp_op3[i+1] = np.array([[self.exp_q*self.Sp]])
-                    tmp_op4[i+1] = np.array([[self.q*self.n]])
-                    self.ops.insert(len(self.ops),tmp_op3)
-                    self.ops.insert(len(self.ops),tmp_op4)
+            tmp_op = [None]*self.N
+            if not self.periodic_x:
+                tmp_op[0] = np.array([[(self.exp_alpha*self.Sm-self.alpha*self.v)+(self.exp_gamma*self.Sp-self.gamma*self.n),\
+                                       self.Sp,\
+                                       -self.n,\
+                                       self.Sm,\
+                                       -self.v,\
+                                       self.I]])
+                tmp_op[-1] = np.array([[self.I],\
+                                       [self.exp_p*self.Sm],\
+                                       [self.p*self.v],\
+                                       [self.exp_q*self.Sp],\
+                                       [self.q*self.n],\
+                                       [(self.exp_beta*self.Sm-self.beta*self.v)+(self.exp_delta*self.Sp-self.delta*self.n)]])
+            else:
+                tmp_op[0] = np.expand_dims(w_arr[-1,:],0)
+                tmp_op[-1] = np.expand_dims(w_arr[:,0],1)
+            for i in range(1,self.N-1):
+                tmp_op[i] = w_arr
+            self.ops.insert(len(self.ops),tmp_op)
             # Include periodic terms
             if self.periodic_x:
                 if self.p != 0:
                     tmp_op1 = [None]*self.N
                     tmp_op2 = [None]*self.N
                     tmp_op1[-1] = np.array([[self.exp_p*self.Sp]])
-                    tmp_op2[-1] = np.array([[self.p*self.n]])
+                    tmp_op2[-1] = np.array([[-self.p*self.n]])
                     tmp_op1[0] = np.array([[self.Sm]])
                     tmp_op2[0] = np.array([[self.v]])
                     self.ops.insert(len(self.ops),tmp_op1)
@@ -224,15 +217,6 @@ class MPO:
                     tmp_op2[0] = np.array([[self.n]])
                     self.ops.insert(len(self.ops),tmp_op1)
                     self.ops.insert(len(self.ops),tmp_op2)
-            else:
-                tmp_op1 = [None]*self.N
-                tmp_op2 = [None]*self.N
-                tmp_op1[0] = np.array([[(self.exp_alpha*self.Sm-self.alpha*self.v)\
-                                       +(self.exp_gamma*self.Sp-self.gamma*self.n)]])
-                tmp_op2[-1] = np.array([[(self.exp_beta*self.Sm-self.beta*self.v)\
-                                        +(self.exp_delta*self.Sp-self.delta*self.n)]])
-                self.ops.insert(len(self.ops),tmp_op1)
-                self.ops.insert(len(self.ops),tmp_op2)
         elif hamType is "sep_2d":
             # Collect Parameters
             self.Nx = self.N[0]
@@ -250,44 +234,106 @@ class MPO:
             self.ib = param[9]
             self.ot = param[10]
             self.ob = param[11]
-            self.s = param[12]
+            try:
+                self.sx = param[12][0]
+                self.sy = param[12][1]
+            except:
+                self.sx = param[12]
+                self.sy = param[12]
             # Multiply params by an exponential
-            self.exp_jl = self.jl*np.exp(self.s)  # Moving Left
-            self.exp_jr = self.jr*np.exp(-self.s) # Moving Right
-            self.exp_il = self.il*np.exp(-self.s) # Moving Right
-            self.exp_ir = self.ir*np.exp(self.s)  # Moving Left
-            self.exp_ol = self.ol*np.exp(self.s)  # Moving Left
-            self.exp_or = self.outr*np.exp(-self.s)# Moving Right
-            self.exp_ju = self.ju*np.exp(self.s)   # Moving up
-            self.exp_jd = self.jd*np.exp(-self.s)  # Moving Down
-            self.exp_it = self.it*np.exp(-self.s)  # Moving Down
-            self.exp_ib = self.ib*np.exp(self.s)   # Moving Up
-            self.exp_ot = self.ot*np.exp(self.s)   # Moving Up
-            self.exp_ob = self.ob*np.exp(-self.s)  # Moving Down
-            # Build Two site terms
+            self.exp_jl = self.jl*np.exp(self.sx)  # Moving Left
+            self.exp_jr = self.jr*np.exp(-self.sx) # Moving Right
+            self.exp_il = self.il*np.exp(-self.sx) # Moving Right
+            self.exp_ir = self.ir*np.exp(self.sx)  # Moving Left
+            self.exp_ol = self.ol*np.exp(self.sx)  # Moving Left
+            self.exp_or = self.outr*np.exp(-self.sx)# Moving Right
+            self.exp_ju = self.ju*np.exp(self.sy)   # Moving up
+            self.exp_jd = self.jd*np.exp(-self.sy)  # Moving Down
+            self.exp_it = self.it*np.exp(-self.sy)  # Moving Down
+            self.exp_ib = self.ib*np.exp(self.sy)   # Moving Up
+            self.exp_ot = self.ot*np.exp(self.sy)   # Moving Up
+            self.exp_ob = self.ob*np.exp(-self.sy)  # Moving Down
+            # Allocate general operator container
             self.ops = []
-            coupled_sites = []
-            # Determine all coupled sites along x-axis
-            for i in range(self.Ny):
-                for j in range(self.Nx-1):
-                    coupled_sites.insert(0,[j+self.Nx*(i),j+1+self.Nx*(i),'horz'])
-            # Determine all coupled sites along y-axis
+            # Build generic operator (not including periodicity)
+            ham_dim = 10+(self.Ny-2)*4
+            w_arr = np.zeros((ham_dim,ham_dim,2,2))
+            # Build generic first column
+            w_arr[0,0,:,:] = self.I
+            w_arr[1,0,:,:] = self.exp_ju*self.Sm
+            w_arr[self.Ny,0,:,:] = self.exp_jr*self.Sm
+            w_arr[self.Ny+1,0,:,:] = self.ju*self.v
+            w_arr[2*self.Ny,0,:,:] = self.jr*self.v
+            w_arr[2*self.Ny+1,0,:,:] = self.exp_jd*self.Sp
+            w_arr[3*self.Ny,0,:,:] = self.exp_jl*self.Sp
+            w_arr[3*self.Ny+1,0,:,:] = self.jd*self.n
+            w_arr[4*self.Ny,0,:,:] = self.jl*self.n
+            # Build generic interior
+            col_ind = 1
+            row_ind = 2
+            for j in range(4): # Because we have four operators?
+                for i in range(self.Ny-1):
+                    w_arr[row_ind,col_ind,:,:] = self.I
+                    col_ind += 1
+                    row_ind += 1
+                col_ind += 1
+                row_ind += 1
+            # Build bottom row
+            w_arr[-1,self.Ny,:,:] = self.Sp
+            w_arr[-1,2*self.Ny,:,:] = -self.n
+            w_arr[-1,3*self.Ny,:,:] = self.Sm
+            w_arr[-1,4*self.Ny,:,:] = -self.v
+            w_arr[-1,4*self.Ny+1,:,:] = self.I
+            # Now build actual operator
+            tmp_op = []
             for i in range(self.Nx):
-                for j in range(self.Ny-1):
-                    coupled_sites.insert(0,[i+self.Nx*(j),i+self.Nx*(j+1),'vert'])
+                for j in range(self.Ny):
+                    # copy generic mpo
+                    curr_w_arr = w_arr.copy()
+                    # Add interaction with external reservoirs
+                    if not self.periodic_x:
+                        if j is 0:
+                            curr_w_arr[-1,0,:,:] += (self.exp_il*self.Sm-self.il*self.v) +\
+                                                    (self.exp_ol*self.Sp-self.ol*self.n)
+                        if j is self.Nx-1:
+                            curr_w_arr[-1,0,:,:] += self.exp_ir*self.Sm-self.ir*self.v +\
+                                    self.exp_or*self.Sp-self.outr*self.n
+                    if not self.periodic_y:
+                        if i is 0:
+                            curr_w_arr[-1,0,:,:] += self.exp_ib*self.Sm-self.ib*self.v +\
+                                                    self.exp_ob*self.Sp-self.ob*self.n
+                        if i is self.Ny-1:
+                            curr_w_arr[-1,0,:,:] += self.exp_it*self.Sm-self.it*self.v +\
+                                    self.exp_ot*self.Sp-self.ot*self.n
+                    # Prevents interaction between ends
+                    if (j is 0) and (i is not 0): 
+                        curr_w_arr[self.Ny,0,:,:] = self.z
+                        curr_w_arr[2*self.Ny,0,:,:] = self.z
+                        curr_w_arr[3*self.Ny,0,:,:] = self.z
+                        curr_w_arr[4*self.Ny,0,:,:] = self.z
+                    # Add operator to list of ops (compress if on left or right edge)
+                    if (i is 0) and (j is 0):
+                        tmp_op.insert(len(tmp_op),np.expand_dims(curr_w_arr[-1,:],0))
+                    elif (i is self.Nx-1) and (j is self.Ny-1):
+                        tmp_op.insert(len(tmp_op),np.expand_dims(curr_w_arr[:,0],1))
+                    else:
+                        tmp_op.insert(len(tmp_op),curr_w_arr)
+            self.ops.insert(len(self.ops),tmp_op)
+            # Build Two site terms
+            coupled_sites = []
             # Determine periodic coupling along x-axis
             if self.periodic_x:
                 if self.verbose > 2:
                     print('including periodicity in x-direction')
-                for i in range(Ny):
-                    coupled_sites.insert(0,[Nx*(i+1)-1,Nx*i,'horz'])
+                for i in range(self.Ny):
+                    coupled_sites.insert(0,[self.Nx*(i+1)-1,self.Nx*i,'horz'])
             # Determine periodic coupling along y-axis
             if self.periodic_y:
                 if self.verbose > 2:
                     print('including periodicity in y-direction')
-                for i in range(Nx):
-                    coupled_sites.insert(0,[Nx*(Ny-1)+i,i],'vert')
-            # Build All two-site Operators
+                for i in range(self.Nx):
+                    coupled_sites.insert(0,[self.Nx*(self.Ny-1)+i,i,'vert'])
+            # Build All Operators
             for i in range(len(coupled_sites)):
                 inds = coupled_sites[i][:2]
                 if coupled_sites[i][2] is 'horz':
@@ -344,68 +390,26 @@ class MPO:
                         tmp_op4[inds[1]] = np.array([[-self.v]])
                         self.ops.insert(len(self.ops),tmp_op3)
                         self.ops.insert(len(self.ops),tmp_op4)
-            if not self.periodic_x:
-                if self.verbose > 2:
-                    print('Adding x boundary conditions')
-                for i in range(self.Ny):
-                    if self.il != 0 or self.ol != 0:
-                        if self.verbose > 3:
-                            print('\t{}*Sm({})-{}*v({})+{}*Sp({})-{}*n({})'.\
-                                format(self.exp_il,self.Nx*i,self.il,self.Nx*i,self.exp_ol,self.Nx*i,self.ol,self.Nx*i))
-                        tmp_op1 = [None]*self.N
-                        tmp_op1[self.Nx*i] = np.array([[self.exp_il*self.Sm-self.il*self.v\
-                                                      + self.exp_ol*self.Sp-self.ol*self.n]])
-                        self.ops.insert(len(self.ops),tmp_op1)
-                    if self.ir != 0 or self.outr != 0:
-                        if self.verbose > 3:
-                            print('\t{}*Sm({})-{}*v({})+{}*Sp({})-{}*n({})'.\
-                              format(self.exp_ir,self.Nx*(i+1)-1,self.ir,self.Nx*(i+1)-1,self.exp_or,self.Nx*(i+1)-1,self.outr,self.Nx*(i+1)-1))
-                        tmp_op2 = [None]*self.N
-                        tmp_op2[self.Nx*(i+1)-1] = np.array([[self.exp_ir*self.Sm-self.ir*self.v\
-                                                            + self.exp_or*self.Sp-self.outr*self.n]])
-                        self.ops.insert(len(self.ops),tmp_op2)
-            if not self.periodic_y:
-                for i in range(self.Nx):
-                    if self.it != 0 or self.ot != 0:
-                        if self.verbose > 3:
-                            print('\t{}*Sm({})-{}*v({})+{}*Sp({})-{}*n({})'.\
-                              format(self.exp_it,i,self.it,i,self.exp_ot,i,self.ot,i))
-                        tmp_op1 = [None]*self.N
-                        tmp_op1[i] = np.array([[self.exp_it*self.Sm-self.it*self.v\
-                                              + self.exp_ot*self.Sp-self.ot*self.n]])
-                        self.ops.insert(len(self.ops),tmp_op1)
-                    if self.ib != 0 or self.ob != 0:
-                        if self.verbose > 3:
-                            print('\t{}*Sm({})-{}*v({})+{}*Sp({})-{}*n({})'.\
-                                format(self.exp_it,(self.Ny-1)*self.Nx+i,self.it,(self.Ny-1)*self.Nx+i,\
-                                       self.exp_ot,(self.Ny-1)*self.Nx+i,self.ot,(self.Ny-1)*self.Nx+i))
-                        tmp_op2 = [None]*self.N
-                        tmp_op2[(self.Ny-1)*self.Nx+i] = np.array([[self.exp_ib*self.Sm-self.ib*self.v\
-                                                                  + self.exp_ob*self.Sp-self.ob*self.n]])
-                        self.ops.insert(len(self.ops),tmp_op2)
         elif hamType is "ising":
             self.J = param[0]
             self.h = param[1]
+            w_arr = np.array([[self.I,          self.z,         self.z],
+                              [self.Sz,         self.z,         self.z],
+                              [self.h*self.Sz, self.J*self.Sz, self.I]])
             self.ops = []
-            # Add two site terms
-            if self.J != 0:
-                for i in range(self.N-1):
-                    tmp_op1 = [None]*self.N
-                    tmp_op1[i] = np.array([[self.Sz]])
-                    tmp_op1[i+1] = np.array([[self.J*self.Sz]])
-                    self.ops.insert(len(self.ops),tmp_op1)
-                # Include periodic terms
-                if self.periodic_x:
-                    tmp_op1 = [None]*self.N
-                    tmp_op1[-1] = np.array([[self.Sz]])
-                    tmp_op1[0] = np.array([[self.J*self.Sz]])
-                    self.ops.insert(len(self.ops),tmp_op1)
-            # Add one site terms
-            if self.h != 0:
-                for i in range(self.N):
-                    tmp_op1 = [None]*self.N
-                    tmp_op1[i] = np.array([[-self.h*self.Sz]])
-                    self.ops.insert(len(self.ops),tmp_op1)
+            tmp_op = []
+            tmp_op = [None]*self.N
+            tmp_op[0] = np.expand_dims(w_arr[-1,:],0)
+            for i in range(1,self.N-1):
+                tmp_op[i] = w_arr
+            tmp_op[-1] = np.expand_dims(w_arr[:,0],1)
+            self.ops.insert(len(self.ops),tmp_op)
+            # Include periodic terms
+            if self.periodic_x:
+                tmp_op1 = [None]*self.N
+                tmp_op1[-1] = np.array([[self.Sz]])
+                tmp_op1[0] = np.array([[self.J*self.Sz]])
+                self.ops.insert(len(self.ops),tmp_op1)
         else:
             raise ValueError("Specified Hamiltonian type is not supported")
         self.nops = len(self.ops)
