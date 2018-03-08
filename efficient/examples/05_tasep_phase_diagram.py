@@ -18,7 +18,7 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=100)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-N = 10
+N = 50
 npts = 100
 betaVec = np.linspace(0,1,npts)
 alphaVec = np.linspace(0,1,npts)

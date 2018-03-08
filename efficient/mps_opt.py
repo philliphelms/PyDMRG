@@ -7,11 +7,11 @@ from mpl_toolkits.mplot3d import axes3d
 
 class MPS_OPT:
 
-    def __init__(self, N=10, d=2, maxBondDim=[10,50,100], tol=1e-10, maxIter=3,\
+    def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-7, maxIter=5,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
-                 usePyscf=True,initialGuess=0.01,ed_limit=12,max_eig_iter=5,\
-                 periodic_x=False,periodic_y=False,add_noise=True,\
+                 usePyscf=True,initialGuess='rand',ed_limit=12,max_eig_iter=50,\
+                 periodic_x=False,periodic_y=False,add_noise=False,\
                  saveResults=False,dataFolder='data/',verbose=3):
         # Import parameters
         self.N = N
@@ -107,8 +107,7 @@ class MPS_OPT:
             print('\t'*2+'Performing Right Canonicalization')
         for i in range(1,len(self.M))[::-1]:
             self.normalize(i,'left')
-        # Sloppy fix to prevent super large values in initial matrix
-        #self.M[0] = np.copy(self.M[-1])
+            self.calc_observables(i)
         self.M[0] = np.swapaxes(self.M[-1],1,2)
 
     def generate_f(self):
@@ -161,6 +160,7 @@ class MPS_OPT:
     def calc_initial_f(self):
         if self.verbose > 3:
             print('\t'*2+'Calculating all entries in F')
+        self.generate_f()
         for i in range(self.mpo.nops):
             if self.verbose > 4:
                 print('\t'*3+'For Operator {}/{}'.format(i,self.mpo.nops))
@@ -239,7 +239,7 @@ class MPS_OPT:
         if self.add_noise:
             if self.verbose > 6:
                 print('\t\tAdding Noise')
-            max_noise = np.amax(self.M[j])*(10**(-self.totIterCnt*2))
+            max_noise = np.amax(self.M[j])*(10**(-(self.totIterCnt-1)/2))
             noise = np.random.rand(n1,n2,n3)*max_noise #- 0.5
             init_guess = self.M[j] + noise
             init_guess = np.reshape(init_guess,-1)
@@ -289,7 +289,10 @@ class MPS_OPT:
             self.calc_spin_z[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sz,self.M[site])
         elif (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
             self.calc_empty[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.v,self.M[site])
-            self.calc_occ[site] = 1-self.calc_empty[site]
+            self.calc_occ[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.n,self.M[site])
+            #self.calc_occ[site] = 1-self.calc_empty[site]
+        if self.verbose > 4:
+            print('\t'*2+'Total Number of particles: {}'.format(np.sum(self.calc_occ)))
 
     def energy_contraction(self,j):
         E = 0
@@ -412,9 +415,8 @@ class MPS_OPT:
         self.t0 = time.time()
         self.initialize_containers()
         self.generate_mps()
-        self.right_canonicalize_mps()
         self.generate_mpo()
-        self.generate_f()
+        self.right_canonicalize_mps()
         self.calc_initial_f()
         converged = False
         self.currIterCnt = 0

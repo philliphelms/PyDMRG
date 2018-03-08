@@ -19,9 +19,9 @@ plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
 N = 10
 npts = 50
-ds = 0.1
-betaVec = np.linspace(0.01,0.99,npts)
-alphaVec = np.linspace(0.01,0.99,npts)
+ds = 0.01
+betaVec = np.linspace(0.01,0.99,npts)[::-1]
+alphaVec = np.linspace(0.01,0.99,npts)[::-1]
 J_mat = np.zeros((len(betaVec),len(alphaVec)))
 J_mat_inf = np.zeros((len(betaVec),len(alphaVec)))
 J_mat_ed = np.zeros((len(betaVec),len(alphaVec)))
