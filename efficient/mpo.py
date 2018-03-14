@@ -390,6 +390,10 @@ class MPO:
                         tmp_op4[inds[1]] = np.array([[-self.v]])
                         self.ops.insert(len(self.ops),tmp_op3)
                         self.ops.insert(len(self.ops),tmp_op4)
+            for i in range(len(self.ops)):
+                for j in range(len(self.ops[i])):
+                    if self.ops[i][j] is not None:
+                        self.ops[i][j] = -self.ops[i][j]
         elif hamType is "ising":
             self.J = param[0]
             self.h = param[1]

@@ -26,5 +26,5 @@ x = mps_opt.MPS_OPT(N=N,
                     plotConv = True,
                     periodic_x = True,
                     add_noise=False,
-                    hamParams = (2/3,0,1,0,0,0.35,-1))
+                    hamParams = (2/3,0,1,0,0,0.35,-0.001))
 E = x.kernel()

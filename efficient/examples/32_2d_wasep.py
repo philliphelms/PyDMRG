@@ -24,23 +24,27 @@ n_points = 10
 E = 10
 px = 1/2*np.exp(-E/Nx)
 qx = 1/2*np.exp(E/Nx)
-s = np.linspace(0,5,n_points)
+s = np.linspace(-20,0,10)
 CGF = np.zeros(s.shape)
 for i in range(len(s)):
+    print('s={}'.format(s[i]))
     x1 = mps_opt.MPS_OPT(N=[Nx,Ny],
                         hamType="sep_2d",
-                        plotExpVals=True,
-                        plotConv=True,
-                        maxBondDim = 100,#,300],#,500],
+                        #plotExpVals=True,
+                        #plotConv=True,
+                        maxBondDim = 10,#,300],#,500],
                         tol = 1e-3,#,1e-3],#,1e-4],
                         maxIter=3,#,3],#,10],
                         max_eig_iter=50,
-                        verbose=4,
+                        verbose=3,
                         periodic_x=True,
                         periodic_y=True,
                         add_noise = False,
-                        hamParams = (qx,px,0,0,0,0,0.5,0.5,0,0,0,0,[s[i],0]))
+                        hamParams = (qx,px,0.5,0.5,0,0,0.5,0.5,0,0,0,0,[s[i],s[i]]))
                         #(jump_left,jump_right,enter_left,enter_right,
                         # exit_left,exit_right,jump_up,jump_down,
                         # enter_top,enter_bottom,exit_top,exit_bottom,s))
     CGF[i] = x1.kernel()
+
+plt.plot(s,CGF)
+plt.show()
