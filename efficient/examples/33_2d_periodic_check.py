@@ -18,8 +18,8 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=100)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-Nx = 8
-Ny = 8
+Nx = 4
+Ny = 4
 x = mps_opt.MPS_OPT(N=Nx,
                     hamType="tasep",
                     plotConv = True,
@@ -33,13 +33,13 @@ x1 = mps_opt.MPS_OPT(N=[Nx,Ny],
                     periodic_x=True,
                     add_noise = False,
                     hamParams = (0,1,0.35,0,0,2/3,0,0,0,0,0,0,-1))
-E1 = x1.kernel()
+#E1 = x1.kernel()
 x2 = mps_opt.MPS_OPT(N=[Nx,Ny],
                      hamType="sep_2d",
                      periodic_x = True,
                      add_noise = False,
                      hamParams = (1,0,0,0.35,2/3,0,0,0,0,0,0,0,1))
-E2 = x2.kernel()
+#E2 = x2.kernel()
 x3 = mps_opt.MPS_OPT(N=[Ny,Nx],
                      hamType="sep_2d",
                      periodic_y=True,

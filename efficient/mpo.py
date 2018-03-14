@@ -332,7 +332,8 @@ class MPO:
                 if self.verbose > 2:
                     print('including periodicity in y-direction')
                 for i in range(self.Nx):
-                    coupled_sites.insert(0,[self.Nx*(self.Ny-1)+i,i,'vert'])
+                    coupled_sites.insert(0,[i,self.Nx*(self.Ny-1)+i,'vert'])
+                print(coupled_sites)
             # Build All Operators
             for i in range(len(coupled_sites)):
                 inds = coupled_sites[i][:2]
