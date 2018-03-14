@@ -152,6 +152,10 @@ class MPO:
                 tmp_op2[-1] = np.array([[-self.n]])
                 tmp_op1[0] = np.array([[self.Sm]])
                 tmp_op2[0] = np.array([[self.v]])
+                #tmp_op1[0] = np.array([[np.exp(-self.s)*self.Sp]])
+                #tmp_op2[0] = np.array([[-self.n]])
+                #tmp_op1[-1] = np.array([[self.Sm]])
+                #tmp_op2[-1] = np.array([[self.v]])
                 self.ops.insert(len(self.ops),tmp_op1)
                 self.ops.insert(len(self.ops),tmp_op2)
         elif hamType is "sep":
@@ -391,10 +395,10 @@ class MPO:
                         tmp_op4[inds[1]] = np.array([[-self.v]])
                         self.ops.insert(len(self.ops),tmp_op3)
                         self.ops.insert(len(self.ops),tmp_op4)
-            for i in range(len(self.ops)):
-                for j in range(len(self.ops[i])):
-                    if self.ops[i][j] is not None:
-                        self.ops[i][j] = -self.ops[i][j]
+            #for i in range(len(self.ops)):
+            #    for j in range(len(self.ops[i])):
+            #        if self.ops[i][j] is not None:
+            #            self.ops[i][j] = -self.ops[i][j]
         elif hamType is "ising":
             self.J = param[0]
             self.h = param[1]

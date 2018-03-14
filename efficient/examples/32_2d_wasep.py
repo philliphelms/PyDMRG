@@ -24,7 +24,7 @@ n_points = 10
 E = 10
 px = 1/2*np.exp(-E/Nx)
 qx = 1/2*np.exp(E/Nx)
-s = np.linspace(-20,0,10)
+s = np.linspace(-20,20,10)
 CGF = np.zeros(s.shape)
 for i in range(len(s)):
     print('s={}'.format(s[i]))
@@ -40,7 +40,7 @@ for i in range(len(s)):
                         periodic_x=True,
                         periodic_y=True,
                         add_noise = False,
-                        hamParams = (qx,px,0.5,0.5,0,0,0.5,0.5,0,0,0,0,[s[i],s[i]]))
+                        hamParams = (qx,px,0.5,0.5,0,0,0.5,0.5,0,0,0,0,[s[i]/Nx,0]))#s[i]/Ny]))
                         #(jump_left,jump_right,enter_left,enter_right,
                         # exit_left,exit_right,jump_up,jump_down,
                         # enter_top,enter_bottom,exit_top,exit_bottom,s))
