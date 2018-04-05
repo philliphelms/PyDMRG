@@ -78,6 +78,7 @@ class MPS_OPT:
         if self.verbose > 4:
             print('\t'*2+'Generating MPS')
         self.M = []
+        base = np.array([[-1/np.sqrt(2),-1/np.sqrt(2)],[-1/np.sqrt(2),1/np.sqrt(2)]])
         for i in range(int(self.N/2)):
             if self.initialGuess is "zeros":
                 self.M.insert(len(self.M),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
@@ -96,6 +97,23 @@ class MPS_OPT:
                 self.M.insert(len(self.M),np.random.rand(self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr)))
             else:
                 self.M.insert(len(self.M),self.initialGuess*np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
+        """
+        base_mat = np.array([[-1/np.sqrt(2),-1/np.sqrt(2)],[1/np.sqrt(2),-1/np.sqrt(2)]])
+        base_mat = np.expand_dims(base_mat,axis=2)
+        self.M = []
+        for i in range(int(self.N/2)):
+            self.M.insert(len(self.M),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+        for i in range(int(self.N/2))[::-1]:
+            self.M.insert(len(self.M),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
+        for i in range(len(self.M))[::-1]:
+            print(base_mat.shape)
+            print(self.M[i].shape)
+            nx,ny,nz = base_mat.shape
+            if i == 0:
+                self.M[i][:nx,:nz,:ny] = np.swapaxes(base_mat.copy(),1,2)
+            else:
+                self.M[i][:nx,:ny,:nz] = base_mat.copy()
+        """
 
     def generate_mpo(self):
         if self.verbose > 4:
@@ -143,6 +161,8 @@ class MPS_OPT:
             self.M[i-1] = self.einsum('klj,ji,i->kli',self.M[i-1],U,s)
         else:
             raise NameError('Direction must be left or right')
+        #print(M_reshape)
+        #print(self.M[i])
 
     def increaseBondDim(self):
         if self.verbose > 3:
@@ -319,7 +339,7 @@ class MPS_OPT:
             elif (self.hamType is "sep_2d"):
                 plt.clf()
                 x,y = (np.arange(self.mpo.Nx),np.arange(self.mpo.Ny))
-                currPlot = plt.imshow(np.real(np.reshape(self.calc_occ,(self.mpo.Nx,self.mpo.Ny))))
+                currPlot = plt.imshow(np.flipud(np.real(np.reshape(self.calc_occ,(self.mpo.Nx,self.mpo.Ny))).transpose()),origin='lower')
                 plt.colorbar(currPlot)
                 plt.gca().set_xticks(range(len(x)))
                 plt.gca().set_yticks(range(len(y)))

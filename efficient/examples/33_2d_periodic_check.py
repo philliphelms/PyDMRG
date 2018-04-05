@@ -18,9 +18,9 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=100)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-Nx = 4
-Ny = 4
-s = -10
+Nx = 8
+Ny = 8
+s = -1
 a = 0.35
 b = 2/3
 x = mps_opt.MPS_OPT(N=Nx,

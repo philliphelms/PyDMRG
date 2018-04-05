@@ -34,13 +34,13 @@ for i in range(len(s)):
                         #plotConv=True,
                         maxBondDim = 10,#,300],#,500],
                         tol = 1e-3,#,1e-3],#,1e-4],
-                        maxIter=3,#,3],#,10],
+                        maxIter=2,#,3],#,10],
                         max_eig_iter=50,
                         verbose=3,
                         periodic_x=True,
                         periodic_y=True,
                         add_noise = False,
-                        hamParams = (qx,px,0.5,0.5,0,0,0.5,0.5,0,0,0,0,[s[i]/Nx,0]))#s[i]/Ny]))
+                        hamParams = (qx,px,0,0,0,0,0.5,0.5,0,0,0,0,[s[i]/Nx,0]))
                         #(jump_left,jump_right,enter_left,enter_right,
                         # exit_left,exit_right,jump_up,jump_down,
                         # enter_top,enter_bottom,exit_top,exit_bottom,s))
