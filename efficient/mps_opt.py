@@ -341,6 +341,7 @@ class MPS_OPT:
                 x,y = (np.arange(self.mpo.Nx),np.arange(self.mpo.Ny))
                 currPlot = plt.imshow(np.flipud(np.real(np.reshape(self.calc_occ,(self.mpo.Nx,self.mpo.Ny))).transpose()),origin='lower')
                 plt.colorbar(currPlot)
+                plt.clim(0.75,0.8)
                 plt.gca().set_xticks(range(len(x)))
                 plt.gca().set_yticks(range(len(y)))
                 plt.gca().set_xticklabels(x)

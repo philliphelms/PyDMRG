@@ -18,13 +18,12 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=100)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-N = 30
+N = 4
 x = mps_opt.MPS_OPT(N=N,
                     maxBondDim = 200,
                     hamType = "sep",
                     plotExpVals = True,
                     plotConv = True,
-                    periodic_x = True,
                     add_noise=False,
-                    hamParams = (2/3,0,1,0,0,0.35,-0.001))
+                    hamParams = (2/3,0,1,0,0,0.35,-1))
 E = x.kernel()

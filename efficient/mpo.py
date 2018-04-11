@@ -160,13 +160,34 @@ class MPO:
                 self.ops.insert(len(self.ops),tmp_op1)
                 self.ops.insert(len(self.ops),tmp_op2)
         elif hamType is "sep":
-            self.alpha = param[0]
-            self.gamma = param[1]
-            self.p = param[2]
-            self.q = param[3]
-            self.beta = param[4]
-            self.delta = param[5]
-            self.s = param[6]
+            # Collect Inputs
+            if not isinstance(param[0],(collections.Sequence,np.ndarray)):
+                self.a = param[0]
+                self.g = param[1]
+                self.p = param[2]
+                self.q = param[3]
+                self.b = param[4]
+                self.d = param[5]
+                self.s = param[6]
+                # Convert these to matrices
+                self.alpha = np.zeros(self.N)
+                self.alpha[0] = self.a
+                self.gamma = np.zeros(self.N)
+                self.gamma[0] = self.g
+                self.p = self.p*np.ones(self.N)
+                self.q = self.q*np.ones(self.N)
+                self.beta = np.zeros(self.N)
+                self.beta[-1] = self.b
+                self.delta = np.zeros(self.N)
+                self.delta[-1] = self.d
+            else:
+                self.alpha = param[0]
+                self.gamma = param[1]
+                self.p = param[2]
+                self.q = param[3]
+                self.beta = param[4]
+                self.delta = param[5]
+                self.s = param[6]
             # multiply these by exponential weighting
             self.exp_alpha = self.alpha*np.exp(-self.s)
             self.exp_gamma = self.gamma*np.exp(self.s)
@@ -174,50 +195,47 @@ class MPO:
             self.exp_q = self.q*np.exp(self.s)
             self.exp_beta = self.beta*np.exp(self.s)
             self.exp_delta = self.delta*np.exp(-self.s)
-            # Construct generic operator array to use at each site
-            w_arr = np.array([[self.I, self.z, self.z, self.z, self.z, self.z],
-                              [self.exp_p*self.Sm, self.z, self.z, self.z, self.z, self.z],
-                              [self.p*self.v, self.z, self.z, self.z, self.z, self.z],
-                              [self.exp_q*self.Sp, self.z, self.z, self.z, self.z, self.z],
-                              [self.q*self.n, self.z, self.z, self.z, self.z, self.z],
-                              [self.z, self.Sp, -self.n, self.Sm,-self.v, self.I]])
+            # Construct operator & container
             self.ops = []
-            tmp_op = [None]*self.N
-            if not self.periodic_x:
-                tmp_op[0] = np.array([[(self.exp_alpha*self.Sm-self.alpha*self.v)+(self.exp_gamma*self.Sp-self.gamma*self.n),\
-                                       self.Sp,\
-                                       -self.n,\
-                                       self.Sm,\
-                                       -self.v,\
-                                       self.I]])
-                tmp_op[-1] = np.array([[self.I],\
-                                       [self.exp_p*self.Sm],\
-                                       [self.p*self.v],\
-                                       [self.exp_q*self.Sp],\
-                                       [self.q*self.n],\
-                                       [(self.exp_beta*self.Sm-self.beta*self.v)+(self.exp_delta*self.Sp-self.delta*self.n)]])
-            else:
-                tmp_op[0] = np.expand_dims(w_arr[-1,:],0)
-                tmp_op[-1] = np.expand_dims(w_arr[:,0],1)
-            for i in range(1,self.N-1):
-                tmp_op[i] = w_arr
+            #tmp_op = [None]*self.N
+            tmp_op = []
+            for i in range(self.N):
+                # Build generic sep operator
+                w_arr = np.array([[self.I, self.z, self.z, self.z, self.z, self.z],
+                                  [self.exp_p[i-1]*self.Sm, self.z, self.z, self.z, self.z, self.z],
+                                  [self.p[i-1]*self.v, self.z, self.z, self.z, self.z, self.z],
+                                  [self.exp_q[i]*self.Sp, self.z, self.z, self.z, self.z, self.z],
+                                  [self.q[i]*self.n, self.z, self.z, self.z, self.z, self.z],
+                                  [self.z, self.Sp, -self.n, self.Sm,-self.v, self.I]])
+                # Include destruction and annihilation at given site
+                w_arr[-1,0,:,:] += (self.exp_alpha[i]+self.exp_beta[i])*self.Sm -\
+                                   (self.alpha[i]    +self.beta[i]    )*self.v  +\
+                                   (self.exp_delta[i]+self.exp_gamma[i])*self.Sp -\
+                                   (self.delta[i]    +self.gamma[i]    )*self.n
+                # Add operator to list of ops (compress if on left or right edge)
+                if (i is 0):
+                    tmp_op.insert(len(tmp_op),np.expand_dims(w_arr[-1,:],0))
+                elif (i is self.N-1):
+                    tmp_op.insert(len(tmp_op),np.expand_dims(w_arr[:,0],1))
+                else:
+                    tmp_op.insert(len(tmp_op),w_arr)
             self.ops.insert(len(self.ops),tmp_op)
             # Include periodic terms
             if self.periodic_x:
-                if self.p != 0:
+                if self.p[-1] != 0:
                     tmp_op1 = [None]*self.N
                     tmp_op2 = [None]*self.N
-                    tmp_op1[-1] = np.array([[self.exp_p*self.Sp]])
-                    tmp_op2[-1] = np.array([[-self.p*self.n]])
+                    tmp_op1[-1] = np.array([[self.exp_p[-1]*self.Sp]])
+                    tmp_op2[-1] = np.array([[-self.p[-1]*self.n]])
                     tmp_op1[0] = np.array([[self.Sm]])
                     tmp_op2[0] = np.array([[self.v]])
                     self.ops.insert(len(self.ops),tmp_op1)
                     self.ops.insert(len(self.ops),tmp_op2)
-                if self.q != 0:
+                if self.q[0] != 0:
                     tmp_op1 = [None]*self.N
                     tmp_op2 = [None]*self.N
-                    tmp_op1[-1] = np.array([[self.exp_q*self.Sm]])
-                    tmp_op2[-1] = np.array([[-self.q*self.v]])
+                    tmp_op1[-1] = np.array([[self.exp_q[0]*self.Sm]])
+                    tmp_op2[-1] = np.array([[-self.q[0]*self.v]])
                     tmp_op1[0] = np.array([[self.Sp]])
                     tmp_op2[0] = np.array([[self.n]])
                     self.ops.insert(len(self.ops),tmp_op1)
@@ -227,8 +245,8 @@ class MPO:
             self.Nx = self.N[0]
             self.Ny = self.N[1]
             self.N = self.Nx*self.Ny
-            self.jl = param[0]
-            if not isinstance(self.jl,(collections.Sequence,np.ndarray)):
+            if not isinstance(param[0],(collections.Sequence,np.ndarray)):
+                self.jl = param[0]
                 self.jr = param[1]
                 self.il = param[2]
                 self.ir = param[3]
@@ -268,6 +286,7 @@ class MPO:
                 self.de_d[-1,:] += self.ot
                 self.de_u[0,:] += self.ob
             else:
+                self.jl = param[0]
                 self.jr = param[1]
                 self.jd = param[2]
                 self.ju = param[3]
@@ -368,6 +387,7 @@ class MPO:
                     coupled_sites.insert(0,[i,self.Nx*(self.Ny-1)+i,'vert'])
             # Build All Operators
             for i in range(len(coupled_sites)):
+                print(len(self.ops))
                 inds = coupled_sites[i][:2]
                 if coupled_sites[i][2] is 'horz':
                     # Convert to x,y coords
@@ -379,7 +399,9 @@ class MPO:
                         if self.verbose > 3:
                             print('Jump Right Terms:')
                             print('\t{}*Sm({})*Sp({})-{}v({})*n({})'.\
-                                    format(self.exp_jr[y_ind1,x_ind1],inds[0],inds[1],self.jr[y_ind1,x_ind1],inds[0],inds[1]))
+                                    format(self.exp_jr[y_ind1,x_ind1],inds[1],inds[0],self.jr[y_ind1,x_ind1],inds[1],inds[0]))
+                        print(inds[0])
+                        print(inds[1])
                         tmp_op1 = [None]*self.N
                         tmp_op1[inds[0]] = np.array([[self.exp_jr[y_ind1,x_ind1]*self.Sp]])
                         tmp_op1[inds[1]] = np.array([[self.Sm]])
