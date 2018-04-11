@@ -8,10 +8,11 @@ import matplotlib.pyplot as plt
 #-----------------------------------------------------------------------------
 
 # Run 1D for comparison
-N = 4
+N = 6
 a = 2/3
 b = 0.35
 s = 1
+
 x = mps_opt.MPS_OPT(N=N,
                     hamType = "sep",
                     plotExpVals = True,
@@ -43,7 +44,7 @@ x = mps_opt.MPS_OPT(N=[Nx,Ny],
                     periodic_y = True,
                     plotExpVals = True,
                     plotConv = True,
-                    hamParams = (jl,jr,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,[s,0]))
+                    hamParams = (jl,jr,jd,ju,cr,cl,cd,cu,dr,dl,dd,du,[s,0]))
 E = x.kernel()
 # Run 2D in backwards x-direction
 Nx = N
@@ -69,7 +70,7 @@ x = mps_opt.MPS_OPT(N=[Nx,Ny],
                     periodic_y = True,
                     plotExpVals = True,
                     plotConv = True,
-                    hamParams = (jl,jr,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,[-s,0]))
+                    hamParams = (jl,jr,jd,ju,cr,cl,cd,cu,dr,dl,dd,du,[-s,0]))
 E = x.kernel()
 
 # Run 2D in y-direction
