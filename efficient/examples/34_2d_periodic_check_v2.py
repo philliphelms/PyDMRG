@@ -18,7 +18,7 @@ x = mps_opt.MPS_OPT(N=N,
                     hamParams = (a,0,1,0,0,b,s))
 E = x.kernel()
 print('Expected Energy Result = {}'.format(E*N))
-"""
+
 # Run 2D in x-direction
 Nx = N
 Ny = N
@@ -71,34 +71,7 @@ x = mps_opt.MPS_OPT(N=[Nx,Ny],
                     plotConv = True,
                     hamParams = (jl,jr,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,[-s,0]))
 E = x.kernel()
-"""
-# Run 2D in y-direction
-Nx = N
-Ny = N
-jl = np.zeros((Nx,Ny))
-jr = np.zeros((Nx,Ny))
-ju = np.ones((Nx,Ny))
-ju[-1,:] = 0
-jd = np.zeros((Nx,Ny))
-cr = np.zeros((Nx,Ny))
-cl = np.zeros((Nx,Ny))
-cu = np.zeros((Nx,Ny))
-cd = np.zeros((Nx,Ny))
-cu[0,:] = a
-dr = np.zeros((Nx,Ny))
-dl = np.zeros((Nx,Ny))
-du = np.zeros((Nx,Ny))
-dd = np.zeros((Nx,Ny))
-du[-1,:] = b
-x = mps_opt.MPS_OPT(N=[Nx,Ny],
-                    hamType = 'sep_2d',
- #                   periodic_x = True,
- #                   periodic_y = True,
-                    plotExpVals = True,
-                    plotConv = True,
-                    add_noise = False,
-                    hamParams = (jl,jr,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,[0,-s]))
-E = x.kernel()
+
 # Run 2D in y-direction
 Nx = N
 Ny = N
@@ -109,20 +82,47 @@ jd[-1,:] = 0
 ju = np.zeros((Nx,Ny))
 cr = np.zeros((Nx,Ny))
 cl = np.zeros((Nx,Ny))
-cu = np.zeros((Nx,Ny))
 cd = np.zeros((Nx,Ny))
+cu = np.zeros((Nx,Ny))
 cd[0,:] = a
 dr = np.zeros((Nx,Ny))
 dl = np.zeros((Nx,Ny))
-du = np.zeros((Nx,Ny))
 dd = np.zeros((Nx,Ny))
+du = np.zeros((Nx,Ny))
 dd[-1,:] = b
 x = mps_opt.MPS_OPT(N=[Nx,Ny],
                     hamType = 'sep_2d',
-#                    periodic_x = True,
-#                    periodic_y = True,
+                    periodic_x = True,
+                    periodic_y = True,
                     plotExpVals = True,
                     plotConv = True,
                     add_noise = False,
-                    hamParams = (jl,jr,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,[0,s]))
+                    hamParams = (jl,jr,jd,ju,cr,cl,cd,cu,dr,dl,dd,du,[0,-s]))
+E = x.kernel()
+# Run 2D in y-direction
+Nx = N
+Ny = N
+jl = np.zeros((Nx,Ny))
+jr = np.zeros((Nx,Ny))
+ju = np.ones((Nx,Ny))
+ju[0,:] = 0
+jd = np.zeros((Nx,Ny))
+cr = np.zeros((Nx,Ny))
+cl = np.zeros((Nx,Ny))
+cd = np.zeros((Nx,Ny))
+cu = np.zeros((Nx,Ny))
+cu[-1,:] = a
+dr = np.zeros((Nx,Ny))
+dl = np.zeros((Nx,Ny))
+dd = np.zeros((Nx,Ny))
+du = np.zeros((Nx,Ny))
+du[0,:] = b
+x = mps_opt.MPS_OPT(N=[Nx,Ny],
+                    hamType = 'sep_2d',
+                    periodic_x = True,
+                    periodic_y = True,
+                    plotExpVals = True,
+                    plotConv = True,
+                    add_noise = False,
+                    hamParams = (jl,jr,jd,ju,cr,cl,cd,cu,dr,dl,dd,du,[0,s]))
 E = x.kernel()

@@ -17,8 +17,8 @@ class MPO:
             sep - Simple Exclusion Process Model
                 param = (alpha,gamma,p,q,beta,delta,s)
             sep_2d - Two Dimensional Simple Exclusion Process Model
-                param = (jump_left,jump_right,enter_left,enter_right,
-                         exit_left,exit_right,jump_up,jump_down,
+                param = (jdmp_left,jump_right,enter_left,enter_right,
+                         exit_left,exit_right,jdmp_up,jump_down,
                          enter_top,enter_bottom,exit_top,exit_bottom,s))
         """
         self.hamType = hamType
@@ -234,8 +234,8 @@ class MPO:
                 self.ir = param[3]
                 self.ol = param[4]
                 self.outr = param[5]
-                self.ju = param[6]
-                self.jd = param[7]
+                self.jd = param[6]
+                self.ju = param[7]
                 self.it = param[8]
                 self.ib = param[9]
                 self.ot = param[10]
@@ -249,36 +249,36 @@ class MPO:
                 # Convert these to matrices
                 self.jl = self.jl*np.ones((self.Nx,self.Ny))
                 self.jr = self.jr*np.ones((self.Nx,self.Ny))
-                self.ju = self.ju*np.ones((self.Nx,self.Ny))
                 self.jd = self.jd*np.ones((self.Nx,self.Ny))
+                self.ju = self.ju*np.ones((self.Nx,self.Ny))
                 self.cr_r = np.zeros((self.Nx,self.Ny))
                 self.cr_l = np.zeros((self.Nx,self.Ny))
-                self.cr_u = np.zeros((self.Nx,self.Ny))
                 self.cr_d = np.zeros((self.Nx,self.Ny))
+                self.cr_u = np.zeros((self.Nx,self.Ny))
                 self.de_r = np.zeros((self.Nx,self.Ny))
                 self.de_l = np.zeros((self.Nx,self.Ny))
-                self.de_u = np.zeros((self.Nx,self.Ny))
                 self.de_d = np.zeros((self.Nx,self.Ny))
+                self.de_u = np.zeros((self.Nx,self.Ny))
                 self.cr_r[:,0] += self.il
                 self.cr_l[:,-1] += self.ir
-                self.cr_d[-1,:] += self.it
-                self.cr_u[0,:] += self.ib
+                self.cr_u[-1,:] += self.it
+                self.cr_d[0,:] += self.ib
                 self.de_l[:,0] += self.ol
                 self.de_r[:,-1] += self.outr
-                self.de_u[-1,:] += self.ot
-                self.de_d[0,:] += self.ob
+                self.de_d[-1,:] += self.ot
+                self.de_u[0,:] += self.ob
             else:
                 self.jr = param[1]
-                self.ju = param[2]
-                self.jd = param[3]
+                self.jd = param[2]
+                self.ju = param[3]
                 self.cr_r = param[4]
                 self.cr_l = param[5]
-                self.cr_u = param[6]
-                self.cr_d = param[7]
+                self.cr_d = param[6]
+                self.cr_u = param[7]
                 self.de_r = param[8]
                 self.de_l = param[9]
-                self.de_u = param[10]
-                self.de_d = param[11]
+                self.de_d = param[10]
+                self.de_u = param[11]
                 try: 
                     self.sx = param[12][0]
                     self.sy = param[12][1]
@@ -288,16 +288,16 @@ class MPO:
             # Multiply params by an exponential
             self.exp_jl = self.jl*np.exp(self.sx)  # Moving Left
             self.exp_jr = self.jr*np.exp(-self.sx) # Moving Right
-            self.exp_ju = self.ju*np.exp(self.sy)   # Moving up
-            self.exp_jd = self.jd*np.exp(-self.sy)  # Moving Down
+            self.exp_jd = self.jd*np.exp(self.sy)   # Moving up
+            self.exp_ju = self.ju*np.exp(-self.sy)  # Moving Down
             self.exp_cr_r = self.cr_r*np.exp(-self.sx) 
             self.exp_cr_l = self.cr_l*np.exp(self.sx)
-            self.exp_cr_u = self.cr_u*np.exp(self.sy)
-            self.exp_cr_d = self.cr_d*np.exp(-self.sy)
+            self.exp_cr_d = self.cr_d*np.exp(self.sy)
+            self.exp_cr_u = self.cr_u*np.exp(-self.sy)
             self.exp_de_r = self.de_r*np.exp(-self.sx)
             self.exp_de_l = self.de_l*np.exp(self.sx)
-            self.exp_de_u = self.de_u*np.exp(self.sy)
-            self.exp_de_d = self.de_d*np.exp(-self.sy)
+            self.exp_de_d = self.de_d*np.exp(self.sy)
+            self.exp_de_u = self.de_u*np.exp(-self.sy)
             # Allocate general operator container
             self.ops = []
             # Build generic operator (not including periodicity)
@@ -310,13 +310,13 @@ class MPO:
                     w_arr = np.zeros((ham_dim,ham_dim,2,2))
                     w_arr[0,0,:,:] = self.I
                     w_arr[1,0,:,:] = self.exp_jr[j,i-1]*self.Sm
-                    w_arr[self.Ny,0,:,:] = self.exp_ju[j-1,i]*self.Sm
+                    w_arr[self.Ny,0,:,:] = self.exp_jd[j-1,i]*self.Sm
                     w_arr[self.Ny+1,0,:,:] = self.jr[j,i-1]*self.v
-                    w_arr[2*self.Ny,0,:,:] = self.ju[j-1,i]*self.v
+                    w_arr[2*self.Ny,0,:,:] = self.jd[j-1,i]*self.v
                     w_arr[2*self.Ny+1,0,:,:] = self.exp_jl[j,i]*self.Sp
-                    w_arr[3*self.Ny,0,:,:] = self.exp_jd[j,i]*self.Sp
+                    w_arr[3*self.Ny,0,:,:] = self.exp_ju[j,i]*self.Sp
                     w_arr[3*self.Ny+1,0,:,:] = self.jl[j,i]*self.n
-                    w_arr[4*self.Ny,0,:,:] = self.jd[j,i]*self.n
+                    w_arr[4*self.Ny,0,:,:] = self.ju[j,i]*self.n
                     # Build generic interior
                     col_ind = 1
                     row_ind = 2
@@ -334,10 +334,10 @@ class MPO:
                     w_arr[-1,4*self.Ny,:,:] = -self.v
                     w_arr[-1,4*self.Ny+1,:,:] = self.I
                     # Creation & Annihilation of Particles
-                    w_arr[-1,0,:,:] += (self.exp_cr_r[j,i]+self.exp_cr_l[j,i]+self.exp_cr_u[j,i]+self.exp_cr_d[j,i])*self.Sm -\
-                                       (self.cr_r[j,i]    +self.cr_l[j,i]    +self.cr_u[j,i]    +self.cr_d[j,i]    )*self.v  +\
-                                       (self.exp_de_r[j,i]+self.exp_de_l[j,i]+self.exp_de_u[j,i]+self.exp_de_d[j,i])*self.Sp -\
-                                       (self.de_r[j,i]    +self.de_l[j,i]    +self.de_u[j,i]    +self.de_d[j,i]    )*self.n
+                    w_arr[-1,0,:,:] += (self.exp_cr_r[j,i]+self.exp_cr_l[j,i]+self.exp_cr_d[j,i]+self.exp_cr_u[j,i])*self.Sm -\
+                                       (self.cr_r[j,i]    +self.cr_l[j,i]    +self.cr_d[j,i]    +self.cr_u[j,i]    )*self.v  +\
+                                       (self.exp_de_r[j,i]+self.exp_de_l[j,i]+self.exp_de_d[j,i]+self.exp_de_u[j,i])*self.Sp -\
+                                       (self.de_r[j,i]    +self.de_l[j,i]    +self.de_d[j,i]    +self.de_u[j,i]    )*self.n
                     # Prevents interaction between ends
                     if (j is 0) and (i is not 0): 
                         w_arr[self.Ny,0,:,:] = self.z
@@ -404,34 +404,34 @@ class MPO:
                 else:
                     # Convert to x,y coords
                     x_ind1 = inds[0]
-                    y_ind1 = 0
+                    y_ind1 = -1
                     x_ind2 = inds[0]
-                    y_ind2 = self.Ny-1
-                    if self.ju[y_ind1-1,x_ind1] != 0:
+                    y_ind2 = 0
+                    if self.jd[y_ind1,x_ind1] != 0:
                         if self.verbose > 3:
                             print('Jump Up Terms:')
                             print('\t{}*Sm({})*Sp({})-{}v({})*n({})'.\
-                                format(self.exp_ju[y_ind1,x_ind1],inds[0],inds[1],self.ju[y_ind1,x_ind1],inds[0],inds[1]))
+                                format(self.exp_jd[y_ind1,x_ind1],inds[0],inds[1],self.jd[y_ind1,x_ind1],inds[0],inds[1]))
                         tmp_op1 = [None]*self.N
-                        tmp_op1[inds[0]] = np.array([[self.exp_ju[y_ind1,x_ind1]*self.Sm]])
+                        tmp_op1[inds[0]] = np.array([[self.exp_jd[y_ind1,x_ind1]*self.Sm]])
                         tmp_op1[inds[1]] = np.array([[self.Sp]])
                         tmp_op2 = [None]*self.N
-                        tmp_op2[inds[0]] = np.array([[self.ju[y_ind1,x_ind1]*self.v]])
+                        tmp_op2[inds[0]] = np.array([[self.jd[y_ind1,x_ind1]*self.v]])
                         tmp_op2[inds[1]] = np.array([[-self.n]])
                         self.ops.insert(len(self.ops),tmp_op1)
                         self.ops.insert(len(self.ops),tmp_op2)
-                    if self.jd[y_ind2,x_ind2] != 0:
-                        print(self.jd)
+                    if self.ju[y_ind2,x_ind2] != 0:
+                        print(self.ju)
                         print('{}{}'.format(y_ind2,x_ind2))
                         if self.verbose > 3:
                             print('Jump Down Terms:')
                             print('\t{}*Sp({})*Sm({})-{}n({})*v({})'.\
-                                format(self.exp_jd[y_ind2,x_ind2],inds[0],inds[1],self.jd[y_ind2,x_ind2],inds[0],inds[1]))
+                                format(self.exp_ju[y_ind2,x_ind2],inds[0],inds[1],self.ju[y_ind2,x_ind2],inds[0],inds[1]))
                         tmp_op3 = [None]*self.N
-                        tmp_op3[inds[0]] = np.array([[self.exp_jd[y_ind2,x_ind2]*self.Sp]])
+                        tmp_op3[inds[0]] = np.array([[self.exp_ju[y_ind2,x_ind2]*self.Sp]])
                         tmp_op3[inds[1]] = np.array([[self.Sm]])
                         tmp_op4 = [None]*self.N
-                        tmp_op4[inds[0]] = np.array([[self.jd[y_ind2,x_ind2]*self.n]])
+                        tmp_op4[inds[0]] = np.array([[self.ju[y_ind2,x_ind2]*self.n]])
                         tmp_op4[inds[1]] = np.array([[-self.v]])
                         self.ops.insert(len(self.ops),tmp_op3)
                         self.ops.insert(len(self.ops),tmp_op4)
