@@ -307,13 +307,12 @@ class MPO:
             for i in range(self.Nx):
                 for j in range(self.Ny):
                     # Build generic mpo
-                    print('p({},{})={}'.format(i,j,self.jd[j,i]))
                     w_arr = np.zeros((ham_dim,ham_dim,2,2))
                     w_arr[0,0,:,:] = self.I
                     w_arr[1,0,:,:] = self.exp_jr[j,i-1]*self.Sm
-                    w_arr[self.Ny,0,:,:] = self.exp_ju[j,i]*self.Sm
+                    w_arr[self.Ny,0,:,:] = self.exp_ju[j-1,i]*self.Sm
                     w_arr[self.Ny+1,0,:,:] = self.jr[j,i-1]*self.v
-                    w_arr[2*self.Ny,0,:,:] = self.ju[j,i]*self.v
+                    w_arr[2*self.Ny,0,:,:] = self.ju[j-1,i]*self.v
                     w_arr[2*self.Ny+1,0,:,:] = self.exp_jl[j,i]*self.Sp
                     w_arr[3*self.Ny,0,:,:] = self.exp_jd[j,i]*self.Sp
                     w_arr[3*self.Ny+1,0,:,:] = self.jl[j,i]*self.n
@@ -335,8 +334,6 @@ class MPO:
                     w_arr[-1,4*self.Ny,:,:] = -self.v
                     w_arr[-1,4*self.Ny+1,:,:] = self.I
                     # Creation & Annihilation of Particles
-                    print('creation({},{})={}'.format(i,j,(self.cr_r[j,i]    +self.cr_l[j,i]    +self.cr_u[j,i]    +self.cr_d[j,i]    )))
-                    print('Destruction({},{}),{}'.format(i,j,(self.de_r[j,i]    +self.de_l[j,i]    +self.de_u[j,i]    +self.de_d[j,i]    )))
                     w_arr[-1,0,:,:] += (self.exp_cr_r[j,i]+self.exp_cr_l[j,i]+self.exp_cr_u[j,i]+self.exp_cr_d[j,i])*self.Sm -\
                                        (self.cr_r[j,i]    +self.cr_l[j,i]    +self.cr_u[j,i]    +self.cr_d[j,i]    )*self.v  +\
                                        (self.exp_de_r[j,i]+self.exp_de_l[j,i]+self.exp_de_u[j,i]+self.exp_de_d[j,i])*self.Sp -\
@@ -410,7 +407,7 @@ class MPO:
                     y_ind1 = 0
                     x_ind2 = inds[0]
                     y_ind2 = self.Ny-1
-                    if self.ju[y_ind1,x_ind1] != 0:
+                    if self.ju[y_ind1-1,x_ind1] != 0:
                         if self.verbose > 3:
                             print('Jump Up Terms:')
                             print('\t{}*Sm({})*Sp({})-{}v({})*n({})'.\
@@ -424,6 +421,8 @@ class MPO:
                         self.ops.insert(len(self.ops),tmp_op1)
                         self.ops.insert(len(self.ops),tmp_op2)
                     if self.jd[y_ind2,x_ind2] != 0:
+                        print(self.jd)
+                        print('{}{}'.format(y_ind2,x_ind2))
                         if self.verbose > 3:
                             print('Jump Down Terms:')
                             print('\t{}*Sp({})*Sm({})-{}n({})*v({})'.\
