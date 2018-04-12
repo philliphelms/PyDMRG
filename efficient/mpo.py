@@ -245,35 +245,14 @@ class MPO:
                     self.ops.insert(len(self.ops),tmp_op2)
         elif hamType is "sep_2d":
             # Collect Parameters
-            print(self.N)
             self.Nx = self.N[0]
             self.Ny = self.N[1]
             self.N_mpo = self.Nx*self.Ny
             if not isinstance(param[0],(collections.Sequence,np.ndarray)):
-                print("I'm not sure this is working")
-                self.jl = param[0]
-                self.jr = param[1]
-                self.il = param[2]
-                self.ir = param[3]
-                self.ol = param[4]
-                self.outr = param[5]
-                self.jd = param[6]
-                self.ju = param[7]
-                self.it = param[8]
-                self.ib = param[9]
-                self.ot = param[10]
-                self.ob = param[11]
-                try:
-                    self.sx = param[12][0]
-                    self.sy = param[12][1]
-                except:
-                    self.sx = param[12]
-                    self.sy = param[12]
-                # Convert these to matrices
-                self.jl = self.jl*np.ones((self.Nx,self.Ny))
-                self.jr = self.jr*np.ones((self.Nx,self.Ny))
-                self.jd = self.jd*np.ones((self.Nx,self.Ny))
-                self.ju = self.ju*np.ones((self.Nx,self.Ny))
+                self.jl = param[0]*np.ones((self.Ny,self.Nx))
+                self.jr = param[1]*np.ones((self.Ny,self.Nx))
+                self.jd = param[2]*np.ones((self.Ny,self.Nx))
+                self.ju = param[3]*np.ones((self.Ny,self.Nx))
                 self.cr_r = np.zeros((self.Nx,self.Ny))
                 self.cr_l = np.zeros((self.Nx,self.Ny))
                 self.cr_d = np.zeros((self.Nx,self.Ny))
@@ -282,14 +261,20 @@ class MPO:
                 self.de_l = np.zeros((self.Nx,self.Ny))
                 self.de_d = np.zeros((self.Nx,self.Ny))
                 self.de_u = np.zeros((self.Nx,self.Ny))
-                self.cr_r[:,0] += self.il
-                self.cr_l[:,-1] += self.ir
-                self.cr_u[-1,:] += self.it
-                self.cr_d[0,:] += self.ib
-                self.de_l[:,0] += self.ol
-                self.de_r[:,-1] += self.outr
-                self.de_d[-1,:] += self.ot
-                self.de_u[0,:] += self.ob
+                self.cr_r[0,:] = param[4]
+                self.cr_l[-1,:] = param[5]
+                self.cr_u[:,-1] = param[7]
+                self.cr_d[:,0] = param[6]
+                self.de_l[0,:] = param[9]
+                self.de_r[-1,:] = param[8]
+                self.de_d[:,-1] = param[10]
+                self.de_u[:,0] = param[11]
+                try: 
+                    self.sx = param[12][0]
+                    self.sy = param[12][1]
+                except:
+                    self.sx = param[12]
+                    self.sy = param[12]
             else:
                 self.jl = param[0]
                 self.jr = param[1]
@@ -445,8 +430,6 @@ class MPO:
                         self.ops.insert(len(self.ops),tmp_op1)
                         self.ops.insert(len(self.ops),tmp_op2)
                     if self.ju[y_ind1,x_ind1] != 0:
-                        #print(self.ju)
-                        #print('{}{}'.format(y_ind2,x_ind2))
                         if self.verbose > 3:
                             print('Jump Up Terms:')
                             print('\t{}*Sp({})*Sm({})-{}n({})*v({})'.\
@@ -511,5 +494,8 @@ class MPO:
                             print('\t\t\t\tk-Loop progress: {}%'.format(k/self.N_mpo*100))
                         if self.ops[l][k] is not None:
                             tmp_mat = np.einsum('ij,jk->ik',tmp_mat,self.ops[l][k][:,:,i_occ[k],j_occ[k]])
-                    H[i,j] = tmp_mat[[0]]
+                        else:
+                            multiplier = np.array([[np.eye(2)]])
+                            tmp_mat = np.einsum('ij,jk->ik',tmp_mat,multiplier[:,:,i_occ[k],j_occ[k]])
+                    H[i,j] += tmp_mat[[0]]
         return H

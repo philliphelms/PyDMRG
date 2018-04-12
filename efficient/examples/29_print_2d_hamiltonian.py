@@ -22,7 +22,7 @@ plt.style.use('fivethirtyeight') #'fivethirtyeight') #'ggplot'
 #-----------------------------------------------------------------------------
 # 1D SEP
 #-----------------------------------------------------------------------------
-N = 9
+N = 2
 x = mps_opt.MPS_OPT(N=N,
                     hamType = "sep",
                     hamParams = (np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand()))
@@ -48,7 +48,7 @@ else:
 print('\n\nRun DMRG Calculation for Comparison')
 E_dmrg = x.kernel()
 
-
+"""
 
 #-----------------------------------------------------------------------------
 # 2D SEP
@@ -56,6 +56,8 @@ E_dmrg = x.kernel()
 N=3
 x = mps_opt.MPS_OPT(N = [N,N],
                     hamType    ="sep_2d",
+                    periodic_x = True,
+                    periodic_y = True,
                     hamParams  = (np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),
                                   np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand()))
 x.initialize_containers()
@@ -78,7 +80,7 @@ if (np.conj(full_ham).transpose() == full_ham).all():
 else:
     print('\tHamiltonian is not Hermitian')
 E_dmrg = x.kernel()
-"""
+
 #-----------------------------------------------------------------------------
 # 1D Heis
 #-----------------------------------------------------------------------------

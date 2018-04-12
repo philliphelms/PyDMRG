@@ -278,7 +278,10 @@ class MPS_OPT:
             init_guess = np.reshape(init_guess,-1)
         else:
             init_guess = np.reshape(self.M[j],-1)
-        E,v = self.eig(opt_fun,init_guess,precond,max_cycle=self.max_eig_iter)
+        E,v = self.eig(opt_fun,init_guess,precond,max_cycle=self.max_eig_iter)#,nroots=3)
+        #print(E)
+        #E = E[0]
+        #v = v[0]
         self.M[j] = np.reshape(v,(n1,n2,n3))
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): E = -E
         if self.verbose > 3:
