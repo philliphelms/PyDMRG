@@ -88,6 +88,15 @@ class MPS_OPT:
                 self.M.insert(len(self.M),np.random.rand(self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))) 
             else:
                 self.M.insert(len(self.M),self.initialGuess*np.ones((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+        if self.N%2 is 1: # Check if system size is odd
+            if self.initialGuess is "zeros":
+                self.M.insert(len(self.N),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+            elif self.initialGuess is "ones":
+                self.M.insert(len(self.M),np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+            elif self.initialGuess is "rand":
+                self.M.insert(len(self.M),np.random.rand(self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)))
+            else:
+                self.M.insert(len(self.M),self.initialGuess*np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
         for i in range(int(self.N/2))[::-1]:
             if self.initialGuess is "zeros":
                 self.M.insert(len(self.M),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
@@ -137,6 +146,8 @@ class MPS_OPT:
             F_tmp.insert(len(F_tmp),np.array([[[1]]]))
             for j in range(int(self.N/2)):
                 F_tmp.insert(len(F_tmp),np.zeros((min(self.d**(j+1),self.maxBondDimCurr),2,min(self.d**(j+1),self.maxBondDimCurr))))
+            if self.N%2 is 1:
+                F_tmp.insert(len(F_tmp),np.zeros((min(self.d**(j+2),self.maxBondDimCurr),2,min(self.d**(j+2),self.maxBondDimCurr))))
             for j in range(int(self.N/2)-1,0,-1):
                 F_tmp.insert(len(F_tmp),np.zeros((min(self.d**(j),self.maxBondDimCurr),2,min(self.d**j,self.maxBondDimCurr))))
             F_tmp.insert(len(F_tmp),np.array([[[1]]]))
@@ -170,6 +181,8 @@ class MPS_OPT:
         Mnew = []
         for i in range(int(self.N/2)):
             Mnew.insert(len(Mnew),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+        if self.N%2 is 1:
+            Mnew.insert(len(Mnew),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
         for i in range(int(self.N/2))[::-1]:
             Mnew.insert(len(Mnew),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
         for i in range(len(Mnew)):

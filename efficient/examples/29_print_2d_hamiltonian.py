@@ -22,7 +22,7 @@ plt.style.use('fivethirtyeight') #'fivethirtyeight') #'ggplot'
 #-----------------------------------------------------------------------------
 # 1D SEP
 #-----------------------------------------------------------------------------
-N = 8
+N = 9
 x = mps_opt.MPS_OPT(N=N,
                     hamType = "sep",
                     hamParams = (np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand()))
@@ -53,7 +53,7 @@ E_dmrg = x.kernel()
 #-----------------------------------------------------------------------------
 # 2D SEP
 #-----------------------------------------------------------------------------
-N=2
+N=3
 x = mps_opt.MPS_OPT(N = [N,N],
                     hamType    ="sep_2d",
                     hamParams  = (np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),
