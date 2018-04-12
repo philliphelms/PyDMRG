@@ -73,7 +73,7 @@ x = mps_opt.MPS_OPT(N=N,
                     hamParams = (a_vec,g_vec,p_vec,q_vec,b_vec,d_vec,s))
 E = x.kernel()
 # Continue playing with PBC
-dividing_point = 5
+dividing_point = 0
 a_vec = np.zeros(N)
 a_vec[dividing_point] = a
 g_vec = np.zeros(N)

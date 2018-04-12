@@ -246,6 +246,7 @@ class MPO:
             self.Ny = self.N[1]
             self.N = self.Nx*self.Ny
             if not isinstance(param[0],(collections.Sequence,np.ndarray)):
+                print("I'm not sure this is working")
                 self.jl = param[0]
                 self.jr = param[1]
                 self.il = param[2]
@@ -394,29 +395,29 @@ class MPO:
                     x_ind1 = 0
                     y_ind2 = inds[0]
                     x_ind2 = -1
-                    if self.jr[y_ind1,x_ind1] != 0:
+                    if self.jr[y_ind2,x_ind2] != 0:
                         if self.verbose > 3:
                             print('Jump Right Terms:')
                             print('\t{}*Sm({})*Sp({})-{}v({})*n({})'.\
-                                    format(self.exp_jr[y_ind1,x_ind1],inds[0],inds[1],self.jr[y_ind1,x_ind1],inds[0],inds[1]))
+                                    format(self.exp_jr[y_ind2,x_ind2],inds[0],inds[1],self.jr[y_ind2,x_ind2],inds[0],inds[1]))
                         tmp_op1 = [None]*self.N
-                        tmp_op1[inds[1]] = np.array([[self.exp_jr[y_ind1,x_ind1]*self.Sp]])
+                        tmp_op1[inds[1]] = np.array([[self.exp_jr[y_ind2,x_ind2]*self.Sp]])
                         tmp_op1[inds[0]] = np.array([[self.Sm]])
                         tmp_op2 = [None]*self.N
-                        tmp_op2[inds[1]] = np.array([[self.jr[y_ind1,x_ind1]*self.n]])
+                        tmp_op2[inds[1]] = np.array([[self.jr[y_ind2,x_ind2]*self.n]])
                         tmp_op2[inds[0]] = np.array([[-self.v]])
                         self.ops.insert(len(self.ops),tmp_op1)
                         self.ops.insert(len(self.ops),tmp_op2)
-                    if self.jl[y_ind2,x_ind2] != 0:
+                    if self.jl[y_ind1,x_ind1] != 0:
                         if self.verbose > 3:
                             print('Jump Left Terms:')
                             print('\t{}*Sp({})*Sm({})-{}n({})*v({})'.\
-                                    format(self.exp_jl[y_ind2,x_ind2],inds[0],inds[1],self.jl[y_ind2,x_ind2],inds[0],inds[1]))
+                                    format(self.exp_jl[y_ind1,x_ind1],inds[0],inds[1],self.jl[y_ind1,x_ind1],inds[0],inds[1]))
                         tmp_op3 = [None]*self.N
-                        tmp_op3[inds[1]] = np.array([[self.exp_jl[y_ind2,x_ind2]*self.Sm]])
+                        tmp_op3[inds[1]] = np.array([[self.exp_jl[y_ind1,x_ind1]*self.Sm]])
                         tmp_op3[inds[0]] = np.array([[self.Sp]])
                         tmp_op4 = [None]*self.N
-                        tmp_op4[inds[1]] = np.array([[self.jl[y_ind2,x_ind2]*self.v]])
+                        tmp_op4[inds[1]] = np.array([[self.jl[y_ind1,x_ind1]*self.v]])
                         tmp_op4[inds[0]] = np.array([[-self.n]])
                         self.ops.insert(len(self.ops),tmp_op3)
                         self.ops.insert(len(self.ops),tmp_op4)
@@ -426,16 +427,17 @@ class MPO:
                     y_ind1 = 0
                     x_ind2 = int(inds[1]/self.Ny)
                     y_ind2 = -1
-                    if self.jd[y_ind1,x_ind1] != 0:
+                    if self.jd[y_ind2,x_ind2] != 0:
                         if self.verbose > 3:
                             print('Jump Down Terms:')
                             print('\t{}*Sm({})*Sp({})-{}v({})*n({})'.\
-                                format(self.exp_jd[y_ind1,x_ind1],inds[1],inds[0],self.jd[y_ind1,x_ind1],inds[1],inds[0]))
+                                format(self.exp_jd[y_ind2,x_ind2],inds[1],inds[0],self.jd[y_ind2,x_ind2],inds[1],inds[0]))
+                            print(self.jd)
                         tmp_op1 = [None]*self.N
-                        tmp_op1[inds[1]] = np.array([[self.exp_jd[y_ind1,x_ind1]*self.Sm]])
+                        tmp_op1[inds[1]] = np.array([[self.exp_jd[y_ind2,x_ind2]*self.Sm]])
                         tmp_op1[inds[0]] = np.array([[self.Sp]])
                         tmp_op2 = [None]*self.N
-                        tmp_op2[inds[1]] = np.array([[self.jd[y_ind1,x_ind1]*self.v]])
+                        tmp_op2[inds[1]] = np.array([[self.jd[y_ind2,x_ind2]*self.v]])
                         tmp_op2[inds[0]] = np.array([[-self.n]])
                         self.ops.insert(len(self.ops),tmp_op1)
                         self.ops.insert(len(self.ops),tmp_op2)

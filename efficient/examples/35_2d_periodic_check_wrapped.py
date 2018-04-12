@@ -19,7 +19,6 @@ x = mps_opt.MPS_OPT(N=N,
                     hamParams = (a,0,1,0,0,b,s))
 E = x.kernel()
 print('Expected Energy Result = {}'.format(E*N))
-
 # Run 2D in x-direction
 Nx = N
 Ny = N
@@ -50,18 +49,18 @@ E = x.kernel()
 Nx = N
 Ny = N
 jl = np.ones((Nx,Ny))
-jl[:,dividing_point+1] = 0
+jl[:,dividing_point] = 0
 jr = np.zeros((Nx,Ny))
 ju = np.zeros((Nx,Ny))
 jd = np.zeros((Nx,Ny))
 cr = np.zeros((Nx,Ny))
 cl = np.zeros((Nx,Ny))
-cl[:,dividing_point] = a
+cl[:,dividing_point-1] = a
 cu = np.zeros((Nx,Ny))
 cd = np.zeros((Nx,Ny))
 dr = np.zeros((Nx,Ny))
 dl = np.zeros((Nx,Ny))
-dl[:,dividing_point+1] = b
+dl[:,dividing_point] = b
 du = np.zeros((Nx,Ny))
 dd = np.zeros((Nx,Ny))
 x = mps_opt.MPS_OPT(N=[Nx,Ny],
