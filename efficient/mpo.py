@@ -3,7 +3,7 @@ import collections
 
 class MPO:
 
-    def __init__(self, hamType, param, N,periodic_x=False,periodic_y=False,verbose=4):
+    def __init__(self, hamType, param, N,periodic_x=False,periodic_y=False,verbose=0):
         """
         hamType choices:
             heis - Heisenberg Model
@@ -305,6 +305,7 @@ class MPO:
                 except:
                     self.sx = param[12]
                     self.sy = param[12]
+                print(self.sx)
             # Multiply params by an exponential
             self.exp_jl = self.jl*np.exp(self.sx)  # Moving Left
             self.exp_jr = self.jr*np.exp(-self.sx) # Moving Right
@@ -432,7 +433,6 @@ class MPO:
                             print('Jump Down Terms:')
                             print('\t{}*Sm({})*Sp({})-{}v({})*n({})'.\
                                 format(self.exp_jd[y_ind2,x_ind2],inds[1],inds[0],self.jd[y_ind2,x_ind2],inds[1],inds[0]))
-                            print(self.jd)
                         tmp_op1 = [None]*self.N
                         tmp_op1[inds[1]] = np.array([[self.exp_jd[y_ind2,x_ind2]*self.Sm]])
                         tmp_op1[inds[0]] = np.array([[self.Sp]])

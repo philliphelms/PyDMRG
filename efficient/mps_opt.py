@@ -241,14 +241,14 @@ class MPS_OPT:
             for i in range(self.mpo.nops):
                 if self.mpo.ops[i][j] is None:
                     in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
-                    if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
+                    if (self.hamType is "tasep") or (self.hamType is "sep"):# or (self.hamType is "sep_2d"):
                         fin_sum -= self.einsum('pnm,inom->opi',self.F[i][j],in_sum1)
                     else:
                         fin_sum += self.einsum('pnm,inom->opi',self.F[i][j],in_sum1)
                 else:
                     in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
                     in_sum2 = self.einsum('njol,ijlm->noim',self.mpo.ops[i][j],in_sum1)
-                    if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
+                    if (self.hamType is "tasep") or (self.hamType is "sep"):# or (self.hamType is "sep_2d"):
                         fin_sum -= self.einsum('pnm,noim->opi',self.F[i][j],in_sum2)
                     else:
                         fin_sum += self.einsum('pnm,noim->opi',self.F[i][j],in_sum2)
@@ -341,7 +341,7 @@ class MPS_OPT:
                 x,y = (np.arange(self.mpo.Nx),np.arange(self.mpo.Ny))
                 currPlot = plt.imshow(np.flipud(np.real(np.reshape(self.calc_occ,(self.mpo.Nx,self.mpo.Ny))).transpose()),origin='lower')
                 plt.colorbar(currPlot)
-                plt.clim(0,1)
+                #plt.clim(0,1)
                 plt.gca().set_xticks(range(len(x)))
                 plt.gca().set_yticks(range(len(y)))
                 plt.gca().set_xticklabels(x)
