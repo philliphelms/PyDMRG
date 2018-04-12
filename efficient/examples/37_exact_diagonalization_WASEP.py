@@ -24,8 +24,7 @@ n_points = 10
 E = 10
 px = 1/2*np.exp(-E/Nx)
 qx = 1/2*np.exp(E/Nx)
-s = np.linspace(-20,20,20)
-s = np.array([-10])
+s = np.linspace(-20,20,n_points)
 jl = qx*np.ones((Ny,Nx))
 jr = px*np.ones((Ny,Nx))
 ju = 1/2*np.ones((Ny,Nx))
@@ -56,7 +55,7 @@ for i in range(len(s)):
                         periodic_x=True,
                         periodic_y=True,
                         add_noise = False,
-                        hamParams = (jl,jr,jd,ju,cr,cl,cd,cu,dr,dl,dd,du,[-s[i]/Nx,0]))
+                        hamParams = (jl,jr,jd,ju,cr,cl,cd,cu,dr,dl,dd,du,[s[i],s[i]]))
                         #hamParams = (qx,px,0,0,0,0,0.5,0.5,0,0,0,0,[s[i]/Nx,0]))
                         #(jump_left,jump_right,enter_left,enter_right,
                         # exit_left,exit_right,jump_up,jump_down,
@@ -64,9 +63,10 @@ for i in range(len(s)):
     x1.initialize_containers()
     x1.generate_mps()
     x1.generate_mpo()
-    Hamiltonian = x1.mpo.return_full_ham()
-    print(Hamiltonian)
-    #CGF[i] = x1.kernel()
+    H = x1.mpo.return_full_ham()
+    E,V = np.linalg.eig(H)
+    print(E)
+    CGF[i] = np.sort(E)[0]
 
 plt.plot(s,CGF)
 plt.show()

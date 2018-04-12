@@ -15,6 +15,7 @@ class MPS_OPT:
                  saveResults=False,dataFolder='data/',verbose=3):
         # Import parameters
         self.N = N
+        self.N_mpo = N
         self.d = d
         self.maxBondDimInd = 0
         if isinstance(maxBondDim, list):
@@ -57,7 +58,6 @@ class MPS_OPT:
         self.add_noise = add_noise
 
     def initialize_containers(self):
-        self.N_mpo = self.N
         if type(self.N) is not int:
             self.N = self.N[0]*self.N[1]
         self.inside_iter_time = np.zeros(len(self.maxBondDim))
@@ -241,14 +241,14 @@ class MPS_OPT:
             for i in range(self.mpo.nops):
                 if self.mpo.ops[i][j] is None:
                     in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
-                    if (self.hamType is "tasep") or (self.hamType is "sep"):# or (self.hamType is "sep_2d"):
+                    if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
                         fin_sum -= self.einsum('pnm,inom->opi',self.F[i][j],in_sum1)
                     else:
                         fin_sum += self.einsum('pnm,inom->opi',self.F[i][j],in_sum1)
                 else:
                     in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
                     in_sum2 = self.einsum('njol,ijlm->noim',self.mpo.ops[i][j],in_sum1)
-                    if (self.hamType is "tasep") or (self.hamType is "sep"):# or (self.hamType is "sep_2d"):
+                    if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
                         fin_sum -= self.einsum('pnm,noim->opi',self.F[i][j],in_sum2)
                     else:
                         fin_sum += self.einsum('pnm,noim->opi',self.F[i][j],in_sum2)

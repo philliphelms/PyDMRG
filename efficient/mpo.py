@@ -47,6 +47,7 @@ class MPO:
         if hamType is "heis":
             self.J = param[0]
             self.h = param[1]
+            self.N_mpo = self.N
             w_arr = np.array([[self.I, self.z, self.z, self.z, self.z],
                               [self.Sp, self.z, self.z, self.z, self.z],
                               [self.Sm, self.z, self.z, self.z, self.z],
@@ -77,7 +78,7 @@ class MPO:
         elif hamType is "heis_2d":
             self.Nx = self.N[0]
             self.Ny = self.N[1]
-            self.N = self.Nx*self.Ny
+            self.N_mpo = self.Nx*self.Ny
             self.J = param[0]
             self.h = param[1]
             # Build Two site terms
@@ -103,9 +104,9 @@ class MPO:
                 # Build All two-site Operators
                 for i in range(len(coupled_sites)):
                     inds = coupled_sites[i]
-                    tmp_op1 = [None]*self.N
-                    tmp_op2 = [None]*self.N
-                    tmp_op3 = [None]*self.N
+                    tmp_op1 = [None]*self.N_mpo
+                    tmp_op2 = [None]*self.N_mpo
+                    tmp_op3 = [None]*self.N_mpo
                     tmp_op1[inds[0]] = np.array([[self.J/2*self.Sm]])
                     tmp_op2[inds[0]] = np.array([[self.J/2*self.Sp]])
                     tmp_op3[inds[0]] = np.array([[self.J*self.Sz]])
@@ -117,15 +118,16 @@ class MPO:
                     self.ops.insert(len(self.ops),tmp_op3)
             # Add one site terms
             if self.h != 0:
-                for i in range(self.N):
+                for i in range(self.N_mpo):
                     tmp_op1 = []
-                    for j in range(self.N):
+                    for j in range(self.N_mpo):
                         if i == j:
                             tmp_op1.insert(len(tmp_op1),np.array([[-self.h*self.Sz]]))
                         else:
                             tmp_op1.insert(len(tmp_op1),None)
                     self.ops.insert(len(self.ops),tmp_op1)
         elif hamType is "tasep":
+            self.N_mpo = self.N
             self.alpha = param[0]
             self.s = param[1]
             self.beta = param[2]
@@ -160,6 +162,7 @@ class MPO:
                 self.ops.insert(len(self.ops),tmp_op1)
                 self.ops.insert(len(self.ops),tmp_op2)
         elif hamType is "sep":
+            self.N_mpo = self.N
             # Collect Inputs
             if not isinstance(param[0],(collections.Sequence,np.ndarray)):
                 self.a = param[0]
@@ -242,9 +245,10 @@ class MPO:
                     self.ops.insert(len(self.ops),tmp_op2)
         elif hamType is "sep_2d":
             # Collect Parameters
+            print(self.N)
             self.Nx = self.N[0]
             self.Ny = self.N[1]
-            self.N = self.Nx*self.Ny
+            self.N_mpo = self.Nx*self.Ny
             if not isinstance(param[0],(collections.Sequence,np.ndarray)):
                 print("I'm not sure this is working")
                 self.jl = param[0]
@@ -305,7 +309,6 @@ class MPO:
                 except:
                     self.sx = param[12]
                     self.sy = param[12]
-                print(self.sx)
             # Multiply params by an exponential
             self.exp_jl = self.jl*np.exp(self.sx)  # Moving Left
             self.exp_jr = self.jr*np.exp(-self.sx) # Moving Right
@@ -401,10 +404,10 @@ class MPO:
                             print('Jump Right Terms:')
                             print('\t{}*Sm({})*Sp({})-{}v({})*n({})'.\
                                     format(self.exp_jr[y_ind2,x_ind2],inds[0],inds[1],self.jr[y_ind2,x_ind2],inds[0],inds[1]))
-                        tmp_op1 = [None]*self.N
+                        tmp_op1 = [None]*self.N_mpo
                         tmp_op1[inds[1]] = np.array([[self.exp_jr[y_ind2,x_ind2]*self.Sp]])
                         tmp_op1[inds[0]] = np.array([[self.Sm]])
-                        tmp_op2 = [None]*self.N
+                        tmp_op2 = [None]*self.N_mpo
                         tmp_op2[inds[1]] = np.array([[self.jr[y_ind2,x_ind2]*self.n]])
                         tmp_op2[inds[0]] = np.array([[-self.v]])
                         self.ops.insert(len(self.ops),tmp_op1)
@@ -414,10 +417,10 @@ class MPO:
                             print('Jump Left Terms:')
                             print('\t{}*Sp({})*Sm({})-{}n({})*v({})'.\
                                     format(self.exp_jl[y_ind1,x_ind1],inds[0],inds[1],self.jl[y_ind1,x_ind1],inds[0],inds[1]))
-                        tmp_op3 = [None]*self.N
+                        tmp_op3 = [None]*self.N_mpo
                         tmp_op3[inds[1]] = np.array([[self.exp_jl[y_ind1,x_ind1]*self.Sm]])
                         tmp_op3[inds[0]] = np.array([[self.Sp]])
-                        tmp_op4 = [None]*self.N
+                        tmp_op4 = [None]*self.N_mpo
                         tmp_op4[inds[1]] = np.array([[self.jl[y_ind1,x_ind1]*self.v]])
                         tmp_op4[inds[0]] = np.array([[-self.n]])
                         self.ops.insert(len(self.ops),tmp_op3)
@@ -433,10 +436,10 @@ class MPO:
                             print('Jump Down Terms:')
                             print('\t{}*Sm({})*Sp({})-{}v({})*n({})'.\
                                 format(self.exp_jd[y_ind2,x_ind2],inds[1],inds[0],self.jd[y_ind2,x_ind2],inds[1],inds[0]))
-                        tmp_op1 = [None]*self.N
+                        tmp_op1 = [None]*self.N_mpo
                         tmp_op1[inds[1]] = np.array([[self.exp_jd[y_ind2,x_ind2]*self.Sm]])
                         tmp_op1[inds[0]] = np.array([[self.Sp]])
-                        tmp_op2 = [None]*self.N
+                        tmp_op2 = [None]*self.N_mpo
                         tmp_op2[inds[1]] = np.array([[self.jd[y_ind2,x_ind2]*self.v]])
                         tmp_op2[inds[0]] = np.array([[-self.n]])
                         self.ops.insert(len(self.ops),tmp_op1)
@@ -448,10 +451,10 @@ class MPO:
                             print('Jump Up Terms:')
                             print('\t{}*Sp({})*Sm({})-{}n({})*v({})'.\
                                 format(self.exp_ju[y_ind1,x_ind1],inds[1],inds[0],self.ju[y_ind1,x_ind1],inds[1],inds[0]))
-                        tmp_op3 = [None]*self.N
+                        tmp_op3 = [None]*self.N_mpo
                         tmp_op3[inds[1]] = np.array([[self.exp_ju[y_ind1,x_ind1]*self.Sp]])
                         tmp_op3[inds[0]] = np.array([[self.Sm]])
-                        tmp_op4 = [None]*self.N
+                        tmp_op4 = [None]*self.N_mpo
                         tmp_op4[inds[1]] = np.array([[self.ju[y_ind1,x_ind1]*self.n]])
                         tmp_op4[inds[0]] = np.array([[-self.v]])
                         self.ops.insert(len(self.ops),tmp_op3)
@@ -463,6 +466,7 @@ class MPO:
         elif hamType is "ising":
             self.J = param[0]
             self.h = param[1]
+            self.N_mpo = self.N
             w_arr = np.array([[self.I,          self.z,         self.z],
                               [self.Sz,         self.z,         self.z],
                               [self.h*self.Sz, self.J*self.Sz, self.I]])
@@ -487,21 +491,25 @@ class MPO:
     def return_full_ham(self,verbose=2):
         # This function calculates the full hamiltonian matrix
         # As a warning, it is computationally expensive 
-        H = np.zeros((self.N**2,self.N**2))
+        H = np.zeros((2**self.N_mpo,2**self.N_mpo))
         if verbose > 0:
             print('Hamiltonian Size: {}'.format(H.shape))
-        for i in range(self.N**2):
+        for i in range(2**self.N_mpo):
             if verbose > 1:
-                print('\ti-Loop Progress: {}%'.format(i/self.N**2*100))
-            i_occ = list(map(lambda x: int(x),'0'*(self.N-len(bin(i)[2:]))+bin(i)[2:]))
-            for j in range(self.N**2):
+                print('\ti-Loop Progress: {}%'.format(i/2**self.N_mpo*100))
+            i_occ = list(map(lambda x: int(x),'0'*(self.N_mpo-len(bin(i)[2:]))+bin(i)[2:]))
+            for j in range(2**self.N_mpo):
                 if verbose > 2:
-                    print('\t\tj-Loop Progress: {}%'.format(j/self.N**2*100))
-                j_occ = list(map(lambda x: int(x),'0'*(self.N-len(bin(j)[2:]))+bin(j)[2:]))
-                tmp_mat = np.array([[1]])
-                for k in range(self.N):
+                    print('\t\tj-Loop Progress: {}%'.format(j/2**self.N_mpo*100))
+                j_occ = list(map(lambda x: int(x),'0'*(self.N_mpo-len(bin(j)[2:]))+bin(j)[2:]))
+                for l in range(self.nops):
                     if verbose > 3:
-                        print('\t\t\tk-Loop progress: {}%'.format(k/self.N*100))
-                    tmp_mat = np.einsum('ij,jk->ik',tmp_mat,self.W[k][:,:,i_occ[k],j_occ[k]])
-                H[i,j] = tmp_mat[[0]]
+                        print('\t\t\tWorking with Operator {} of {}'.format(l+1,self.nops))
+                    tmp_mat = np.array([[1]])
+                    for k in range(self.N_mpo):
+                        if verbose > 4:
+                            print('\t\t\t\tk-Loop progress: {}%'.format(k/self.N_mpo*100))
+                        if self.ops[l][k] is not None:
+                            tmp_mat = np.einsum('ij,jk->ik',tmp_mat,self.ops[l][k][:,:,i_occ[k],j_occ[k]])
+                    H[i,j] = tmp_mat[[0]]
         return H

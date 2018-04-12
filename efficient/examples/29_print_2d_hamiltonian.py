@@ -22,12 +22,15 @@ plt.style.use('fivethirtyeight') #'fivethirtyeight') #'ggplot'
 #-----------------------------------------------------------------------------
 # 1D SEP
 #-----------------------------------------------------------------------------
-N =6
-x = mps_opt.MPS_OPT(N=N**2,
+N = 8
+x = mps_opt.MPS_OPT(N=N,
                     hamType = "sep",
                     hamParams = (np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand()))
+x.initialize_containers()
 x.generate_mpo()
 full_ham = x.mpo.return_full_ham()
+E_ed,_ = np.linalg.eig(full_ham)
+print('Energy via Exact Diagonalization:\n{}'.format(np.sort(E_ed)[-1]))
 plt.figure(1)
 plt.subplot(221)
 plt.spy(full_ham)
@@ -39,19 +42,27 @@ plt.colorbar()
 plt.title('1D SEP')
 print('1D SEP Hamiltonian Size: {}'.format(full_ham.shape))
 if (np.conj(full_ham).transpose() == full_ham).all():
-    print('\tHamiltonian is Hermitian')
+    print('Hamiltonian is Hermitian')
 else:
-    print('\tHamiltonian is not Hermitian')
+    print('Hamiltonian is not Hermitian')
+print('\n\nRun DMRG Calculation for Comparison')
+E_dmrg = x.kernel()
+
+
 
 #-----------------------------------------------------------------------------
 # 2D SEP
 #-----------------------------------------------------------------------------
-x = mps_opt.MPS_OPT(N = N**2,
+N=2
+x = mps_opt.MPS_OPT(N = [N,N],
                     hamType    ="sep_2d",
                     hamParams  = (np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),
                                   np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand()))
+x.initialize_containers()
 x.generate_mpo()
 full_ham = x.mpo.return_full_ham()
+E_ed,_ = np.linalg.eig(full_ham)
+print('Energy via Exact Diagonalization: {}'.format(np.sort(E_ed)[-1]))
 plt.figure(1)
 plt.subplot(222)
 plt.spy(full_ham)
@@ -66,7 +77,8 @@ if (np.conj(full_ham).transpose() == full_ham).all():
     print('\tHamiltonian is Hermitian')
 else:
     print('\tHamiltonian is not Hermitian')
-
+E_dmrg = x.kernel()
+"""
 #-----------------------------------------------------------------------------
 # 1D Heis
 #-----------------------------------------------------------------------------
@@ -113,3 +125,4 @@ if (np.conj(full_ham).transpose() == full_ham).all():
 else:
     print('\tHamiltonian is not Hermitian')
 plt.show()
+"""
