@@ -240,6 +240,15 @@ class MPS_OPT:
         else:
             return self.slow_optimization(i)
 
+    def add_noise(self,i):
+        if self.add_noise:
+            if self.verbose > 6:
+                print('\t\tAdding Noise')
+            max_noise = np.amax(self.M[j])*(10**(-(self.totIterCnt-1)/2))
+            (n1,n2,n3) = self.M[j].shape
+            noise = np.random.rand(n1,n2,n3)*max_noise
+            self.M[j] += noise
+
     def pyscf_optimization(self,j):
         if self.verbose > 5:
             print('\t'*3+'Using Pyscf optimization routine')
@@ -269,15 +278,8 @@ class MPS_OPT:
         def precond(dx,e,x0):
             # function(dx, e, x0) => array_like_dx
             return dx
-        if self.add_noise:
-            if self.verbose > 6:
-                print('\t\tAdding Noise')
-            max_noise = np.amax(self.M[j])*(10**(-(self.totIterCnt-1)/2))
-            noise = np.random.rand(n1,n2,n3)*max_noise #- 0.5
-            init_guess = self.M[j] + noise
-            init_guess = np.reshape(init_guess,-1)
-        else:
-            init_guess = np.reshape(self.M[j],-1)
+        self.add_noise(j)
+        init_guess = np.reshape(self.M[j],-1)
         E,v = self.eig(opt_fun,init_guess,precond,max_cycle=self.max_eig_iter)#,nroots=3)
         #print(E)
         #E = E[0]
