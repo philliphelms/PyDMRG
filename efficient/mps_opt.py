@@ -4,13 +4,14 @@ import time
 import mpo
 import warnings
 from mpl_toolkits.mplot3d import axes3d
+import scipy as sp
 
 class MPS_OPT:
 
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-7, maxIter=5,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
-                 usePyscf=True,initialGuess='rand',ed_limit=12,max_eig_iter=50,\
+                 usePyscf=False,initialGuess='rand',ed_limit=12,max_eig_iter=50,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
                  saveResults=False,dataFolder='data/',verbose=3):
         # Import parameters
@@ -250,6 +251,8 @@ class MPS_OPT:
     def pyscf_optimization(self,j):
         if self.verbose > 5:
             print('\t'*3+'Using Pyscf optimization routine')
+        sgn = 1.0
+        if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): sgn = -1.0
         (n1,n2,n3) = self.M[j].shape
         self.num_opt_fun_calls = 0
         def opt_fun(x):
@@ -261,48 +264,50 @@ class MPS_OPT:
             for i in range(self.mpo.nops):
                 if self.mpo.ops[i][j] is None:
                     in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
-                    if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
-                        fin_sum -= self.einsum('pnm,inom->opi',self.F[i][j],in_sum1)
-                    else:
-                        fin_sum += self.einsum('pnm,inom->opi',self.F[i][j],in_sum1)
+                    fin_sum += sgn*self.einsum('pnm,inom->opi',self.F[i][j],in_sum1)
                 else:
                     in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
                     in_sum2 = self.einsum('njol,ijlm->noim',self.mpo.ops[i][j],in_sum1)
-                    if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
-                        fin_sum -= self.einsum('pnm,noim->opi',self.F[i][j],in_sum2)
-                    else:
-                        fin_sum += self.einsum('pnm,noim->opi',self.F[i][j],in_sum2)
+                    fin_sum += sgn*self.einsum('pnm,noim->opi',self.F[i][j],in_sum2)
             return np.reshape(fin_sum,-1)
         def precond(dx,e,x0):
             # function(dx, e, x0) => array_like_dx
             return dx
         self.add_noise_func(j)
         init_guess = np.reshape(self.M[j],-1)
-        E,v = self.eig(opt_fun,init_guess,precond,max_cycle=self.max_eig_iter)#,nroots=3)
-        #print(E)
+        E,v = self.eig(opt_fun,init_guess,precond,max_cycle=self.max_eig_iter)#,nroots=9)
+        #print('E = {}'.format(E))
         #E = E[0]
         #v = v[0]
         self.M[j] = np.reshape(v,(n1,n2,n3))
-        if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): E = -E
         if self.verbose > 3:
             print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(j,E))
             if self.verbose > 4:
                 print('\t\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
-        return E
+        return sgn*E
 
     def slow_optimization(self,i):
         if self.verbose > 5:
             print('\t'*4+'Using slow optimization routine')
-        for j in range(nops):
-            if j == 1:
-                H = self.einsum('jlp,lmin,kmq->ijknpq',self.F[j][i],self.mpo.ops[j][i],self.F[j][i+1])
+        sgn = 1.0
+        if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): sgn = -1.0
+        for j in range(self.mpo.nops):
+            if j is 0:
+                if self.mpo.ops[j][i] is None:
+                    H = sgn*self.einsum('jlp,kmq->ljkmpq',self.F[j][i],self.F[j][i+1])
+                else:
+                    H = sgn*self.einsum('jlp,lmin,kmq->ijknpq',self.F[j][i],self.mpo.ops[j][i],self.F[j][i+1])
             else:
-                H += self.einsum('jlp,lmin,kmq->ijknpq',self.F[j][i],self.mpo.ops[j][i],self.F[j][i+1])
+                if self.mpo.ops[j][i] is None:
+                    H += sgn*self.einsum('jlp,kmq->ljkmpq',self.F[j][i],self.F[j][i+1])
+                else:
+                    H += sgn*self.einsum('jlp,lmin,kmq->ijknpq',self.F[j][i],self.mpo.ops[j][i],self.F[j][i+1])
         (n1,n2,n3,n4,n5,n6) = H.shape
         H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): H = -H
         u,v = self.eig(H)
         u_sort = u[np.argsort(u)]
+        print(u_sort[:5])
         v = v[:,np.argsort(u)]
         ind = 0
         for j in range(len(u_sort)):
