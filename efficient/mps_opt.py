@@ -172,8 +172,6 @@ class MPS_OPT:
             self.M[i-1] = self.einsum('klj,ji,i->kli',self.M[i-1],U,s)
         else:
             raise NameError('Direction must be left or right')
-        #print(M_reshape)
-        #print(self.M[i])
 
     def increaseBondDim(self):
         if self.verbose > 3:
@@ -240,7 +238,7 @@ class MPS_OPT:
         else:
             return self.slow_optimization(i)
 
-    def add_noise(self,i):
+    def add_noise_func(self,i):
         if self.add_noise:
             if self.verbose > 6:
                 print('\t\tAdding Noise')
@@ -278,7 +276,7 @@ class MPS_OPT:
         def precond(dx,e,x0):
             # function(dx, e, x0) => array_like_dx
             return dx
-        self.add_noise(j)
+        self.add_noise_func(j)
         init_guess = np.reshape(self.M[j],-1)
         E,v = self.eig(opt_fun,init_guess,precond,max_cycle=self.max_eig_iter)#,nroots=3)
         #print(E)
