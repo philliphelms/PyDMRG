@@ -30,6 +30,7 @@ px = 1/2*np.exp(-E/N)
 qx = 1/2*np.exp(E/N)
 s = np.linspace(-30,10,100)
 s = np.array([-18.6868686869])
+s = np.array([-29.1919191919,-18.6868686869,-10])
 CGF_dmrg = np.zeros(s.shape)
 for i in range(len(s)):
     x = mps_opt.MPS_OPT(N = [N,N],
@@ -46,10 +47,3 @@ for i in range(len(s)):
     print('Performing Calculation for s = {}'.format(s[i]))
     CGF_dmrg[i] = x.kernel()
     print('Final Density Profile = \n{}'.format(x.calc_occ))
-plt.figure()
-plt.plot(s,CGF_dmrg,'b:',label='DMRG')
-plt.xlabel('$\lambda$')
-plt.ylabel('$\psi$')
-for i in range(1,len(s)-1):
-    print('s\tCGF\tCurr\t2nd\t3rd')
-    print('{}\t{}\t{}\t{}'.format(s[i],CGF_dmrg[i],CGF_dmrg[i],CGF_dmrg[i],CGF_dmrg[i]))
