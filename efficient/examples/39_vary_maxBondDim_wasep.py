@@ -28,28 +28,29 @@ n_points = 10
 E = 10
 px = 1/2*np.exp(-E/N)
 qx = 1/2*np.exp(E/N)
-s = np.linspace(-30,10,100)
-s = np.array([-18.6868686869])
+s = np.array([-29.1919191919,-18.6868686869,-10])
 CGF_dmrg = np.zeros(s.shape)
+x = np.array([])
 for i in range(len(s)):
-    x = mps_opt.MPS_OPT(N = [N,N],
-                        hamType = "sep_2d",
-                        #periodic_x = True,
-                        periodic_y = True,
-                        maxBondDim = [2,10,20,30,40,50,75,100,200,300,400,500,505],
-                        verbose = 3,
-                        maxIter = 2,
-                        #plotExpVals = True,
-                        #plotConv = True,
-                        #hamParams = (qx,px,1/2,1/2,0,0,0,0,0,0,0,0,[s[i]/N,0]))
-                        hamParams = (1/2,1/2,qx,px,1/2,1/2,0,0,1/2,1/2,0,0,[0,s[i]/N]))
-    print('Performing Calculation for s = {}'.format(s[i]))
-    CGF_dmrg[i] = x.kernel()
-    print('Final Density Profile = \n{}'.format(x.calc_occ))
+    np.insert(x,len(x),mps_opt.MPS_OPT(N = [N,N],
+                                    hamType = "sep_2d",
+                                    #periodic_x = True,
+                                    periodic_y = True,
+                                    verbose = 3,
+                                    maxBondDim = 2,
+                                    maxIter = 2,
+                                    #plotExpVals = True,
+                                    #plotConv = True,
+                                    #hamParams = (qx,px,1/2,1/2,0,0,0,0,0,0,0,0,[s[i]/N,0]))
+                                    hamParams = (1/2,1/2,qx,px,1/2,1/2,0,0,1/2,1/2,0,0,[0,s[i]/N])))
+    CGF_dmrg[i] = x[i].kernel()
+np.save('2D_wasep_data_{}x{}'.format(N,N))
 plt.figure()
 plt.plot(s,CGF_dmrg,'b:',label='DMRG')
 plt.xlabel('$\lambda$')
 plt.ylabel('$\psi$')
-for i in range(1,len(s)-1):
-    print('s\tCGF\tCurr\t2nd\t3rd')
-    print('{}\t{}\t{}\t{}'.format(s[i],CGF_dmrg[i],CGF_dmrg[i],CGF_dmrg[i],CGF_dmrg[i]))
+plt.legend()
+plt.show()
+plt.figure()
+plt.xlabel('$\lambda$')
+plt.ylabel('$\psi$')

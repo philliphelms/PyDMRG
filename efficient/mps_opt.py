@@ -8,12 +8,12 @@ import scipy as sp
 
 class MPS_OPT:
 
-    def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-7, maxIter=5,\
+    def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-5, maxIter=5,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
-                 usePyscf=False,initialGuess='rand',ed_limit=12,max_eig_iter=50,\
+                 usePyscf=True,initialGuess=0.001,ed_limit=12,max_eig_iter=50,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
-                 saveResults=False,dataFolder='data/',verbose=3):
+                 saveResults=False,dataFolder='data/',verbose=5):
         # Import parameters
         self.N = N
         self.N_mpo = N
@@ -281,7 +281,7 @@ class MPS_OPT:
         #v = v[0]
         self.M[j] = np.reshape(v,(n1,n2,n3))
         if self.verbose > 3:
-            print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(j,E))
+            print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(j,sgn*E))
             if self.verbose > 4:
                 print('\t\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
         return sgn*E
