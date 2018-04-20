@@ -243,7 +243,7 @@ class MPS_OPT:
         if self.add_noise:
             if self.verbose > 6:
                 print('\t\tAdding Noise')
-            max_noise = np.amax(self.M[j])*(10**(-(self.totIterCnt-1)/2))
+            max_noise = np.amax(self.M[j])*(10**(-(self.currIterCnt-1)/2))
             (n1,n2,n3) = self.M[j].shape
             noise = np.random.rand(n1,n2,n3)*max_noise
             self.M[j] += noise
