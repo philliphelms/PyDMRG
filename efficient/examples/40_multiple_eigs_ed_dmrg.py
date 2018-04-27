@@ -17,34 +17,37 @@ plt.rc('font', family='serif')
 plt.rcParams['text.latex.unicode']=False
 np.set_printoptions(suppress=True)
 np.set_printoptions(precision=2)
-np.set_printoptions(linewidth=100)
+np.set_printoptions(linewidth=1000)
 plt.style.use('fivethirtyeight') #'fivethirtyeight') #'ggplot'
 
 #-----------------------------------------------------------------------------
 # 2D WASEP
 #-----------------------------------------------------------------------------
-N=12
+N=3
 n_points = 10
 E = 10
 px = 1/2*np.exp(-E/N)
 qx = 1/2*np.exp(E/N)
-s = np.linspace(-30,10,100)
-s = np.array([-18.6868686869])
-s = np.array([-10,-18.6868686869])
+s = np.linspace(-30,10,n_points)
+s = np.array([-30,-20,-10])
+CGF_ed = np.zeros(s.shape)
 CGF_dmrg = np.zeros(s.shape)
+all_energies = np.zeros((2**(N**2),len(s)))
 for i in range(len(s)):
+    print(s)
     x = mps_opt.MPS_OPT(N = [N,N],
                         hamType = "sep_2d",
-                        #periodic_x = True,
-                        periodic_y = True,
-                        maxBondDim = [10,100],#[2,10,20,30,40,50,75,100,200,300,400,500,505],
                         verbose = 3,
-                        maxIter = 2,
-                        plotExpVals = True,
-                        plotConv = True,
-                        #hamParams = (qx,px,1/2,1/2,0,0,0,0,0,0,0,0,[s[i]/N,0]))
-                        #hamParams = (1/2,1/2,qx,px,1/2,1/2,0,0,1/2,1/2,0,0,[0,s[i]/N]))
-                        hamParams = (1/2,1/2,qx,px,0,0,0,0,0,0,0,0,[0,s[i]/N]))
-    print('Performing Calculation for s = {}'.format(s[i]))
+                        periodic_x = True,
+                        periodic_y = True,
+                        hamParams = (qx,px,1/2,1/2,0,0,0,0,0,0,0,0,[s[i]/N,0]))
+    x.initialize_containers()
+    x.generate_mpo()
+    full_ham = x.mpo.return_full_ham()
+    E_ed,_ = np.linalg.eig(full_ham)
+    all_energies[:,i] = np.sort(E_ed)
+    #print(full_ham)
+    print('{}'.format(np.sort(E_ed)))
+    print('Energy via Exact Diagonalization: {}'.format(np.sort(E_ed)[-1]))
+    CGF_ed[i] = np.sort(E_ed)[-1]
     CGF_dmrg[i] = x.kernel()
-    print('Final Density Profile = \n{}'.format(x.calc_occ))

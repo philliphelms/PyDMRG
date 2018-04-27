@@ -276,10 +276,11 @@ class MPS_OPT:
             return dx
         self.add_noise_func(j)
         init_guess = np.reshape(self.M[j],-1)
-        E,v = self.eig(opt_fun,init_guess,precond,max_cycle=self.max_eig_iter)#,nroots=9)
-        #print('E = {}'.format(E))
-        #E = E[0]
-        #v = v[0]
+        print(len(init_guess)-1)
+        E,v = self.eig(opt_fun,init_guess,precond,max_cycle=self.max_eig_iter,nroots=min(len(init_guess)-1,10))
+        print('E = {}'.format(E))
+        E = E[0]
+        v = v[0]
         self.M[j] = np.reshape(v,(n1,n2,n3))
         if self.verbose > 3:
             print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(j,sgn*E))
