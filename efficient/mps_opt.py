@@ -141,6 +141,7 @@ class MPS_OPT:
     def normalize(self,i,direction):
         if self.verbose > 4:
             print('\t'*2+'Normalization at site {} in direction: {}'.format(i,direction))
+        # FOR I IN NROOTS
         if direction is 'right':
             (n1,n2,n3) = self.M[self.curr_root][i].shape
             M_reshape = np.reshape(self.M[self.curr_root][i],(n1*n2,n3))
@@ -148,8 +149,6 @@ class MPS_OPT:
             self.M[self.curr_root][i] = np.reshape(U,(n1,n2,n3))
             self.M[self.curr_root][i+1] = self.einsum('i,ij,kjl->kil',s,V,self.M[self.curr_root][i+1])
         elif direction is 'left':
-            print(len(self.M))
-            print(self.curr_root)
             M_reshape = np.swapaxes(self.M[self.curr_root][i],0,1)
             (n1,n2,n3) = M_reshape.shape
             M_reshape = np.reshape(M_reshape,(n1,n2*n3))
@@ -196,6 +195,7 @@ class MPS_OPT:
     def update_f(self,j,direction):
         if self.verbose > 4:
             print('\t'*2+'Updating F at site {}'.format(j))
+        # FOR I IN NROOTS
         if direction is 'right':
             for i in range(self.mpo.nops):
                 if self.mpo.ops[i][j] is None:
@@ -253,12 +253,14 @@ class MPS_OPT:
             # function(dx, e, x0) => array_like_dx
             return dx
         self.add_noise_func(j)
+        # FOR I IN NROOTS
         init_guess = np.reshape(self.M[self.curr_root][j],-1)
         #print(len(init_guess)-1)
-        E,v = self.eig(opt_fun,init_guess,precond,max_cycle=self.max_eig_iter)#,nroots=min(len(init_guess)-1,10))
-        #print('E = {}'.format(E))
-        #E = E[0]
-        #v = v[0]
+        E,v = self.eig(opt_fun,init_guess,precond,max_cycle=self.max_eig_iter,nroots=self.curr_root+1)
+        if self.curr_root > 0:
+            print('E = {}'.format(E))
+            E = E[0]
+            v = v[0]
         self.M[self.curr_root][j] = np.reshape(v,(n1,n2,n3))
         if self.verbose > 3:
             print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(j,sgn*E))
@@ -547,7 +549,6 @@ class MPS_OPT:
                 self.totIterCnt += 1
         # Check if we want multiple roots
         if self.curr_root < self.nroots-1:
-            print('Here we go again!')
             print(self.curr_root)
             self.curr_root += 1
             self.kernel()
