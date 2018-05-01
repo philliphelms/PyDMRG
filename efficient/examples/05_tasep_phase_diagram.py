@@ -18,8 +18,8 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=100)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-N = 50
-npts = 100
+N = 10
+npts = 10
 betaVec = np.linspace(0,1,npts)
 alphaVec = np.linspace(0,1,npts)
 J_mat = np.zeros((len(betaVec),len(alphaVec)))
@@ -28,13 +28,13 @@ for i in range(len(betaVec)):
     for j in range(len(alphaVec)):
         print('-'*20+'\nalpha = {}%, beta = {}%\n'.format(j/len(alphaVec),i/len(betaVec)))
         x = mps_opt.MPS_OPT(N=int(N),
-                            maxBondDim = 8,
+                            maxBondDim = 100,
                             tol = 1e-1,
                             verbose = 0,
                             hamParams = (alphaVec[j],-0.001,betaVec[i]))
         E1 = x.kernel()
         x = mps_opt.MPS_OPT(N=int(N),
-                            maxBondDim = 8,
+                            maxBondDim = 100,
                             tol = 1e-1,
                             verbose = 0,
                             hamParams = (alphaVec[j],0.001,betaVec[i]))

@@ -27,7 +27,7 @@ x = mps_opt.MPS_OPT(N = 100,
                     verbose = 4,
                     periodic_x = False,
                     plotConv = True,
-                    #add_noise = False,
+                    add_noise = False,
                     hamParams = (0.5,0,0.5))
 # Run optimization
 x.kernel()
