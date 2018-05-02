@@ -2,7 +2,7 @@ import cProfile
 import mps_opt
 import pstats
 
-x = mps_opt.MPS_OPT(N=10**2,
+x = mps_opt.MPS_OPT(N=[10,10],
                     hamType = "heis_2d",
                     maxBondDim=[500,1000,2000,3000,4000,5000],
                     maxIter = 2,

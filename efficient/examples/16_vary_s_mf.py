@@ -25,8 +25,7 @@ E = np.zeros(s_vec.shape)
 for i in range(len(s_vec)):
     x = mps_opt.MPS_OPT(N=N,
                         hamType = "sep",
-                        hamParams = (0.9,0.1,0.5,0.5,0.9,0.1,s_vec[i]),
-                        usePyscf = False)
+                        hamParams = (0.9,0.1,0.5,0.5,0.9,0.1,s_vec[i]))
     E[i] = x.mean_field()
 fig1 = plt.figure()
 plt.plot(s_vec,E,'-')

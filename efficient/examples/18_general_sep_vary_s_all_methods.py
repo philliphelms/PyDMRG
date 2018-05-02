@@ -24,9 +24,8 @@ E_mf = np.zeros(s_vec.shape)
 for i in range(len(s_vec)):
     x = mps_opt.MPS_OPT(N=N,
                         hamType = "sep",
-                        hamParams = (0.9,0.1,0.5,0.5,0.1,0.9,s_vec[i]),
+                        hamParams = (0.9,0.1,0.5,0.5,0.1,0.9,s_vec[i]))
                         #hamParams = (0.5,0.8,0.2,0.6,0.8,0.7,s_vec[i]),
-                        usePyscf = True)
     E_dmrg[i] = x.kernel()
     E[i] = x.exact_diag()
     E_mf[i] = x.mean_field()
