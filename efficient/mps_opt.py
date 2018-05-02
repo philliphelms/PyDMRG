@@ -15,7 +15,7 @@ class MPS_OPT:
                  plotExpVals=False, plotConv=False,\
                  initialGuess=0.001,ed_limit=12,max_eig_iter=50,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
-                 saveResults=True,dataFolder='data/',verbose=6,nroots=1):
+                 saveResults=True,dataFolder='data/',verbose=3,nroots=1):
         # Import parameters
         self.N = N
         self.N_mpo = N
@@ -231,10 +231,10 @@ class MPS_OPT:
         if self.add_noise:
             if self.verbose > 6:
                 print('\t\tAdding Noise')
-            max_noise = np.amax(self.M[self.curr_root][j])*(10**(-(self.currIterCnt-1)/2))
-            (n1,n2,n3) = self.M[self.curr_root][j].shape
+            max_noise = np.amax(self.M[self.curr_root][i])*(10**(-(self.currIterCnt-1)/2))
+            (n1,n2,n3) = self.M[self.curr_root][i].shape
             noise = np.random.rand(n1,n2,n3)*max_noise
-            self.M[self.curr_root][j] += noise
+            self.M[self.curr_root][i] += noise
 
     def local_optimization(self,j):
         if self.verbose > 4:
@@ -253,15 +253,11 @@ class MPS_OPT:
             for i in range(self.mpo.nops):
                 if self.mpo.ops[i][j] is None:
                     in_sum1_td = np.tensordot(self.F[self.curr_root][i][j+1],x_reshape,axes=([2],[2]))
-                    print('Initial Finals Shape = {}'.format(fin_sum_td.shape))
                     fin_sum_td += sgn*np.swapaxes(np.swapaxes(np.tensordot(self.F[self.curr_root][i][j],in_sum1_td,axes=([1,2],[1,3])),1,2),0,1)
                 else:
                     in_sum1_td = np.tensordot(self.F[self.curr_root][i][j+1],x_reshape,axes=([2],[2]))
                     in_sum2_td = np.tensordot(self.mpo.ops[i][j],in_sum1_td,axes=([1,3],[1,2]))
-                    print('Final Shape = {}'.format(fin_sum_td.shape))
-                    print('Input Shape = {}'.format((sgn*np.swapaxes(np.tensordot(self.F[self.curr_root][i][j],in_sum2_td,axes=([1,2],[0,3])),0,1)).shape))
                     fin_sum_td += sgn*np.swapaxes(np.tensordot(self.F[self.curr_root][i][j],in_sum2_td,axes=([1,2],[0,3])),0,1)
-                    #fin_sum_td += sgn*np.tensordot(self.F[self.curr_root][i][j],in_sum2_td,axes=([1,2],[0,3]))
             return np.reshape(fin_sum_td,-1)
         def precond(dx,e,x0):
             # function(dx, e, x0) => array_like_dx
@@ -355,7 +351,7 @@ class MPS_OPT:
                 ax.view_init(30, self.angle)
                 plt.draw()
             elif self.hamType is "heis_2d":
-                ax = self.exp_val_figure.gca(projection='3d')
+                ax = self.exp_val_figure[self.curr_root].gca(projection='3d')
                 x, y = np.meshgrid(np.arange((-self.mpo.Ny+1)/2,(self.mpo.Ny-1)/2+1),
                                    np.arange((-self.mpo.Nx+1)/2,(self.mpo.Nx-1)/2+1))
                 ax.scatter(x,y,np.zeros((self.mpo.Nx,self.mpo.Ny)),color='k')

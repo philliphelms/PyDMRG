@@ -16,8 +16,8 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=100)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-x = mps_opt.MPS_OPT(N=[10,4],
-                    maxBondDim=500,
+x = mps_opt.MPS_OPT(N=[10,10],
+                    maxBondDim=100,
                     hamType="sep_2d",
                     plotExpVals=True,
                     plotConv=False,

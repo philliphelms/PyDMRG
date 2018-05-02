@@ -19,7 +19,7 @@ np.set_printoptions(precision=100)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
 # General Settings
-maxBondDim = 500
+maxBondDim = 50
 maxIter = 3
 max_eig_iter = 5
 tol = 1e-16
@@ -29,7 +29,7 @@ N = np.array([10,20,30,40,50,60,70,80,90,100,110,120,130,140],dtype=np.int)
 t_vec = np.zeros(N.shape)
 for i in range(len(N)):
     print('1D System: Size = {}'.format(N[i]))
-    x = mps_opt.MPS_OPT(N=N[i],
+    x = mps_opt.MPS_OPT(N=int(N[i]),
                         maxBondDim = maxBondDim,
                         maxIter = maxIter,
                         max_eig_iter = max_eig_iter,
