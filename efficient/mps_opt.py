@@ -14,7 +14,7 @@ class MPS_OPT:
                  plotExpVals=False, plotConv=False,\
                  initialGuess=0.001,ed_limit=12,max_eig_iter=50,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
-                 saveResults=True,dataFolder='data/',verbose=5,nroots=1):
+                 saveResults=True,dataFolder='data/',verbose=5):
         # Import parameters
         self.N = N
         self.N_mpo = N
@@ -41,7 +41,14 @@ class MPS_OPT:
         self.saveResults = saveResults
         self.dataFolder = dataFolder
         self.verbose = verbose
-        self.nroots = nroots
+        import lib.linalg_helper
+        import lib.numpy_helper
+        self.einsum = lib.numpy_helper.einsum
+        if (self.hamType is "heis") or (self.hamType is "heis_2d") or (self.hamType is 'ising'):
+            self.eig = lib.linalg_helper.eigh
+        else:
+            self.eig = lib.linalg_helper.eig
+        self.usePyscf = usePyscf
         self.initialGuess = initialGuess
         self.ed_limit = ed_limit
         self.max_eig_iter = max_eig_iter
@@ -65,13 +72,6 @@ class MPS_OPT:
         self.calc_empty = [0]*self.N
         self.calc_occ = [0]*self.N
         self.bondDimEnergies = np.zeros(len(self.maxBondDim))
-        import lib.linalg_helper
-        import lib.numpy_helper
-        self.einsum = lib.numpy_helper.einsum
-        if (self.hamType is "heis") or (self.hamType is "heis_2d") or (self.hamType is 'ising'):
-            self.eig = lib.linalg_helper.eigh
-        else:
-            self.eig = lib.linalg_helper.eig
 
     def generate_mps(self):
         if self.verbose > 4:
