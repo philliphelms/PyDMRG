@@ -20,7 +20,6 @@ plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
 # Run TASEP Current Calculations
 N_vec = np.array([10,20,30,40,50,60,70,80,90,100])
-N_vec = np.array([10,20])
 s_vec = np.linspace(-1,1,100)
 fig1 = plt.figure()
 fig2 = plt.figure()

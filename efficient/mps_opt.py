@@ -15,7 +15,7 @@ class MPS_OPT:
                  plotExpVals=False, plotConv=False,\
                  initialGuess=0.001,ed_limit=12,max_eig_iter=50,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
-                 saveResults=True,dataFolder='data/',verbose=6,nroots=1):
+                 saveResults=True,dataFolder='data/',verbose=5,nroots=2):
         # Import parameters
         self.N = N
         self.N_mpo = N
@@ -78,41 +78,36 @@ class MPS_OPT:
     def generate_mps(self):
         if self.verbose > 4:
             print('\t'*2+'Generating MPS')
-        M = []
+        self.M = []
         base = np.array([[-1/np.sqrt(2),-1/np.sqrt(2)],[-1/np.sqrt(2),1/np.sqrt(2)]])
         for i in range(int(self.N/2)):
             if self.initialGuess is "zeros":
-                M.insert(len(M),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+                self.M.insert(len(self.M),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
             elif self.initialGuess is "ones":
-                M.insert(len(M),np.ones((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+                self.M.insert(len(self.M),np.ones((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
             elif self.initialGuess is "rand":
-                M.insert(len(M),np.random.rand(self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))) 
+                self.M.insert(len(self.M),np.random.rand(self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))) 
             else:
-                M.insert(len(M),self.initialGuess*np.ones((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+                self.M.insert(len(self.M),self.initialGuess*np.ones((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
         if self.N%2 is 1: # Check if system size is odd
             if self.initialGuess is "zeros":
-                M.insert(len(self.N),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+                self.M.insert(len(self.N),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
             elif self.initialGuess is "ones":
-                M.insert(len(M),np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+                self.M.insert(len(self.M),np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
             elif self.initialGuess is "rand":
-                M.insert(len(M),np.random.rand(self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)))
+                self.M.insert(len(self.M),np.random.rand(self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)))
             else:
-                M.insert(len(M),self.initialGuess*np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+                self.M.insert(len(self.M),self.initialGuess*np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
         for i in range(int(self.N/2))[::-1]:
             if self.initialGuess is "zeros":
-                M.insert(len(M),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
+                self.M.insert(len(self.M),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
             elif self.initialGuess is "ones":
-                M.insert(len(M),np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
+                self.M.insert(len(self.M),np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
             elif self.initialGuess is "rand":
-                M.insert(len(M),np.random.rand(self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr)))
+                self.M.insert(len(self.M),np.random.rand(self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr)))
             else:
-                M.insert(len(M),self.initialGuess*np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
-        self.M = []
-        for i in range(self.nroots):
-            if i is 0:
-                self.M.insert(len(self.M),M)
-            else:
-                self.M.insert(len(self.M),copy.deepcopy(M))
+                self.M.insert(len(self.M),self.initialGuess*np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
+        self.M = [self.M]*self.nroots
 
     def generate_mpo(self):
         if self.verbose > 4:
@@ -129,7 +124,7 @@ class MPS_OPT:
     def generate_f(self):
         if self.verbose > 4:
             print('\t'*2+'Generating initial F arrays')
-        F = []
+        self.F = []
         for i in range(self.mpo.nops):
             F_tmp = []
             F_tmp.insert(len(F_tmp),np.array([[[1]]]))
@@ -140,13 +135,8 @@ class MPS_OPT:
             for j in range(int(self.N/2)-1,0,-1):
                 F_tmp.insert(len(F_tmp),np.zeros((min(self.d**(j),self.maxBondDimCurr),2,min(self.d**j,self.maxBondDimCurr))))
             F_tmp.insert(len(F_tmp),np.array([[[1]]]))
-            F.insert(len(F),F_tmp)
-        self.F = []
-        for i in range(self.nroots):
-            if i is 0:
-                self.F.insert(len(self.F),F)
-            else:
-                self.F.insert(len(self.F),copy.deepcopy(F))
+            self.F.insert(len(self.F),F_tmp)
+        self.F = [self.F]*self.nroots
 
     def normalize(self,i,direction):
         if self.verbose > 4:
@@ -253,15 +243,11 @@ class MPS_OPT:
             for i in range(self.mpo.nops):
                 if self.mpo.ops[i][j] is None:
                     in_sum1_td = np.tensordot(self.F[self.curr_root][i][j+1],x_reshape,axes=([2],[2]))
-                    print('Initial Finals Shape = {}'.format(fin_sum_td.shape))
-                    fin_sum_td += sgn*np.swapaxes(np.swapaxes(np.tensordot(self.F[self.curr_root][i][j],in_sum1_td,axes=([1,2],[1,3])),1,2),0,1)
+                    fin_sum_td = np.tensordot(self.F[self.curr_root][i][j],in_sum1_td,axes=([1,2],[1,3]))
                 else:
                     in_sum1_td = np.tensordot(self.F[self.curr_root][i][j+1],x_reshape,axes=([2],[2]))
                     in_sum2_td = np.tensordot(self.mpo.ops[i][j],in_sum1_td,axes=([1,3],[1,2]))
-                    print('Final Shape = {}'.format(fin_sum_td.shape))
-                    print('Input Shape = {}'.format((sgn*np.swapaxes(np.tensordot(self.F[self.curr_root][i][j],in_sum2_td,axes=([1,2],[0,3])),0,1)).shape))
                     fin_sum_td += sgn*np.swapaxes(np.tensordot(self.F[self.curr_root][i][j],in_sum2_td,axes=([1,2],[0,3])),0,1)
-                    #fin_sum_td += sgn*np.tensordot(self.F[self.curr_root][i][j],in_sum2_td,axes=([1,2],[0,3]))
             return np.reshape(fin_sum_td,-1)
         def precond(dx,e,x0):
             # function(dx, e, x0) => array_like_dx
@@ -338,7 +324,7 @@ class MPS_OPT:
                 plt.gca().set_yticklabels(y)
                 plt.gca().grid(False)
             elif (self.hamType is "heis")  or (self.hamType is 'ising'):
-                ax = self.exp_val_figure[self.curr_root].gca(projection='3d')
+                ax = self.exp_val_figure.gca(projection='3d')
                 x = np.arange(self.N)
                 y = np.zeros(self.N)
                 z = np.zeros(self.N)
@@ -502,8 +488,8 @@ class MPS_OPT:
                         print('Converged at E = {}'.format(self.finalEnergy))
                         if self.verbose > 1:
                             print('  Final Bond Dimension = {}'.format(self.maxBondDimCurr))
-                            print('  Avg time per iter for final M = {} s'.format(self.inside_iter_time[self.curr_root][self.maxBondDimInd]/\
-                                                                                  self.inside_iter_cnt [self.curr_root][self.maxBondDimInd]))
+                            print('  Avg time per iter for final M = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
+                                                                                  self.inside_iter_cnt [self.maxBondDimInd]))
                             print('  Total Time = {} s'.format(self.time_total))
                         print('#'*75+'\n')
                 else:
@@ -512,14 +498,14 @@ class MPS_OPT:
                         print('Converged at E = {}'.format(self.E))
                         if self.verbose > 2:
                             print('  Current Bond Dimension = {}'.format(self.maxBondDimCurr))
-                            print('  Avg time per inner iter = {} s'.format(self.inside_iter_time[self.curr_root][self.maxBondDimInd]/\
-                                                                            self.inside_iter_cnt [self.curr_root][self.maxBondDimInd]))
-                            print('  Total time for M({}) = {} s'.format(self.maxBondDimCurr,self.outside_iter_time[self.curr_root][self.maxBondDimInd]))
-                            print('  Required number of iters = {}'.format(self.outside_iter_cnt[self.curr_root][self.maxBondDimInd]))
+                            print('  Avg time per inner iter = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
+                                                                            self.inside_iter_cnt [self.maxBondDimInd]))
+                            print('  Total time for M({}) = {} s'.format(self.maxBondDimCurr,self.outside_iter_time[self.maxBondDimInd]))
+                            print('  Required number of iters = {}'.format(self.outside_iter_cnt[self.maxBondDimInd]))
                         print('-'*45+'\n')
                     self.bondDimEnergies[self.curr_root][self.maxBondDimInd] = self.E
                     self.maxBondDimInd += 1
-                    self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
+                    self.maxBondDimCurr = self.maxBondDim[self.curr_root][self.maxBondDimInd]
                     self.increaseBondDim()
                     self.generate_f()
                     self.calc_initial_f()
@@ -553,7 +539,7 @@ class MPS_OPT:
                         print('-'*45+'\n')
                     self.bondDimEnergies[self.curr_root][self.maxBondDimInd] = self.E
                     self.maxBondDimInd += 1
-                    self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
+                    self.maxBondDimCurr = self.maxBondDim[self.curr_root][self.maxBondDimInd]
                     self.increaseBondDim()
                     self.generate_f()
                     self.calc_initial_f()
@@ -561,7 +547,7 @@ class MPS_OPT:
                     self.currIterCnt = 0
             else:
                 if self.verbose > 3:
-                    print('\t'*1+'Energy Change {}\nNeeded <{}'.format(np.abs(self.E-E_prev),self.tol[self.maxBondDimInd]))
+                    print('\t'*1+'Energy Change {}\nNeeded <{}'.format(np.abs(self.E-E_prev),self.tol[self.curr_root][self.maxBondDimInd]))
                 E_prev = self.E
                 self.currIterCnt += 1
                 self.totIterCnt += 1
@@ -586,11 +572,11 @@ class MPS_OPT:
         if self.hamType is 'tasep':
             x = exactDiag_meanField.exactDiag(L=self.N,
                                               clumpSize=self.N,
-                                              alpha=self.hamParams[0],
+                                              alpha=self.mpo.alpha,
                                               gamma=0,
                                               beta=0,
-                                              delta=self.hamParams[2],
-                                              s=self.hamParams[1],
+                                              delta=self.mpo.beta,
+                                              s=self.mpo.s,
                                               p=1,
                                               q=0,
                                               maxIter=maxIter,
@@ -598,13 +584,13 @@ class MPS_OPT:
         elif self.hamType is 'sep':
             x = exactDiag_meanField.exactDiag(L=self.N,
                                               clumpSize=self.N,
-                                              alpha=self.hamParams[0],
-                                              gamma=self.hamParams[1],
-                                              beta=self.hamParams[4],
-                                              delta=self.hamParams[5],
-                                              s=self.hamParams[6],
-                                              p=self.hamParams[2],
-                                              q=self.hamParams[3],
+                                              alpha=self.mpo.alpha,
+                                              gamma=self.mpo.gamma,
+                                              beta=self.mpo.beta,
+                                              delta=self.mpo.delta,
+                                              s=self.mpo.s,
+                                              p=self.mpo.p,
+                                              q=self.mpo.q,
                                               maxIter=maxIter,
                                               tol=tol)
         else:
@@ -621,11 +607,11 @@ class MPS_OPT:
         if self.hamType is 'tasep':
             x = exactDiag_meanField.exactDiag(L=self.N,
                                               clumpSize=clumpSize,
-                                              alpha=self.hamParams[0],
+                                              alpha=self.mpo.alpha,
                                               gamma=0,
                                               beta=0,
-                                              delta=self.hamParams[2],
-                                              s=self.hamParams[1],
+                                              delta=self.mpo.beta,
+                                              s=self.mpo.s,
                                               p=1,
                                               q=0,
                                               maxIter=maxIter,
@@ -633,13 +619,13 @@ class MPS_OPT:
         elif self.hamType is 'sep':
             x = exactDiag_meanField.exactDiag(L=self.N,
                                               clumpSize=clumpSize,
-                                              alpha=self.hamParams[0],
-                                              gamma=self.hamParams[1],
-                                              beta=self.hamParams[4],
-                                              delta=self.hamParams[5],
-                                              s=self.hamParams[6],
-                                              p=self.hamParams[2],
-                                              q=self.hamParams[3],
+                                              alpha=self.mpo.alpha,
+                                              gamma=self.mpo.gamma,
+                                              beta=self.mpo.beta,
+                                              delta=self.mpo.delta,
+                                              s=self.mpo.s,
+                                              p=self.mpo.p,
+                                              q=self.mpo.q,
                                               maxIter=maxIter,
                                               tol=tol)
         else:

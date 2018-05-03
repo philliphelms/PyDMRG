@@ -31,6 +31,7 @@ maxIter = 5
 #maxIter.insert(-1,10)
 
 # Run 1D Calculation for comparison
+"""
 x = mps_opt.MPS_OPT(N=N,
                     maxBondDim = bondDimVec,
                     hamType    = "sep",
@@ -39,9 +40,10 @@ x.kernel()
 Evec_1d = x.bondDimEnergies
 E_ed = x.exact_diag()
 E_mf = x.mean_field()
+"""
 # Run 2D in opposite direction
 print('\nRun 2D - Not Aligned\n')
-x = mps_opt.MPS_OPT(N          = [N,N],
+x = mps_opt.MPS_OPT(N          = N**2,
                     maxBondDim = bondDimVec,
                     hamType    ="sep_2d",
                     maxIter    = maxIter,
@@ -51,10 +53,11 @@ x = mps_opt.MPS_OPT(N          = [N,N],
                     hamParams  = (0,0,0,0,0,0,
                                   0.5,0.5,0.9,0.1,0.1,0.9,-1))
 x.kernel()
-Evec_2d_notaligned = x.bondDimEnergies[-1]/N
+Evec_2d_notaligned = x.bondDimEnergies/N
+"""
 # Run 2D in aligned direction
 print('\nRun 2D - Aligned\n')
-x = mps_opt.MPS_OPT(N=[N,N],
+x = mps_opt.MPS_OPT(N=N**2,
                     maxBondDim = bondDimVec,
                     hamType    = "sep_2d",
                     verbose    = 3,
@@ -63,7 +66,7 @@ x = mps_opt.MPS_OPT(N=[N,N],
                     hamParams  = (0.5,0.5,0.9,0.1,0.1,0.9,      # jl,jr,il,ir,ol,or,
                                  0,0,0,   0,0,0  ,-1))         # ju,jd,it,ib,ot,ob,s
 x.kernel()
-Evec_2d_aligned = x.bondDimEnergies[-1]/N
+Evec_2d_aligned = x.bondDimEnergies/N
 
 # Calculate Errors
 err_mf = np.abs(E_mf-E_ed)
@@ -82,3 +85,4 @@ plt.xlabel('Bond Dimension',fontsize=20)
 plt.ylabel('$E-E_{exact}$',fontsize=20)
 plt.legend(('Mean Field','1D DMRG','2D DMRG (aligned)','2D DMRG (not aligned)'))
 fig1.savefig('varyMaxBondDim_'+str(bondDimVec[-1])+'.pdf')
+"""
