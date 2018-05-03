@@ -12,7 +12,7 @@ class MPS_OPT:
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-5, maxIter=5,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),\
                  plotExpVals=False, plotConv=False,\
-                 initialGuess=0.001,ed_limit=12,max_eig_iter=50,\
+                 usePyscf=True,initialGuess=0.001,ed_limit=12,max_eig_iter=50,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
                  saveResults=True,dataFolder='data/',verbose=5):
         # Import parameters
@@ -41,13 +41,16 @@ class MPS_OPT:
         self.saveResults = saveResults
         self.dataFolder = dataFolder
         self.verbose = verbose
-        import lib.linalg_helper
-        import lib.numpy_helper
-        self.einsum = lib.numpy_helper.einsum
-        if (self.hamType is "heis") or (self.hamType is "heis_2d") or (self.hamType is 'ising'):
-            self.eig = lib.linalg_helper.eigh
+        if usePyscf:
+            from pyscf import lib
+            self.einsum = lib.einsum
+            if (self.hamType is "heis") or (self.hamType is "heis_2d") or (self.hamType is 'ising'):
+                self.eig = lib.eigh
+            else:
+                self.eig = lib.eig
         else:
-            self.eig = lib.linalg_helper.eig
+            self.einsum = np.einsum
+            self.eig = np.linalg.eig
         self.usePyscf = usePyscf
         self.initialGuess = initialGuess
         self.ed_limit = ed_limit
@@ -229,6 +232,14 @@ class MPS_OPT:
         else:
             raise NameError('Direction must be left or right')
 
+    def local_optimization(self,i):
+        if self.verbose > 4:
+            print('\t'*2+'Local optimization at site {}'.format(i))
+        if self.usePyscf:
+            return self.pyscf_optimization(i)
+        else:
+            return self.slow_optimization(i)
+
     def add_noise_func(self,i):
         if self.add_noise:
             if self.verbose > 6:
@@ -238,9 +249,9 @@ class MPS_OPT:
             noise = np.random.rand(n1,n2,n3)*max_noise
             self.M[j] += noise
 
-    def local_optimization(self,j):
-        if self.verbose > 4:
-            print('\t'*2+'Local Optimization at site {}'.format(j))
+    def pyscf_optimization(self,j):
+        if self.verbose > 5:
+            print('\t'*3+'Using Pyscf optimization routine')
         sgn = 1.0
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): sgn = -1.0
         (n1,n2,n3) = self.M[j].shape
@@ -250,27 +261,26 @@ class MPS_OPT:
             if self.verbose > 6:
                 print('\t'*5+'Eigenvalue Iteration')
             x_reshape = np.reshape(x,(n1,n2,n3))
-            #fin_sum = np.zeros(x_reshape.shape)
-            fin_sum_td = np.zeros(x_reshape.shape)
+            fin_sum = np.zeros(x_reshape.shape)
             for i in range(self.mpo.nops):
                 if self.mpo.ops[i][j] is None:
-                    in_sum1_td = np.tensordot(self.F[i][j+1],x_reshape,axes=([2],[2]))
-                    fin_sum_td = np.tensordot(self.F[i][j],in_sum1_td,axes=([1,2],[1,3]))
+                    in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
+                    fin_sum += sgn*self.einsum('pnm,inom->opi',self.F[i][j],in_sum1)
                 else:
-                    in_sum1_td = np.tensordot(self.F[i][j+1],x_reshape,axes=([2],[2]))
-                    in_sum2_td = np.tensordot(self.mpo.ops[i][j],in_sum1_td,axes=([1,3],[1,2]))
-                    fin_sum_td += sgn*np.swapaxes(np.tensordot(self.F[i][j],in_sum2_td,axes=([1,2],[0,3])),0,1)
-            return np.reshape(fin_sum_td,-1)
+                    in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
+                    in_sum2 = self.einsum('njol,ijlm->noim',self.mpo.ops[i][j],in_sum1)
+                    fin_sum += sgn*self.einsum('pnm,noim->opi',self.F[i][j],in_sum2)
+            return np.reshape(fin_sum,-1)
         def precond(dx,e,x0):
             # function(dx, e, x0) => array_like_dx
             return dx
         self.add_noise_func(j)
         init_guess = np.reshape(self.M[j],-1)
-        #print(len(init_guess)-1)
-        E,v = self.eig(opt_fun,init_guess,precond,max_cycle=self.max_eig_iter)#,nroots=min(len(init_guess)-1,10))
-        #print('E = {}'.format(E))
-        #E = E[0]
-        #v = v[0]
+        print(len(init_guess)-1)
+        E,v = self.eig(opt_fun,init_guess,precond,max_cycle=self.max_eig_iter,nroots=min(len(init_guess)-1,10))
+        print('E = {}'.format(E))
+        E = E[0]
+        v = v[0]
         self.M[j] = np.reshape(v,(n1,n2,n3))
         if self.verbose > 3:
             print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(j,sgn*E))
@@ -278,21 +288,52 @@ class MPS_OPT:
                 print('\t\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
         return sgn*E
 
+    def slow_optimization(self,i):
+        if self.verbose > 5:
+            print('\t'*4+'Using slow optimization routine')
+        sgn = 1.0
+        if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): sgn = -1.0
+        for j in range(self.mpo.nops):
+            if j is 0:
+                if self.mpo.ops[j][i] is None:
+                    H = sgn*self.einsum('jlp,kmq->ljkmpq',self.F[j][i],self.F[j][i+1])
+                else:
+                    H = sgn*self.einsum('jlp,lmin,kmq->ijknpq',self.F[j][i],self.mpo.ops[j][i],self.F[j][i+1])
+            else:
+                if self.mpo.ops[j][i] is None:
+                    H += sgn*self.einsum('jlp,kmq->ljkmpq',self.F[j][i],self.F[j][i+1])
+                else:
+                    H += sgn*self.einsum('jlp,lmin,kmq->ijknpq',self.F[j][i],self.mpo.ops[j][i],self.F[j][i+1])
+        (n1,n2,n3,n4,n5,n6) = H.shape
+        H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
+        if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): H = -H
+        u,v = self.eig(H)
+        u_sort = u[np.argsort(u)]
+        print(u_sort[:5])
+        v = v[:,np.argsort(u)]
+        ind = 0
+        for j in range(len(u_sort)):
+            if np.abs(np.imag(u_sort[j])) < 1e-8:
+                ind = j
+            break
+        E = u_sort[ind]
+        v = v[:,ind]
+        self.M[i] = np.reshape(v,(n1,n2,n3))
+        if self.verbose > 3:
+            print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(i,E))
+        return E
+
     def calc_observables(self,site):
         if self.verbose > 5:
             print('\t'*2+'Calculating Observables')
         if (self.hamType is "heis") or (self.hamType is "heis_2d") or (self.hamType is 'ising'):
-            tmp_tens = np.tensordot(self.mpo.Sx,self.M[site],axes=([1],[0]))
-            self.calc_spin_x[site] = np.tensordot(np.conj(self.M[site]),tmp_tens,axes=([0,1,2],[0,1,2]))
-            tmp_tens = np.tensordot(self.mpo.Sy,self.M[site],axes=([1],[0]))
-            self.calc_spin_y[site] = np.tensordot(np.conj(self.M[site]),tmp_tens,axes=([0,1,2],[0,1,2]))
-            tmp_tens = np.tensordot(self.mpo.Sz,self.M[site],axes=([1],[0]))
-            self.calc_spin_y[site] = np.tensordot(np.conj(self.M[site]),tmp_tens,axes=([0,1,2],[0,1,2]))
+            self.calc_spin_x[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sx,self.M[site])
+            self.calc_spin_y[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sy,self.M[site])
+            self.calc_spin_z[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sz,self.M[site])
         elif (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
-            tmp_tens = np.tensordot(self.mpo.v,self.M[site],axes=([1],[0]))
-            self.calc_empty[site] = np.tensordot(np.conj(self.M[site]),tmp_tens,axes=([0,1,2],[0,1,2]))
-            tmp_tens = np.tensordot(self.mpo.n,self.M[site],axes=([1],[0]))
-            self.calc_occ[site] = np.tensordot(np.conj(self.M[site]),tmp_tens,axes=([0,1,2],[0,1,2]))
+            self.calc_empty[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.v,self.M[site])
+            self.calc_occ[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.n,self.M[site])
+            #self.calc_occ[site] = 1-self.calc_empty[site]
         if self.verbose > 4:
             print('\t'*2+'Total Number of particles: {}'.format(np.sum(self.calc_occ)))
 

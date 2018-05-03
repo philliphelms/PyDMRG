@@ -8,7 +8,7 @@ import ctypes
 import numpy
 import math
 import re
-#from pyscf.lib import misc
+from pyscf.lib import misc
 
 def einsum(idx_str, *tensors):
     '''Perform a more efficient einsum via reshaping to a matrix multiply.
