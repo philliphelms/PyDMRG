@@ -1,5 +1,4 @@
 import numpy as np
-import copy
 import matplotlib.pyplot as plt
 import time
 import mpo
@@ -15,7 +14,7 @@ class MPS_OPT:
                  plotExpVals=False, plotConv=False,\
                  initialGuess=0.001,ed_limit=12,max_eig_iter=50,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
-                 saveResults=True,dataFolder='data/',verbose=5,nroots=2):
+                 saveResults=True,dataFolder='data/',verbose=5,nroots=1):
         # Import parameters
         self.N = N
         self.N_mpo = N
@@ -43,7 +42,6 @@ class MPS_OPT:
         self.dataFolder = dataFolder
         self.verbose = verbose
         self.nroots = nroots
-        self.curr_root = 0
         self.initialGuess = initialGuess
         self.ed_limit = ed_limit
         self.max_eig_iter = max_eig_iter
@@ -54,19 +52,19 @@ class MPS_OPT:
     def initialize_containers(self):
         if type(self.N) is not int:
             self.N = self.N[0]*self.N[1]
-        self.inside_iter_time = [np.zeros(len(self.maxBondDim))]*self.nroots
-        self.inside_iter_cnt = [np.zeros(len(self.maxBondDim))]*self.nroots
-        self.outside_iter_time = [np.zeros(len(self.maxBondDim))]*self.nroots
-        self.outside_iter_cnt = [np.zeros(len(self.maxBondDim))]*self.nroots
+        self.inside_iter_time = np.zeros(len(self.maxBondDim))
+        self.inside_iter_cnt = np.zeros(len(self.maxBondDim))
+        self.outside_iter_time = np.zeros(len(self.maxBondDim))
+        self.outside_iter_cnt = np.zeros(len(self.maxBondDim))
         self.time_total = time.time()
-        self.exp_val_figure= [False]*self.nroots
-        self.conv_figure= [False]*self.nroots
-        self.calc_spin_x = [[0]*self.N]*self.nroots
-        self.calc_spin_y = [[0]*self.N]*self.nroots
-        self.calc_spin_z = [[0]*self.N]*self.nroots
-        self.calc_empty = [[0]*self.N]*self.nroots
-        self.calc_occ = [[0]*self.N]*self.nroots
-        self.bondDimEnergies = [np.zeros(len(self.maxBondDim))]*self.nroots
+        self.exp_val_figure=False
+        self.conv_figure=False
+        self.calc_spin_x = [0]*self.N
+        self.calc_spin_y = [0]*self.N 
+        self.calc_spin_z = [0]*self.N
+        self.calc_empty = [0]*self.N
+        self.calc_occ = [0]*self.N
+        self.bondDimEnergies = np.zeros(len(self.maxBondDim))
         import lib.linalg_helper
         import lib.numpy_helper
         self.einsum = lib.numpy_helper.einsum
@@ -107,7 +105,23 @@ class MPS_OPT:
                 self.M.insert(len(self.M),np.random.rand(self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr)))
             else:
                 self.M.insert(len(self.M),self.initialGuess*np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
-        self.M = [self.M]*self.nroots
+        """
+        base_mat = np.array([[-1/np.sqrt(2),-1/np.sqrt(2)],[1/np.sqrt(2),-1/np.sqrt(2)]])
+        base_mat = np.expand_dims(base_mat,axis=2)
+        self.M = []
+        for i in range(int(self.N/2)):
+            self.M.insert(len(self.M),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+        for i in range(int(self.N/2))[::-1]:
+            self.M.insert(len(self.M),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
+        for i in range(len(self.M))[::-1]:
+            print(base_mat.shape)
+            print(self.M[i].shape)
+            nx,ny,nz = base_mat.shape
+            if i == 0:
+                self.M[i][:nx,:nz,:ny] = np.swapaxes(base_mat.copy(),1,2)
+            else:
+                self.M[i][:nx,:ny,:nz] = base_mat.copy()
+        """
 
     def generate_mpo(self):
         if self.verbose > 4:
@@ -120,7 +134,7 @@ class MPS_OPT:
         for i in range(1,len(self.M))[::-1]:
             self.normalize(i,'left')
             self.calc_observables(i)
-        #self.M[self.curr_root][0] = np.swapaxes(self.M[self.curr_root][-1],1,2)
+        self.M[0] = np.swapaxes(self.M[-1],1,2)
 
     def generate_f(self):
         if self.verbose > 4:
@@ -137,25 +151,24 @@ class MPS_OPT:
                 F_tmp.insert(len(F_tmp),np.zeros((min(self.d**(j),self.maxBondDimCurr),2,min(self.d**j,self.maxBondDimCurr))))
             F_tmp.insert(len(F_tmp),np.array([[[1]]]))
             self.F.insert(len(self.F),F_tmp)
-        self.F = [self.F]*self.nroots
 
     def normalize(self,i,direction):
         if self.verbose > 4:
             print('\t'*2+'Normalization at site {} in direction: {}'.format(i,direction))
         if direction is 'right':
-            (n1,n2,n3) = self.M[self.curr_root][i].shape
-            M_reshape = np.reshape(self.M[self.curr_root][i],(n1*n2,n3))
+            (n1,n2,n3) = self.M[i].shape
+            M_reshape = np.reshape(self.M[i],(n1*n2,n3))
             (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
-            self.M[self.curr_root][i] = np.reshape(U,(n1,n2,n3))
-            self.M[self.curr_root][i+1] = self.einsum('i,ij,kjl->kil',s,V,self.M[self.curr_root][i+1])
+            self.M[i] = np.reshape(U,(n1,n2,n3))
+            self.M[i+1] = self.einsum('i,ij,kjl->kil',s,V,self.M[i+1])
         elif direction is 'left':
-            M_reshape = np.swapaxes(self.M[self.curr_root][i],0,1)
+            M_reshape = np.swapaxes(self.M[i],0,1)
             (n1,n2,n3) = M_reshape.shape
             M_reshape = np.reshape(M_reshape,(n1,n2*n3))
             (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
             M_reshape = np.reshape(V,(n1,n2,n3))
-            self.M[self.curr_root][i] = np.swapaxes(M_reshape,0,1)
-            self.M[self.curr_root][i-1] = self.einsum('klj,ji,i->kli',self.M[self.curr_root][i-1],U,s)
+            self.M[i] = np.swapaxes(M_reshape,0,1)
+            self.M[i-1] = self.einsum('klj,ji,i->kli',self.M[i-1],U,s)
         else:
             raise NameError('Direction must be left or right')
 
@@ -170,9 +183,9 @@ class MPS_OPT:
         for i in range(int(self.N/2))[::-1]:
             Mnew.insert(len(Mnew),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
         for i in range(len(Mnew)):
-            nx,ny,nz = self.M[self.curr_root][i].shape
-            Mnew[i][:nx,:ny,:nz] = self.M[self.curr_root][i]
-            self.M[self.curr_root][i] = Mnew[i]
+            nx,ny,nz = self.M[i].shape
+            Mnew[i][:nx,:ny,:nz] = self.M[i]
+            self.M[i] = Mnew[i]
 
     def calc_initial_f(self):
         if self.verbose > 3:
@@ -185,12 +198,12 @@ class MPS_OPT:
                 if self.verbose > 5:
                     print('\t'*3+'at site {}'.format(j))
                 if self.mpo.ops[i][j] is None:
-                    tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[self.curr_root][i][j+1],self.M[self.curr_root][j])
-                    self.F[self.curr_root][i][j] = self.einsum('bxc,acyb->xya',np.conj(self.M[self.curr_root][j]),tmp_sum1)
+                    tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[i][j+1],self.M[j])
+                    self.F[i][j] = self.einsum('bxc,acyb->xya',np.conj(self.M[j]),tmp_sum1)
                 else:
-                    tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[self.curr_root][i][j+1],self.M[self.curr_root][j])
+                    tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[i][j+1],self.M[j])
                     tmp_sum2 = self.einsum('ydbe,acde->abcy',self.mpo.ops[i][j],tmp_sum1)
-                    self.F[self.curr_root][i][j] = self.einsum('bxc,abcy->xya',np.conj(self.M[self.curr_root][j]),tmp_sum2)
+                    self.F[i][j] = self.einsum('bxc,abcy->xya',np.conj(self.M[j]),tmp_sum2)
 
     def update_f(self,j,direction):
         if self.verbose > 4:
@@ -198,21 +211,21 @@ class MPS_OPT:
         if direction is 'right':
             for i in range(self.mpo.nops):
                 if self.mpo.ops[i][j] is None:
-                    tmp_sum1 = self.einsum('jlp,ijk->iklp',self.F[self.curr_root][i][j],np.conj(self.M[self.curr_root][j]))
-                    self.F[self.curr_root][i][j+1] = self.einsum('npq,nkmp->kmq',self.M[self.curr_root][j],tmp_sum1)
+                    tmp_sum1 = self.einsum('jlp,ijk->iklp',self.F[i][j],np.conj(self.M[j]))
+                    self.F[i][j+1] = self.einsum('npq,nkmp->kmq',self.M[j],tmp_sum1)
                 else:
-                    tmp_sum1 = self.einsum('jlp,ijk->iklp',self.F[self.curr_root][i][j],np.conj(self.M[self.curr_root][j]))
+                    tmp_sum1 = self.einsum('jlp,ijk->iklp',self.F[i][j],np.conj(self.M[j]))
                     tmp_sum2 = self.einsum('lmin,iklp->kmnp',self.mpo.ops[i][j],tmp_sum1)
-                    self.F[self.curr_root][i][j+1] = self.einsum('npq,kmnp->kmq',self.M[self.curr_root][j],tmp_sum2)
+                    self.F[i][j+1] = self.einsum('npq,kmnp->kmq',self.M[j],tmp_sum2)
         elif direction is 'left':
             for i in range(self.mpo.nops):
                 if self.mpo.ops[i][j] is None:
-                    tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[self.curr_root][i][j+1],self.M[self.curr_root][j])
-                    self.F[self.curr_root][i][j] = self.einsum('bxc,acyb->xya',np.conj(self.M[self.curr_root][j]),tmp_sum1)
+                    tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[i][j+1],self.M[j])
+                    self.F[i][j] = self.einsum('bxc,acyb->xya',np.conj(self.M[j]),tmp_sum1)
                 else:
-                    tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[self.curr_root][i][j+1],self.M[self.curr_root][j])
+                    tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[i][j+1],self.M[j])
                     tmp_sum2 = self.einsum('ydbe,acde->abcy',self.mpo.ops[i][j],tmp_sum1)
-                    self.F[self.curr_root][i][j] = self.einsum('bxc,abcy->xya',np.conj(self.M[self.curr_root][j]),tmp_sum2)
+                    self.F[i][j] = self.einsum('bxc,abcy->xya',np.conj(self.M[j]),tmp_sum2)
         else:
             raise NameError('Direction must be left or right')
 
@@ -220,17 +233,17 @@ class MPS_OPT:
         if self.add_noise:
             if self.verbose > 6:
                 print('\t\tAdding Noise')
-            max_noise = np.amax(self.M[self.curr_root][j])*(10**(-(self.currIterCnt-1)/2))
-            (n1,n2,n3) = self.M[self.curr_root][j].shape
+            max_noise = np.amax(self.M[j])*(10**(-(self.currIterCnt-1)/2))
+            (n1,n2,n3) = self.M[j].shape
             noise = np.random.rand(n1,n2,n3)*max_noise
-            self.M[self.curr_root][j] += noise
+            self.M[j] += noise
 
     def local_optimization(self,j):
         if self.verbose > 4:
             print('\t'*2+'Local Optimization at site {}'.format(j))
         sgn = 1.0
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): sgn = -1.0
-        (n1,n2,n3) = self.M[self.curr_root][j].shape
+        (n1,n2,n3) = self.M[j].shape
         self.num_opt_fun_calls = 0
         def opt_fun(x):
             self.num_opt_fun_calls += 1
@@ -241,24 +254,24 @@ class MPS_OPT:
             fin_sum_td = np.zeros(x_reshape.shape)
             for i in range(self.mpo.nops):
                 if self.mpo.ops[i][j] is None:
-                    in_sum1_td = np.tensordot(self.F[self.curr_root][i][j+1],x_reshape,axes=([2],[2]))
-                    fin_sum_td = np.tensordot(self.F[self.curr_root][i][j],in_sum1_td,axes=([1,2],[1,3]))
+                    in_sum1_td = np.tensordot(self.F[i][j+1],x_reshape,axes=([2],[2]))
+                    fin_sum_td = np.tensordot(self.F[i][j],in_sum1_td,axes=([1,2],[1,3]))
                 else:
-                    in_sum1_td = np.tensordot(self.F[self.curr_root][i][j+1],x_reshape,axes=([2],[2]))
+                    in_sum1_td = np.tensordot(self.F[i][j+1],x_reshape,axes=([2],[2]))
                     in_sum2_td = np.tensordot(self.mpo.ops[i][j],in_sum1_td,axes=([1,3],[1,2]))
-                    fin_sum_td += sgn*np.swapaxes(np.tensordot(self.F[self.curr_root][i][j],in_sum2_td,axes=([1,2],[0,3])),0,1)
+                    fin_sum_td += sgn*np.swapaxes(np.tensordot(self.F[i][j],in_sum2_td,axes=([1,2],[0,3])),0,1)
             return np.reshape(fin_sum_td,-1)
         def precond(dx,e,x0):
             # function(dx, e, x0) => array_like_dx
             return dx
         self.add_noise_func(j)
-        init_guess = np.reshape(self.M[self.curr_root][j],-1)
+        init_guess = np.reshape(self.M[j],-1)
         #print(len(init_guess)-1)
         E,v = self.eig(opt_fun,init_guess,precond,max_cycle=self.max_eig_iter)#,nroots=min(len(init_guess)-1,10))
         #print('E = {}'.format(E))
         #E = E[0]
         #v = v[0]
-        self.M[self.curr_root][j] = np.reshape(v,(n1,n2,n3))
+        self.M[j] = np.reshape(v,(n1,n2,n3))
         if self.verbose > 3:
             print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(j,sgn*E))
             if self.verbose > 4:
@@ -269,46 +282,46 @@ class MPS_OPT:
         if self.verbose > 5:
             print('\t'*2+'Calculating Observables')
         if (self.hamType is "heis") or (self.hamType is "heis_2d") or (self.hamType is 'ising'):
-            tmp_tens = np.tensordot(self.mpo.Sx,self.M[self.curr_root][site],axes=([1],[0]))
-            self.calc_spin_x[self.curr_root][site] = np.tensordot(np.conj(self.M[self.curr_root][site]),tmp_tens,axes=([0,1,2],[0,1,2]))
-            tmp_tens = np.tensordot(self.mpo.Sy,self.M[self.curr_root][site],axes=([1],[0]))
-            self.calc_spin_y[self.curr_root][site] = np.tensordot(np.conj(self.M[self.curr_root][site]),tmp_tens,axes=([0,1,2],[0,1,2]))
-            tmp_tens = np.tensordot(self.mpo.Sz,self.M[self.curr_root][site],axes=([1],[0]))
-            self.calc_spin_y[self.curr_root][site] = np.tensordot(np.conj(self.M[self.curr_root][site]),tmp_tens,axes=([0,1,2],[0,1,2]))
+            tmp_tens = np.tensordot(self.mpo.Sx,self.M[site],axes=([1],[0]))
+            self.calc_spin_x[site] = np.tensordot(np.conj(self.M[site]),tmp_tens,axes=([0,1,2],[0,1,2]))
+            tmp_tens = np.tensordot(self.mpo.Sy,self.M[site],axes=([1],[0]))
+            self.calc_spin_y[site] = np.tensordot(np.conj(self.M[site]),tmp_tens,axes=([0,1,2],[0,1,2]))
+            tmp_tens = np.tensordot(self.mpo.Sz,self.M[site],axes=([1],[0]))
+            self.calc_spin_y[site] = np.tensordot(np.conj(self.M[site]),tmp_tens,axes=([0,1,2],[0,1,2]))
         elif (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
-            tmp_tens = np.tensordot(self.mpo.v,self.M[self.curr_root][site],axes=([1],[0]))
-            self.calc_empty[self.curr_root][site] = np.tensordot(np.conj(self.M[self.curr_root][site]),tmp_tens,axes=([0,1,2],[0,1,2]))
-            tmp_tens = np.tensordot(self.mpo.n,self.M[self.curr_root][site],axes=([1],[0]))
-            self.calc_occ[self.curr_root][site] = np.tensordot(np.conj(self.M[self.curr_root][site]),tmp_tens,axes=([0,1,2],[0,1,2]))
+            tmp_tens = np.tensordot(self.mpo.v,self.M[site],axes=([1],[0]))
+            self.calc_empty[site] = np.tensordot(np.conj(self.M[site]),tmp_tens,axes=([0,1,2],[0,1,2]))
+            tmp_tens = np.tensordot(self.mpo.n,self.M[site],axes=([1],[0]))
+            self.calc_occ[site] = np.tensordot(np.conj(self.M[site]),tmp_tens,axes=([0,1,2],[0,1,2]))
         if self.verbose > 4:
-            print('\t'*2+'Total Number of particles: {}'.format(np.sum(self.calc_occ[self.curr_root])))
+            print('\t'*2+'Total Number of particles: {}'.format(np.sum(self.calc_occ)))
 
     def energy_contraction(self,j):
         E = 0
         for i in range(self.mpo.nops):
             if self.mpo.ops[i][j] is None:
-                E += self.einsum('ijk,olp,mio,nkp->',self.F[self.curr_root][i][j],self.F[self.curr_root][i][j+1],np.conjugate(self.M[self.curr_root][j]),self.M[self.curr_root][j])
+                E += self.einsum('ijk,olp,mio,nkp->',self.F[i][j],self.F[i][j+1],np.conjugate(self.M[j]),self.M[j])
             else:
-                E += self.einsum('ijk,jlmn,olp,mio,nkp->',self.F[self.curr_root][i][j],self.mpo.ops[i][j],self.F[self.curr_root][i][j+1],np.conjugate(self.M[self.curr_root][j]),self.M[self.curr_root][j])
+                E += self.einsum('ijk,jlmn,olp,mio,nkp->',self.F[i][j],self.mpo.ops[i][j],self.F[i][j+1],np.conjugate(self.M[j]),self.M[j])
         return E
 
     def plot_observables(self):
         if self.plotExpVals:
             plt.ion()
-            if not self.exp_val_figure[self.curr_root]:
-                self.exp_val_figure[self.curr_root] = plt.figure()
+            if not self.exp_val_figure:
+                self.exp_val_figure = plt.figure()
                 self.angle = 0
             else:
-                plt.figure(self.exp_val_figure[self.curr_root].number)
+                plt.figure(self.exp_val_figure.number)
             plt.cla()
             if (self.hamType is "tasep") or (self.hamType is "sep"):
-                plt.plot(range(0,int(self.N)),self.calc_occ[self.curr_root],linewidth=3)
+                plt.plot(range(0,int(self.N)),self.calc_occ,linewidth=3)
                 plt.ylabel('Average Occupation',fontsize=20)
                 plt.xlabel('Site',fontsize=20)
             elif (self.hamType is "sep_2d"):
                 plt.clf()
                 x,y = (np.arange(self.mpo.Nx),np.arange(self.mpo.Ny))
-                currPlot = plt.imshow(np.flipud(np.real(np.reshape(self.calc_occ[self.curr_root],(self.mpo.Nx,self.mpo.Ny))).transpose()),origin='lower')
+                currPlot = plt.imshow(np.flipud(np.real(np.reshape(self.calc_occ,(self.mpo.Nx,self.mpo.Ny))).transpose()),origin='lower')
                 plt.colorbar(currPlot)
                 #plt.clim(0,1)
                 plt.gca().set_xticks(range(len(x)))
@@ -322,11 +335,11 @@ class MPS_OPT:
                 y = np.zeros(self.N)
                 z = np.zeros(self.N)
                 ax.scatter(x,y,z,color='k')
-                plt.quiver(x,y,z,self.calc_spin_x[self.curr_root],self.calc_spin_y[self.curr_root],self.calc_spin_z[self.curr_root],pivot='tail')
-                ax.set_zlim((np.min((-np.abs(np.min(self.calc_spin_z[self.curr_root])),-np.abs(np.max(self.calc_spin_z[self.curr_root])))),
-                             np.max(( np.abs(np.max(self.calc_spin_z[self.curr_root])) , np.abs(np.min(self.calc_spin_z[self.curr_root]))))))
-                ax.set_ylim((np.min((-np.abs(np.min(self.calc_spin_y[self.curr_root])),-np.abs(np.max(self.calc_spin_y[self.curr_root])))),
-                             np.max(( np.abs(np.max(self.calc_spin_y[self.curr_root])), np.abs(np.min(self.calc_spin_y[self.curr_root]))))))
+                plt.quiver(x,y,z,self.calc_spin_x,self.calc_spin_y,self.calc_spin_z,pivot='tail')
+                ax.set_zlim((np.min((-np.abs(np.min(self.calc_spin_z)),-np.abs(np.max(self.calc_spin_z)))),
+                             np.max(( np.abs(np.max(self.calc_spin_z)) , np.abs(np.min(self.calc_spin_z))))))
+                ax.set_ylim((np.min((-np.abs(np.min(self.calc_spin_y)),-np.abs(np.max(self.calc_spin_y)))),
+                             np.max(( np.abs(np.max(self.calc_spin_y)), np.abs(np.min(self.calc_spin_y))))))
                 plt.ylabel('y',fontsize=20)
                 plt.xlabel('x',fontsize=20)
                 ax.set_zlabel('z',fontsize=20)    
@@ -339,12 +352,12 @@ class MPS_OPT:
                                    np.arange((-self.mpo.Nx+1)/2,(self.mpo.Nx-1)/2+1))
                 ax.scatter(x,y,np.zeros((self.mpo.Nx,self.mpo.Ny)),color='k')
                 plt.quiver(x,y,np.zeros((self.mpo.Nx,self.mpo.Ny)),
-                           np.reshape(self.calc_spin_x[self.curr_root],x.shape),
-                           np.reshape(self.calc_spin_y[self.curr_root],x.shape),
-                           np.reshape(self.calc_spin_z[self.curr_root],x.shape),
+                           np.reshape(self.calc_spin_x,x.shape),
+                           np.reshape(self.calc_spin_y,x.shape),
+                           np.reshape(self.calc_spin_z,x.shape),
                            pivot='tail')
                 ax.plot_surface(x, y, np.zeros((self.mpo.Nx,self.mpo.Ny)), alpha=0.2)
-                ax.set_zlim((min(self.calc_spin_z[self.curr_root]),max(self.calc_spin_z[self.curr_root])))
+                ax.set_zlim((min(self.calc_spin_z),max(self.calc_spin_z)))
                 plt.ylabel('y',fontsize=20)
                 plt.xlabel('x',fontsize=20)
                 ax.set_zlabel('z',fontsize=20)
@@ -358,12 +371,12 @@ class MPS_OPT:
     def plot_convergence(self,i):
         if self.plotConv:
             plt.ion()
-            if not self.conv_figure[self.curr_root]:
-                self.conv_figure[self.curr_root] = plt.figure()
+            if not self.conv_figure:
+                self.conv_figure = plt.figure()
                 self.y_vec = [self.E]
                 self.x_vec = [i]
             else:
-                plt.figure(self.conv_figure[self.curr_root].number)
+                plt.figure(self.conv_figure.number)
                 self.y_vec.insert(-1,self.E)
                 self.x_vec.insert(-1,i)
             plt.cla()
@@ -448,8 +461,8 @@ class MPS_OPT:
                 self.plot_observables()
                 self.plot_convergence(i)
                 inside_t2 = time.time()
-                self.inside_iter_time[self.curr_root][self.maxBondDimInd] += inside_t2-inside_t1
-                self.inside_iter_cnt[self.curr_root][self.maxBondDimInd] += 1
+                self.inside_iter_time[self.maxBondDimInd] += inside_t2-inside_t1
+                self.inside_iter_cnt[self.maxBondDimInd] += 1
             # Left Sweep ---------------------------
             if self.verbose > 2:
                 print('\t'*0+'Left Sweep  {}, E = {}'.format(self.totIterCnt,self.E))
@@ -462,17 +475,17 @@ class MPS_OPT:
                 self.plot_observables()
                 self.plot_convergence(i)
                 inside_t2 = time.time()
-                self.inside_iter_time[self.curr_root][self.maxBondDimInd] += inside_t2-inside_t1
-                self.inside_iter_cnt[self.curr_root][self.maxBondDimInd] += 1
+                self.inside_iter_time[self.maxBondDimInd] += inside_t2-inside_t1
+                self.inside_iter_cnt[self.maxBondDimInd] += 1
             # Check Convergence --------------------
             self.tf = time.time()
-            self.outside_iter_time[self.curr_root][self.maxBondDimInd] += self.tf-self.t0
-            self.outside_iter_cnt[self.curr_root][self.maxBondDimInd] += 1
+            self.outside_iter_time[self.maxBondDimInd] += self.tf-self.t0
+            self.outside_iter_cnt[self.maxBondDimInd] += 1
             self.t0 = time.time()
             if np.abs(self.E-E_prev) < self.tol[self.maxBondDimInd]:
                 if self.maxBondDimInd is (len(self.maxBondDim)-1):
                     self.finalEnergy = self.E
-                    self.bondDimEnergies[self.curr_root][self.maxBondDimInd] = self.E
+                    self.bondDimEnergies[self.maxBondDimInd] = self.E
                     self.time_total = time.time() - self.time_total
                     converged = True
                     if self.verbose > 0:
@@ -495,9 +508,9 @@ class MPS_OPT:
                             print('  Total time for M({}) = {} s'.format(self.maxBondDimCurr,self.outside_iter_time[self.maxBondDimInd]))
                             print('  Required number of iters = {}'.format(self.outside_iter_cnt[self.maxBondDimInd]))
                         print('-'*45+'\n')
-                    self.bondDimEnergies[self.curr_root][self.maxBondDimInd] = self.E
+                    self.bondDimEnergies[self.maxBondDimInd] = self.E
                     self.maxBondDimInd += 1
-                    self.maxBondDimCurr = self.maxBondDim[self.curr_root][self.maxBondDimInd]
+                    self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
                     self.increaseBondDim()
                     self.generate_f()
                     self.calc_initial_f()
@@ -505,7 +518,7 @@ class MPS_OPT:
                     self.currIterCnt = 0
             elif self.currIterCnt >= self.maxIter[self.maxBondDimInd]-1:
                 if self.maxBondDimInd is (len(self.maxBondDim)-1):
-                    self.bondDimEnergies[self.curr_root][self.maxBondDimInd] = self.E
+                    self.bondDimEnergies[self.maxBondDimInd] = self.E
                     self.finalEnergy = self.E
                     converged = True
                     self.time_total = time.time() - self.time_total
@@ -514,8 +527,8 @@ class MPS_OPT:
                         print('Not Converged at E = {}'.format(self.finalEnergy))
                         if self.verbose > 1:
                             print('  Final Bond Dimension = {}'.format(self.maxBondDimCurr))
-                            print('  Avg time per iter for final M = {} s'.format(self.inside_iter_time[self.curr_root][self.maxBondDimInd]/\
-                                                                                  self.inside_iter_cnt [self.curr_root][self.maxBondDimInd]))
+                            print('  Avg time per iter for final M = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
+                                                                                  self.inside_iter_cnt [self.maxBondDimInd]))
                             print('  Total Time = {} s'.format(self.time_total))
                         print('!'*75+'\n')
                 else:
@@ -524,14 +537,14 @@ class MPS_OPT:
                         print('Not Converged at E = {}'.format(self.E))
                         if self.verbose > 2:
                             print('  Current Bond Dimension = {}'.format(self.maxBondDimCurr))
-                            print('  Avg time per inner iter = {} s'.format(self.inside_iter_time[self.curr_root][self.maxBondDimInd]/\
-                                                                            self.inside_iter_cnt [self.curr_root][self.maxBondDimInd]))
-                            print('  Total time for M({}) = {} s'.format(self.maxBondDimCurr,self.outside_iter_time[self.curr_root][self.maxBondDimInd]))
-                            print('  Required number of iters = {}'.format(self.outside_iter_cnt[self.curr_root][self.maxBondDimInd]))
+                            print('  Avg time per inner iter = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
+                                                                            self.inside_iter_cnt [self.maxBondDimInd]))
+                            print('  Total time for M({}) = {} s'.format(self.maxBondDimCurr,self.outside_iter_time[self.maxBondDimInd]))
+                            print('  Required number of iters = {}'.format(self.outside_iter_cnt[self.maxBondDimInd]))
                         print('-'*45+'\n')
-                    self.bondDimEnergies[self.curr_root][self.maxBondDimInd] = self.E
+                    self.bondDimEnergies[self.maxBondDimInd] = self.E
                     self.maxBondDimInd += 1
-                    self.maxBondDimCurr = self.maxBondDim[self.curr_root][self.maxBondDimInd]
+                    self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
                     self.increaseBondDim()
                     self.generate_f()
                     self.calc_initial_f()
@@ -539,12 +552,10 @@ class MPS_OPT:
                     self.currIterCnt = 0
             else:
                 if self.verbose > 3:
-                    print('\t'*1+'Energy Change {}\nNeeded <{}'.format(np.abs(self.E-E_prev),self.tol[self.curr_root][self.maxBondDimInd]))
+                    print('\t'*1+'Energy Change {}\nNeeded <{}'.format(np.abs(self.E-E_prev),self.tol[self.maxBondDimInd]))
                 E_prev = self.E
                 self.currIterCnt += 1
                 self.totIterCnt += 1
-        # Check if we want multiple roots
-        #if self.nroots > 1:
         self.saveFinalResults('dmrg')
         return self.finalEnergy
 
