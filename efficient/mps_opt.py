@@ -141,23 +141,23 @@ class MPS_OPT:
     def normalize(self,i,direction):
         if self.verbose > 4:
             print('\t'*2+'Normalization at site {} in direction: {}'.format(i,direction))
-        for root_ind in range(self.curr_root+1):
-            if direction is 'right':
-                (n1,n2,n3) = self.M[root_ind][i].shape
-                M_reshape = np.reshape(self.M[root_ind][i],(n1*n2,n3))
-                (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
-                self.M[root_ind][i] = np.reshape(U,(n1,n2,n3))
-                self.M[root_ind][i+1] = self.einsum('i,ij,kjl->kil',s,V,self.M[root_ind][i+1])
-            elif direction is 'left':
-                M_reshape = np.swapaxes(self.M[root_ind][i],0,1)
-                (n1,n2,n3) = M_reshape.shape
-                M_reshape = np.reshape(M_reshape,(n1,n2*n3))
-                (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
-                M_reshape = np.reshape(V,(n1,n2,n3))
-                self.M[root_ind][i] = np.swapaxes(M_reshape,0,1)
-                self.M[root_ind][i-1] = self.einsum('klj,ji,i->kli',self.M[root_ind][i-1],U,s)
-            else:
-                raise NameError('Direction must be left or right')
+        # FOR I IN NROOTS
+        if direction is 'right':
+            (n1,n2,n3) = self.M[self.curr_root][i].shape
+            M_reshape = np.reshape(self.M[self.curr_root][i],(n1*n2,n3))
+            (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
+            self.M[self.curr_root][i] = np.reshape(U,(n1,n2,n3))
+            self.M[self.curr_root][i+1] = self.einsum('i,ij,kjl->kil',s,V,self.M[self.curr_root][i+1])
+        elif direction is 'left':
+            M_reshape = np.swapaxes(self.M[self.curr_root][i],0,1)
+            (n1,n2,n3) = M_reshape.shape
+            M_reshape = np.reshape(M_reshape,(n1,n2*n3))
+            (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
+            M_reshape = np.reshape(V,(n1,n2,n3))
+            self.M[self.curr_root][i] = np.swapaxes(M_reshape,0,1)
+            self.M[self.curr_root][i-1] = self.einsum('klj,ji,i->kli',self.M[self.curr_root][i-1],U,s)
+        else:
+            raise NameError('Direction must be left or right')
 
     def increaseBondDim(self):
         if self.verbose > 3:
@@ -195,27 +195,27 @@ class MPS_OPT:
     def update_f(self,j,direction):
         if self.verbose > 4:
             print('\t'*2+'Updating F at site {}'.format(j))
-        for root_ind in range(self.curr_root+1):
-            if direction is 'right':
-                for i in range(self.mpo.nops):
-                    if self.mpo.ops[i][j] is None:
-                        tmp_sum1 = self.einsum('jlp,ijk->iklp',self.F[root_ind][i][j],np.conj(self.M[root_ind][j]))
-                        self.F[root_ind][i][j+1] = self.einsum('npq,nkmp->kmq',self.M[root_ind][j],tmp_sum1)
-                    else:
-                        tmp_sum1 = self.einsum('jlp,ijk->iklp',self.F[root_ind][i][j],np.conj(self.M[root_ind][j]))
-                        tmp_sum2 = self.einsum('lmin,iklp->kmnp',self.mpo.ops[i][j],tmp_sum1)
-                        self.F[root_ind][i][j+1] = self.einsum('npq,kmnp->kmq',self.M[root_ind][j],tmp_sum2)
-            elif direction is 'left':
-                for i in range(self.mpo.nops):
-                    if self.mpo.ops[i][j] is None:
-                        tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[root_ind][i][j+1],self.M[root_ind][j])
-                        self.F[root_ind][i][j] = self.einsum('bxc,acyb->xya',np.conj(self.M[root_ind][j]),tmp_sum1)
-                    else:
-                        tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[root_ind][i][j+1],self.M[root_ind][j])
-                        tmp_sum2 = self.einsum('ydbe,acde->abcy',self.mpo.ops[i][j],tmp_sum1)
-                        self.F[root_ind][i][j] = self.einsum('bxc,abcy->xya',np.conj(self.M[root_ind][j]),tmp_sum2)
-            else:
-                raise NameError('Direction must be left or right')
+        # FOR I IN NROOTS
+        if direction is 'right':
+            for i in range(self.mpo.nops):
+                if self.mpo.ops[i][j] is None:
+                    tmp_sum1 = self.einsum('jlp,ijk->iklp',self.F[self.curr_root][i][j],np.conj(self.M[self.curr_root][j]))
+                    self.F[self.curr_root][i][j+1] = self.einsum('npq,nkmp->kmq',self.M[self.curr_root][j],tmp_sum1)
+                else:
+                    tmp_sum1 = self.einsum('jlp,ijk->iklp',self.F[self.curr_root][i][j],np.conj(self.M[self.curr_root][j]))
+                    tmp_sum2 = self.einsum('lmin,iklp->kmnp',self.mpo.ops[i][j],tmp_sum1)
+                    self.F[self.curr_root][i][j+1] = self.einsum('npq,kmnp->kmq',self.M[self.curr_root][j],tmp_sum2)
+        elif direction is 'left':
+            for i in range(self.mpo.nops):
+                if self.mpo.ops[i][j] is None:
+                    tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[self.curr_root][i][j+1],self.M[self.curr_root][j])
+                    self.F[self.curr_root][i][j] = self.einsum('bxc,acyb->xya',np.conj(self.M[self.curr_root][j]),tmp_sum1)
+                else:
+                    tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[self.curr_root][i][j+1],self.M[self.curr_root][j])
+                    tmp_sum2 = self.einsum('ydbe,acde->abcy',self.mpo.ops[i][j],tmp_sum1)
+                    self.F[self.curr_root][i][j] = self.einsum('bxc,abcy->xya',np.conj(self.M[self.curr_root][j]),tmp_sum2)
+        else:
+            raise NameError('Direction must be left or right')
 
     def add_noise_func(self,i):
         if self.add_noise:
@@ -253,18 +253,14 @@ class MPS_OPT:
             # function(dx, e, x0) => array_like_dx
             return dx
         self.add_noise_func(j)
-        if self.curr_root > 0:
-            init_guess = []
-            for root_ind in range(self.curr_root+1):
-                init_guess.insert(len(init_guess),np.reshape(self.M[root_ind][j],-1))
-        else:
-            init_guess = np.reshape(self.M[self.curr_root][j],-1)
+        # FOR I IN NROOTS
+        init_guess = np.reshape(self.M[self.curr_root][j],-1)
         #print(len(init_guess)-1)
         E,v = self.eig(opt_fun,init_guess,precond,max_cycle=self.max_eig_iter,nroots=self.curr_root+1)
         if self.curr_root > 0:
             print('E = {}'.format(E))
-            E = E[self.curr_root]
-            v = v[self.curr_root]
+            E = E[0]
+            v = v[0]
         self.M[self.curr_root][j] = np.reshape(v,(n1,n2,n3))
         if self.verbose > 3:
             print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(j,sgn*E))
