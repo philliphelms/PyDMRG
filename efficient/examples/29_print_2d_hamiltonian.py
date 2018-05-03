@@ -16,21 +16,23 @@ plt.rcParams['text.latex.preamble'] = [r'\boldmath']
 plt.rc('font', family='serif')
 plt.rcParams['text.latex.unicode']=False
 np.set_printoptions(suppress=True)
-np.set_printoptions(precision=100)
+np.set_printoptions(precision=1000)
 plt.style.use('fivethirtyeight') #'fivethirtyeight') #'ggplot'
 
 #-----------------------------------------------------------------------------
 # 1D SEP
 #-----------------------------------------------------------------------------
-N = 2
+N = 10
 x = mps_opt.MPS_OPT(N=N,
-                    hamType = "sep",
-                    hamParams = (np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand()))
+                    hamType = "tasep",
+                    hamParams = (0.35,-1,2/3))
+                    #hamParams = (np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand(),np.random.rand()))
 x.initialize_containers()
 x.generate_mpo()
 full_ham = x.mpo.return_full_ham()
 E_ed,_ = np.linalg.eig(full_ham)
 print('Energy via Exact Diagonalization:\n{}'.format(np.sort(E_ed)[-1]))
+print('Full Energy Spectrum:\n{}'.format(np.sort(E_ed)[::-1]))
 plt.figure(1)
 plt.subplot(221)
 plt.spy(full_ham)
