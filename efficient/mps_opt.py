@@ -120,6 +120,7 @@ class MPS_OPT:
         for i in range(1,len(self.M))[::-1]:
             self.normalize(i,'left')
             self.calc_observables(i)
+        #self.M[self.curr_root][0] = np.swapaxes(self.M[self.curr_root][-1],1,2)
 
     def generate_f(self):
         if self.verbose > 4:
@@ -148,8 +149,6 @@ class MPS_OPT:
             self.M[self.curr_root][i] = np.reshape(U,(n1,n2,n3))
             self.M[self.curr_root][i+1] = self.einsum('i,ij,kjl->kil',s,V,self.M[self.curr_root][i+1])
         elif direction is 'left':
-            print(len(self.M))
-            print(self.curr_root)
             M_reshape = np.swapaxes(self.M[self.curr_root][i],0,1)
             (n1,n2,n3) = M_reshape.shape
             M_reshape = np.reshape(M_reshape,(n1,n2*n3))
@@ -425,10 +424,9 @@ class MPS_OPT:
         if self.verbose > 1:
             print('Beginning DMRG Ground State Calculation')
         self.t0 = time.time()
-        if self.curr_root is 0:
-            self.initialize_containers()
-            self.generate_mps()
-            self.generate_mpo()
+        self.initialize_containers()
+        self.generate_mps()
+        self.generate_mpo()
         self.right_canonicalize_mps()
         self.calc_initial_f()
         converged = False
@@ -546,11 +544,7 @@ class MPS_OPT:
                 self.currIterCnt += 1
                 self.totIterCnt += 1
         # Check if we want multiple roots
-        if self.curr_root < self.nroots-1:
-            print('Here we go again!')
-            print(self.curr_root)
-            self.curr_root += 1
-            self.kernel()
+        #if self.nroots > 1:
         self.saveFinalResults('dmrg')
         return self.finalEnergy
 
