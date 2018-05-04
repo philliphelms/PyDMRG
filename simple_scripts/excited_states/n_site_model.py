@@ -2,7 +2,7 @@ import numpy as np
 
 ######## Inputs ##############################
 # SEP Model
-N = 10
+N = 20
 alpha = 0.35     # In at left
 beta = 2/3       # Exit at right
 s = -1           # Exponential weighting
@@ -10,7 +10,7 @@ gamma = 0        # Exit at left
 delta = 0        # In at right
 p = 1            # Jump right
 q = 0            # Jump Left
-target_state = 0 # The targeted excited state
+target_state = 1 # The targeted excited state
 # Optimization
 tol = 1e-5
 maxIter = 10

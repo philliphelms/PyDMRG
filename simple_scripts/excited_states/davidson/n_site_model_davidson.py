@@ -7,11 +7,8 @@ N = 10
 alpha = 0.35     # In at left
 beta = 2/3       # Exit at right
 s = -1           # Exponential weighting
-gamma = 0        # Exit at left
-delta = 0        # In at right
 p = 1            # Jump right
-q = 0            # Jump Left
-target_state = 0 # The targeted excited state
+target_state = 2 # The targeted excited state
 # Optimization
 tol = 1e-5
 maxIter = 10
@@ -77,24 +74,32 @@ while not converged:
             in_sum1 = np.einsum('ijk,lmk->ijlm',F[i+1],x_reshape)
             in_sum2 = np.einsum('njol,ijlm->noim',W[i],in_sum1)
             fin_sum = np.einsum('pnm,noim->opi',F[i],in_sum2)
-            return np.reshape(fin_sum,-1)
+            return -np.reshape(fin_sum,-1)
         def precond(dx,e,x0): # A second dummy algorithm
             return dx
-        init_guess = np.reshape(M[i],-1)
-        u,v = lib.eig(opt_fun,init_guess,precond,nroots=9)
+        init_guess = [np.reshape(M[i],-1)]*(target_state+1)
+        u,v = lib.eig(opt_fun,init_guess,precond,nroots=target_state+1)
         # select max eigenvalue
-        sort_inds = np.argsort(np.real(u))[::-1]
-        E = u[sort_inds[target_state]]
-        v = v[sort_inds[target_state]]
+        sort_inds = np.argsort(np.real(u))#[::-1]
+        try:
+            E = -u[sort_inds[min(target_state,len(u)-1)]]
+            v = v[sort_inds[min(target_state,len(u)-1)]]
+        except:
+            E = -u
+            v = v
         print('\tEnergy at site {} = {}'.format(i,E))
         M[i] = np.reshape(v,(n1,n2,n3))
+        #print(M[i])
         # Right Normalize
         M_reshape = np.reshape(M[i],(n1*n2,n3))
         (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
         M[i] = np.reshape(U,(n1,n2,n3))
         M[i+1] = np.einsum('i,ij,kjl->kil',s,V,M[i+1])
+        #print(M[i])
+        #print(M[i+1])
         # Update F
         F[i+1] = np.einsum('jlp,ijk,lmin,npq->kmq',F[i],np.conj(M[i]),W[i],M[i])
+        #print(F[i+1])
 # Left Sweep -----------------------------
     print('Left Sweep {}'.format(iterCnt))
     for i in range(N-1,0,-1):
@@ -104,15 +109,19 @@ while not converged:
             in_sum1 = np.einsum('ijk,lmk->ijlm',F[i+1],x_reshape)
             in_sum2 = np.einsum('njol,ijlm->noim',W[i],in_sum1)
             fin_sum = np.einsum('pnm,noim->opi',F[i],in_sum2)
-            return np.reshape(fin_sum,-1)
+            return -np.reshape(fin_sum,-1)
         def precond(dx,e,x0): # A second dummy algorithm
             return dx
-        init_guess = np.reshape(M[i],-1)
-        u,v = lib.eig(opt_fun,init_guess,precond,nroots=9)
+        init_guess = [np.reshape(M[i],-1)]*(target_state+1)
+        u,v = lib.eig(opt_fun,init_guess,precond,nroots=target_state+1)
         # select max eigenvalue
-        sort_inds = np.argsort(np.real(u))[::-1]
-        E = u[sort_inds[target_state]]
-        v = v[sort_inds[target_state]]
+        sort_inds = np.argsort(np.real(u))#[::-1]
+        try:
+            E = -u[sort_inds[min(target_state,len(u)-1)]]
+            v = v[sort_inds[min(target_state,len(u)-1)]]
+        except:
+            E = -u
+            v = v
         print('\tEnergy at site {} = {}'.format(i,E))
         M[i] = np.reshape(v,(n1,n2,n3))
         # Right Normalize 

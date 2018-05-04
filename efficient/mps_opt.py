@@ -137,7 +137,7 @@ class MPS_OPT:
         for i in range(1,len(self.M))[::-1]:
             self.normalize(i,'left')
             self.calc_observables(i)
-        self.M[0] = np.swapaxes(self.M[-1],1,2)
+        #self.M[0] = np.swapaxes(self.M[-1],1,2)
 
     def generate_f(self):
         if self.verbose > 4:

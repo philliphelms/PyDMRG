@@ -9,7 +9,7 @@ gamma = 0           # Exit at left
 delta = 0           # In at right
 p = 1               # Jump right
 q = 0               # Jump Left
-target_state = 0    # The targeted state
+target_state = 3    # The targeted state
 # Optimization
 tol = 1e-10
 maxIter = 10

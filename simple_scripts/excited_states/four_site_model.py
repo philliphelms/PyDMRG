@@ -9,7 +9,7 @@ gamma = 0        # Exit at left
 delta = 0        # In at right
 p = 1            # Jump right
 q = 0            # Jump Left
-target_state = 1 # The targeted excited state
+target_state = 0 # The targeted excited state
 # Optimization
 tol = 1e-5
 maxIter = 10
@@ -100,6 +100,7 @@ while not converged:
     v = v[:,sort_inds[target_state]]
     print('\t\tCurrent Energy = {}'.format(E))
     M[0] = np.reshape(v,(2,1,2))
+    #print(M[0])
     # Right Normalize
 #    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
 #                        np.conj(M[0]),W[0],M[0],\
@@ -111,6 +112,8 @@ while not converged:
     (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
     M[0] = np.reshape(U,(2,1,2))
     M[1] = np.einsum('i,ij,kjl->kil',s,V,M[1])
+    #print(M[0])
+    #print(M[1])
 #    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
 #                        np.conj(M[0]),W[0],M[0],\
 #                        np.conj(M[1]),W[1],M[1],\
@@ -119,8 +122,10 @@ while not converged:
 #    print('\t\tCheck Energy = {}'.format(E_check))
     # Update F
     F[1] = np.einsum('jlp,ijk,lmin,npq->kmq',F[0],np.conj(M[0]),W[0],M[0])
+    #print(F[1])
     # NEXT SITE
     print('\tSite 1')
+    print(np.reshape(M[1],-1))
     H = np.einsum('jlp,lmin,kmq->ijknpq',F[1],W[1],F[2])
     H = np.reshape(H,(16,16))
     u,v = np.linalg.eig(H)
@@ -130,6 +135,7 @@ while not converged:
     v = v[:,sort_inds[target_state]]
     print('\t\tCurrent Energy = {}'.format(E))
     M[1] = np.reshape(v,(2,2,4))
+    #print(M[1])
     # Right Normalize
 #    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
 #                        np.conj(M[0]),W[0],M[0],\
@@ -160,6 +166,7 @@ while not converged:
     v = v[:,sort_inds[target_state]]
     print('\t\tCurrent Energy = {}'.format(E))
     M[2] = np.reshape(v,(2,4,2))
+    print(M[2])
     # Right Normalize
 #    E_check = np.einsum('ijk,lmin,npq,rks,mtru,uqv,wsx,tywz,zva,bxc,ydbe,eaf->',\
 #                        np.conj(M[0]),W[0],M[0],\
