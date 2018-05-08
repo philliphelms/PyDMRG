@@ -3,13 +3,12 @@ from pyscf import lib # Library containing davidson algorithm
 
 ######## Inputs ##############################
 # SEP Model
-N = 6
+N = 10
 alpha = 0.35     # In at left
 beta = 2/3       # Exit at right
 s = -1           # Exponential weighting
 p = 1            # Jump right
-target_state = 2 # The targeted excited state
-nroots = 3
+target_state = 1 # The targeted excited state
 # Optimization
 tol = 1e-5
 maxIter = 10
@@ -79,18 +78,23 @@ while not converged:
         def precond(dx,e,x0): # A second dummy algorithm
             return dx
         init_guess = [np.reshape(M[i],-1)]*(target_state+1)
-        u,v = lib.eig(opt_fun,init_guess,precond,nroots=nroots)
+        u,v = lib.eig(opt_fun,init_guess,precond,nroots=target_state+1)
         print(u)
         # select max eigenvalue
         sort_inds = np.argsort(np.real(u))#[::-1]
         try:
             E = -u[sort_inds[min(target_state,len(u)-1)]]
-            v = v[sort_inds[min(target_state,len(u)-1)]]
+            #v = v[sort_inds[min(target_state,len(u)-1)]]
+            tmp_v = np.zeros(v[0].shape)
+            for j in range(len(v)):
+                tmp_v += v[j]
+            tmp_v /= len(v)
         except:
+            print('\tNot enough roots')
             E = -u
-            v = v
+            tmp_v = v
         print('\tEnergy at site {} = {}'.format(i,E))
-        M[i] = np.reshape(v,(n1,n2,n3))
+        M[i] = np.reshape(tmp_v,(n1,n2,n3))
         #print(M[i])
         # Right Normalize
         M_reshape = np.reshape(M[i],(n1*n2,n3))
@@ -115,18 +119,23 @@ while not converged:
         def precond(dx,e,x0): # A second dummy algorithm
             return dx
         init_guess = [np.reshape(M[i],-1)]*(target_state+1)
-        u,v = lib.eig(opt_fun,init_guess,precond,nroots=nroots)
+        u,v = lib.eig(opt_fun,init_guess,precond,nroots=target_state+1)
         print(u)
         # select max eigenvalue
         sort_inds = np.argsort(np.real(u))#[::-1]
         try:
             E = -u[sort_inds[min(target_state,len(u)-1)]]
-            v = v[sort_inds[min(target_state,len(u)-1)]]
+            #v = v[sort_inds[min(target_state,len(u)-1)]]
+            tmp_v = np.zeros(v[0].shape)
+            for j in range(len(v)):
+                tmp_v += v[j]
+            tmp_v /= len(v)
         except:
+            print('\tNot enough roots')
             E = -u
-            v = v
+            tmp_v = v
         print('\tEnergy at site {} = {}'.format(i,E))
-        M[i] = np.reshape(v,(n1,n2,n3))
+        M[i] = np.reshape(tmp_v,(n1,n2,n3))
         # Right Normalize 
         M_reshape = np.swapaxes(M[i],0,1)
         M_reshape = np.reshape(M_reshape,(n2,n1*n3))

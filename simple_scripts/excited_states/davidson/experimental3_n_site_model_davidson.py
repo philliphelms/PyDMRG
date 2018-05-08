@@ -3,13 +3,12 @@ from pyscf import lib # Library containing davidson algorithm
 
 ######## Inputs ##############################
 # SEP Model
-N = 6
+N = 10
 alpha = 0.35     # In at left
 beta = 2/3       # Exit at right
 s = -1           # Exponential weighting
 p = 1            # Jump right
 target_state = 2 # The targeted excited state
-nroots = 3
 # Optimization
 tol = 1e-5
 maxIter = 10
@@ -79,13 +78,22 @@ while not converged:
         def precond(dx,e,x0): # A second dummy algorithm
             return dx
         init_guess = [np.reshape(M[i],-1)]*(target_state+1)
-        u,v = lib.eig(opt_fun,init_guess,precond,nroots=nroots)
+        init_guess = []
+        for j in range(target_state+1):
+            guess_tmp = np.zeros(n1*n2*n3)
+            guess_tmp[j] = 1.0
+            init_guess.insert(len(init_guess),guess_tmp)
+        u,v = lib.eig(opt_fun,init_guess,precond,nroots=target_state+1)
         print(u)
         # select max eigenvalue
         sort_inds = np.argsort(np.real(u))#[::-1]
         try:
-            E = -u[sort_inds[min(target_state,len(u)-1)]]
-            v = v[sort_inds[min(target_state,len(u)-1)]]
+            if i is 0:
+                E = -u[0]
+                v = v[0]
+            else:
+                E = -u[sort_inds[min(target_state,len(u)-1)]]
+                v = v[sort_inds[min(target_state,len(u)-1)]]
         except:
             E = -u
             v = v
@@ -115,13 +123,17 @@ while not converged:
         def precond(dx,e,x0): # A second dummy algorithm
             return dx
         init_guess = [np.reshape(M[i],-1)]*(target_state+1)
-        u,v = lib.eig(opt_fun,init_guess,precond,nroots=nroots)
+        u,v = lib.eig(opt_fun,init_guess,precond,nroots=target_state+1)
         print(u)
         # select max eigenvalue
         sort_inds = np.argsort(np.real(u))#[::-1]
         try:
-            E = -u[sort_inds[min(target_state,len(u)-1)]]
-            v = v[sort_inds[min(target_state,len(u)-1)]]
+            if i is 0:
+                E = -u[0]
+                v = v[0]
+            else:
+                E = -u[sort_inds[min(target_state,len(u)-1)]]
+                v = v[sort_inds[min(target_state,len(u)-1)]]
         except:
             E = -u
             v = v
