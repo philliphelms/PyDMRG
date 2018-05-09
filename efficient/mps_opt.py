@@ -2,19 +2,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import mpo
-import warnings
 from mpl_toolkits.mplot3d import axes3d
-import scipy as sp
-import pickle
+from scipy.sparse.linalg import eigs, LinearOperator
 
 class MPS_OPT:
 
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-5, maxIter=5,\
-                 hamType='tasep', hamParams=(0.35,-1,2/3),\
+                 hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
                  plotExpVals=False, plotConv=False,\
                  usePyscf=True,initialGuess=0.001,ed_limit=12,max_eig_iter=50,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
-                 saveResults=True,dataFolder='data/',verbose=5):
+                 saveResults=True,dataFolder='data/',verbose=3):
         # Import parameters
         self.N = N
         self.N_mpo = N
@@ -36,21 +34,18 @@ class MPS_OPT:
         assert(len(self.maxIter) is len(self.maxBondDim))
         self.hamType = hamType
         self.hamParams = hamParams
+        self.target_state = target_state
         self.plotExpVals = plotExpVals
         self.plotConv = plotConv
         self.saveResults = saveResults
         self.dataFolder = dataFolder
         self.verbose = verbose
         if usePyscf:
-            from pyscf import lib
-            self.einsum = lib.einsum
-            if (self.hamType is "heis") or (self.hamType is "heis_2d") or (self.hamType is 'ising'):
-                self.eig = lib.eigh
-            else:
-                self.eig = lib.eig
+            from pyscf.lib import einsum
+            self.einsum = einsum
         else:
             self.einsum = np.einsum
-            self.eig = np.linalg.eig
+        self.eig = eigs
         self.usePyscf = usePyscf
         self.initialGuess = initialGuess
         self.ed_limit = ed_limit
@@ -108,23 +103,6 @@ class MPS_OPT:
                 self.M.insert(len(self.M),np.random.rand(self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr)))
             else:
                 self.M.insert(len(self.M),self.initialGuess*np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
-        """
-        base_mat = np.array([[-1/np.sqrt(2),-1/np.sqrt(2)],[1/np.sqrt(2),-1/np.sqrt(2)]])
-        base_mat = np.expand_dims(base_mat,axis=2)
-        self.M = []
-        for i in range(int(self.N/2)):
-            self.M.insert(len(self.M),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
-        for i in range(int(self.N/2))[::-1]:
-            self.M.insert(len(self.M),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
-        for i in range(len(self.M))[::-1]:
-            print(base_mat.shape)
-            print(self.M[i].shape)
-            nx,ny,nz = base_mat.shape
-            if i == 0:
-                self.M[i][:nx,:nz,:ny] = np.swapaxes(base_mat.copy(),1,2)
-            else:
-                self.M[i][:nx,:ny,:nz] = base_mat.copy()
-        """
 
     def generate_mpo(self):
         if self.verbose > 4:
@@ -137,7 +115,6 @@ class MPS_OPT:
         for i in range(1,len(self.M))[::-1]:
             self.normalize(i,'left')
             self.calc_observables(i)
-        #self.M[0] = np.swapaxes(self.M[-1],1,2)
 
     def generate_f(self):
         if self.verbose > 4:
@@ -261,7 +238,7 @@ class MPS_OPT:
             if self.verbose > 6:
                 print('\t'*5+'Eigenvalue Iteration')
             x_reshape = np.reshape(x,(n1,n2,n3))
-            fin_sum = np.zeros(x_reshape.shape)
+            fin_sum = np.zeros(x_reshape.shape,dtype=np.complex128)
             for i in range(self.mpo.nops):
                 if self.mpo.ops[i][j] is None:
                     in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
@@ -271,15 +248,18 @@ class MPS_OPT:
                     in_sum2 = self.einsum('njol,ijlm->noim',self.mpo.ops[i][j],in_sum1)
                     fin_sum += sgn*self.einsum('pnm,noim->opi',self.F[i][j],in_sum2)
             return np.reshape(fin_sum,-1)
-        def precond(dx,e,x0):
-            # function(dx, e, x0) => array_like_dx
-            return dx
         self.add_noise_func(j)
-        init_guess = np.reshape(self.M[j],-1)
-        E,v = self.eig(opt_fun,init_guess,precond,max_cycle=self.max_eig_iter)#,nroots=9)
-        #print('E = {}'.format(E))
-        #E = E[0]
-        #v = v[0]
+        #init_guess = np.reshape(self.M[j],-1)
+        opt_lin_op = LinearOperator((n1*n2*n3,n1*n2*n3),matvec=opt_fun)
+        E,v = self.eig(opt_lin_op,k=min(self.target_state+1,n1*n2*n3-2),which='SR')
+        print(E)
+        # Select Best Eigenvalue
+        sort_inds = np.argsort(np.real(E))#[::-1]
+        if len(sort_inds) > 1:
+            E = E[sort_inds[min(self.target_state,len(sort_inds)-1)]]
+            v = v[:,sort_inds[min(self.target_state,len(sort_inds)-1)]]
+        else:
+            E = E[0]
         self.M[j] = np.reshape(v,(n1,n2,n3))
         if self.verbose > 3:
             print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(j,sgn*E))

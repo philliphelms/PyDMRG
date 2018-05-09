@@ -19,10 +19,10 @@ maxBondDim = 16
 ######## Prereqs #############################
 # Create MPS
 M = []
-for i in range(int(N/2)):
-    M.insert(len(M),np.ones((2,min(2**(i),maxBondDim),min(2**(i+1),maxBondDim))))
-for i in range(int(N/2))[::-1]:
-    M.insert(len(M),np.ones((2,min(2**(i+1),maxBondDim),min(2**i,maxBondDim))))
+M.insert(len(M),np.ones((2,1,maxBondDim)))
+for i in range(N):
+    M.insert(len(M),np.ones((2,maxBondDim,maxBondDim)))
+M.insert(len(M),np.ones((2,maxBondDim,1)))
 # Create MPO
 Sp = np.array([[0,1],[0,0]])
 Sm = np.array([[0,0],[1,0]])
@@ -38,10 +38,8 @@ W.insert(len(W),np.array([[I],[Sm],[v],[beta*(np.exp(-s)*Sp-n)]]))
 # Create F
 F = []
 F.insert(len(F),np.array([[[1]]]))
-for i in range(int(N/2)):
-    F.insert(len(F),np.zeros((min(2**(i+1),maxBondDim),4,min(2**(i+1),maxBondDim))))
-for i in range(int(N/2)-1,0,-1):
-    F.insert(len(F),np.zeros((min(2**(i),maxBondDim),4,min(2**i,maxBondDim))))
+for i in range(N):
+    F.insert(len(F),np.zeros((maxBondDim,4,maxBondDim)))
 F.insert(len(F),np.array([[[1]]]))
 ##############################################
 
@@ -75,6 +73,7 @@ while not converged:
             in_sum1 = np.einsum('ijk,lmk->ijlm',F[i+1],x_reshape)
             in_sum2 = np.einsum('njol,ijlm->noim',W[i],in_sum1)
             fin_sum = np.einsum('pnm,noim->opi',F[i],in_sum2)
+            print(fin_sum.shape)
             return np.reshape(fin_sum,-1)
         # Cheating way to get size
         H = np.einsum('jlp,lmin,kmq->ijknpq',F[i],W[i],F[i+1])
@@ -82,6 +81,7 @@ while not converged:
         opt_lin_op = LinearOperator((n1*n2*n3,n4*n5*n6),matvec=opt_fun)
         #init_guess = [np.reshape(M[i],-1)]*(target_state+1)
         u,v = eigs(opt_lin_op,k=min(target_state+1,n1*n2*n3-2),which='LR')
+        print(v.shape)
         # select max eigenvalue
         sort_inds = np.argsort(np.real(u))[::-1]
         try:
@@ -90,11 +90,17 @@ while not converged:
         except:
             E = u
             v = v
+        print(v.shape)
         print('\tEnergy at site {} = {}'.format(i,E))
         M[i] = np.reshape(v,(n1,n2,n3))
+        print(M[i].shape)
         # Right Normalize
         M_reshape = np.reshape(M[i],(n1*n2,n3))
+        print(M_reshape.shape)
         (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
+        print(U.shape)
+        print(s.shape)
+        print(V.shape)
         M[i] = np.reshape(U,(n1,n2,n3))
         M[i+1] = np.einsum('i,ij,kjl->kil',s,V,M[i+1])
         # Update F
