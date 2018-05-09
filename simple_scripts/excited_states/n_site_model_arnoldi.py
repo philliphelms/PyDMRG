@@ -91,10 +91,15 @@ while not converged:
             E = u
             v = v
         print('\tEnergy at site {} = {}'.format(i,E))
+        print('M = {}'.format(M[i].shape))
         M[i] = np.reshape(v,(n1,n2,n3))
         # Right Normalize
         M_reshape = np.reshape(M[i],(n1*n2,n3))
+        print(M_reshape.shape)
         (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
+        print('U = {}'.format(U.shape))
+        print('s = {}'.format(s.shape))
+        print('V = {}'.format(V.shape))
         M[i] = np.reshape(U,(n1,n2,n3))
         M[i+1] = np.einsum('i,ij,kjl->kil',s,V,M[i+1])
         # Update F

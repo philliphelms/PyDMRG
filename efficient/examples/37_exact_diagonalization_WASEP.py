@@ -28,24 +28,20 @@ n_points = 10
 E = 10
 px = 1/2*np.exp(-E/N)
 qx = 1/2*np.exp(E/N)
-s = np.linspace(-30,10,n_points)
-s = np.array([1,0.75,0.5,0.25,0.1,0.05,0,-0.05,-0.1,-0.15,-0.2,-0.25,-0.3,-0.4,-0.5,-0.6,-0.75,-1,-1.25,-1.5,-1.75,-2,-2.5,-3])
-s = np.array([-3,-4,-5,-6,-7,-8,-9,-10])
-s = np.array([-11,-12,-13,-14,-15,-16,-17,-18,-19,-20,-21])
-s = np.array([1,0.75,0.5,0.25,0.1,0,-0.01,-0.05,-0.1,-0.2,\
-        -0.3,-0.4,-0.5,-0.75,-1,-2,-3,-4,-5,-6,-7,-8,-9,-10,\
-        -11,-12,-13,-14,-15,-16,-17,-18,-19,-19.25,-19.5,\
-        -19.6,-19.7,-19.8,-19.9,-19.95,-19.99,-20,-20.1,\
-                -20.25,-20.5,-20.75,-21])
-s = np.array([0])
+s = np.array([-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1])
 CGF_ed = np.zeros(s.shape)
 CGF_dmrg = np.zeros(s.shape)
 all_energies = np.zeros((2**(N**2),len(s)))
 for i in range(len(s)):
+    if s[i] > -20 and s[i] < 0:
+        target_state = 3
+    else:
+        target_state = 0
     x = mps_opt.MPS_OPT(N = [N,N],
                         hamType = "sep_2d",
                         periodic_x = True,
                         periodic_y = True,
+                        target_state = target_state,
                         hamParams = (qx,px,1/2,1/2,0,0,0,0,0,0,0,0,[s[i]/N,0]))
     x.initialize_containers()
     x.generate_mpo()
@@ -55,5 +51,6 @@ for i in range(len(s)):
     print(full_ham)
     print('{}'.format(np.sort(E_ed)))
     print('Energy via Exact Diagonalization: {}'.format(np.sort(E_ed)[-1]))
+    print('Energy via Exact Diagonalization: {}'.format(np.sort(E_ed)[-3]))
     CGF_ed[i] = np.sort(E_ed)[-1]
     CGF_dmrg[i] = x.kernel()

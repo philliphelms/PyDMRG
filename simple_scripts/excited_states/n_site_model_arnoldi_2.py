@@ -73,7 +73,6 @@ while not converged:
             in_sum1 = np.einsum('ijk,lmk->ijlm',F[i+1],x_reshape)
             in_sum2 = np.einsum('njol,ijlm->noim',W[i],in_sum1)
             fin_sum = np.einsum('pnm,noim->opi',F[i],in_sum2)
-            print(fin_sum.shape)
             return np.reshape(fin_sum,-1)
         # Cheating way to get size
         H = np.einsum('jlp,lmin,kmq->ijknpq',F[i],W[i],F[i+1])
@@ -81,7 +80,6 @@ while not converged:
         opt_lin_op = LinearOperator((n1*n2*n3,n4*n5*n6),matvec=opt_fun)
         #init_guess = [np.reshape(M[i],-1)]*(target_state+1)
         u,v = eigs(opt_lin_op,k=min(target_state+1,n1*n2*n3-2),which='LR')
-        print(v.shape)
         # select max eigenvalue
         sort_inds = np.argsort(np.real(u))[::-1]
         try:
@@ -90,17 +88,16 @@ while not converged:
         except:
             E = u
             v = v
-        print(v.shape)
         print('\tEnergy at site {} = {}'.format(i,E))
         M[i] = np.reshape(v,(n1,n2,n3))
-        print(M[i].shape)
+        print('M[i] = {}'.format(M[i].shape))
         # Right Normalize
         M_reshape = np.reshape(M[i],(n1*n2,n3))
-        print(M_reshape.shape)
+        print('M_reshape = {}'.format(M_reshape.shape))
         (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
-        print(U.shape)
-        print(s.shape)
-        print(V.shape)
+        print('U = {}'.format(U.shape))
+        print('s = {}'.format(s.shape))
+        print('V = {}'.format(V.shape))
         M[i] = np.reshape(U,(n1,n2,n3))
         M[i+1] = np.einsum('i,ij,kjl->kil',s,V,M[i+1])
         # Update F

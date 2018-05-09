@@ -23,25 +23,33 @@ plt.style.use('fivethirtyeight') #'fivethirtyeight') #'ggplot'
 #-----------------------------------------------------------------------------
 # 2D WASEP
 #-----------------------------------------------------------------------------
-N=12
+N=3
 n_points = 10
 E = 10
 px = 1/2*np.exp(-E/N)
 qx = 1/2*np.exp(E/N)
 s = np.linspace(-19.3,-18.5,100)
-CGF_dmrg = np.zeros(s.shape)
+s = np.array([-30,-20,-10,0,10])
+s = np.array([-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,0,1])
+s = np.array([-7])
+CGF_dmrg = np.zeros(s.shape,dtype=np.complex128)
 for i in range(len(s)):
+    if s[i] > -20 and s[i] < 0:
+        target_state = 2
+    else:
+        target_state = 0
     x = mps_opt.MPS_OPT(N = [N,N],
                         hamType = "sep_2d",
                         #periodic_x = True,
                         periodic_y = True,
-                        maxBondDim = [10,100],
+                        maxBondDim = 5,
+                        maxIter = 20,
                         verbose = 3,
-                        maxIter = 2,
-                        #plotExpVals = True,
+                        target_state = target_state,#target_state,
                         #plotConv = True,
-                        #hamParams = (qx,px,1/2,1/2,0,0,0,0,0,0,0,0,[s[i]/N,0]))
-                        hamParams = (1/2,1/2,qx,px,1/2,1/2,0,0,1/2,1/2,0,0,[0,s[i]/N]))
+                        #plotExpVals = True,
+                        hamParams = (qx,px,1/2,1/2,0,0,0,0,0,0,0,0,[s[i]/N,0]))
+                        #hamParams = (1/2,1/2,qx,px,1/2,1/2,0,0,1/2,1/2,0,0,[0,s[i]/N]))
                         #hamParams = (1/2,1/2,qx,px,0,0,0,0,0,0,0,0,[0,s[i]/N]))
     print('Performing Calculation for s = {}'.format(s[i]))
     CGF_dmrg[i] = x.kernel()
