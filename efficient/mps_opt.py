@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import time
 import mpo
 from mpl_toolkits.mplot3d import axes3d
-from scipy.sparse.linalg import eigs, LinearOperator
+#from scipy.sparse.linalg import eigs, LinearOperator
 
 class MPS_OPT:
 
@@ -11,7 +11,7 @@ class MPS_OPT:
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
                  plotExpVals=False, plotConv=False,\
                  usePyscf=True,initialGuess=0.001,ed_limit=12,max_eig_iter=50,\
-                 periodic_x=False,periodic_y=False,add_noise=True,\
+                 periodic_x=False,periodic_y=False,add_noise=False,\
                  saveResults=True,dataFolder='data/',verbose=3):
         # Import parameters
         self.N = N
@@ -41,11 +41,12 @@ class MPS_OPT:
         self.dataFolder = dataFolder
         self.verbose = verbose
         if usePyscf:
-            from pyscf.lib import einsum
+            from pyscf.lib import einsum, eig
             self.einsum = einsum
+            self.eig = eig
         else:
             self.einsum = np.einsum
-        self.eig = eigs
+            self.eig = np.eig
         self.usePyscf = usePyscf
         self.initialGuess = initialGuess
         self.ed_limit = ed_limit
@@ -70,6 +71,7 @@ class MPS_OPT:
         self.calc_empty = [0]*self.N
         self.calc_occ = [0]*self.N
         self.bondDimEnergies = np.zeros(len(self.maxBondDim),dtype=np.complex128)
+        self.saved_eigs = None
 
     def generate_mps(self):
         if self.verbose > 4:
@@ -136,19 +138,56 @@ class MPS_OPT:
         if self.verbose > 4:
             print('\t'*2+'Normalization at site {} in direction: {}'.format(i,direction))
         if direction is 'right':
-            (n1,n2,n3) = self.M[i].shape
-            M_reshape = np.reshape(self.M[i],(n1*n2,n3))
-            (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
-            self.M[i] = np.reshape(U,(n1,n2,n3))
-            self.M[i+1] = self.einsum('i,ij,kjl->kil',s,V,self.M[i+1])
+            if self.saved_eigs is None:
+                (n1,n2,n3) = self.M[i].shape
+                M_reshape = np.reshape(self.M[i],(n1*n2,n3))
+                (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
+                self.M[i] = np.reshape(U,(n1,n2,n3))
+                self.M[i+1] = self.einsum('i,ij,kjl->kil',s,V,self.M[i+1])
+            else:
+                # Must do state averaging
+                for k in range(len(self.saved_eigs)):
+                    (n1,n2,n3) = self.saved_eigs[k].shape
+                    M_reshape = np.reshape(self.saved_eigs[k],(n1*n2,n3))
+                    (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
+                    if k is 0:
+                        s_avg = s
+                    else:
+                        s_avg += s
+                s_avg /= len(self.saved_eigs)
+                (n1,n2,n3) = self.M[i].shape
+                M_reshape = np.reshape(self.M[i],(n1*n2,n3))
+                (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
+                self.M[i] = np.reshape(U,(n1,n2,n3))
+                self.M[i+1] = self.einsum('i,ij,kjl->kil',s_avg,V,self.M[i+1])
         elif direction is 'left':
-            M_reshape = np.swapaxes(self.M[i],0,1)
-            (n1,n2,n3) = M_reshape.shape
-            M_reshape = np.reshape(M_reshape,(n1,n2*n3))
-            (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
-            M_reshape = np.reshape(V,(n1,n2,n3))
-            self.M[i] = np.swapaxes(M_reshape,0,1)
-            self.M[i-1] = self.einsum('klj,ji,i->kli',self.M[i-1],U,s)
+            if self.saved_eigs is None:
+                M_reshape = np.swapaxes(self.M[i],0,1)
+                (n1,n2,n3) = M_reshape.shape
+                M_reshape = np.reshape(M_reshape,(n1,n2*n3))
+                (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
+                M_reshape = np.reshape(V,(n1,n2,n3))
+                self.M[i] = np.swapaxes(M_reshape,0,1)
+                self.M[i-1] = self.einsum('klj,ji,i->kli',self.M[i-1],U,s)
+            else:
+                # Must do state averaging
+                for k in range(len(self.saved_eigs)):
+                    M_reshape = np.swapaxes(self.M[i],0,1)
+                    (n1,n2,n3) = M_reshape.shape
+                    M_reshape = np.reshape(M_reshape,(n1,n2*n3))
+                    (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
+                    if k is 0:
+                        s_avg = s.copy()
+                    else:
+                        s_avg += s
+                s_avg /= len(self.saved_eigs)
+                M_reshape = np.swapaxes(self.M[i],0,1)
+                (n1,n2,n3) = M_reshape.shape
+                M_reshape = np.reshape(M_reshape,(n1,n2*n3))
+                (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
+                M_reshape = np.reshape(V,(n1,n2,n3))
+                self.M[i] = np.swapaxes(M_reshape,0,1)
+                self.M[i-1] = self.einsum('klj,ji,i->kli',self.M[i-1],U,s)
         else:
             raise NameError('Direction must be left or right')
 
@@ -248,21 +287,20 @@ class MPS_OPT:
                     in_sum2 = self.einsum('njol,ijlm->noim',self.mpo.ops[i][j],in_sum1)
                     fin_sum += sgn*self.einsum('pnm,noim->opi',self.F[i][j],in_sum2)
             return np.reshape(fin_sum,-1)
-        #init_guess = np.reshape(self.M[j],-1)
-        opt_lin_op = LinearOperator((n1*n2*n3,n1*n2*n3),matvec=opt_fun)
-        E,v = self.eig(opt_lin_op,k=min(self.target_state+1,n1*n2*n3-2),which='SR',tol=1e-5)#,v0=np.reshape(self.M[j],-1))
-        #print(E)
-        #print('ts = {}'.format(self.target_state))
-        # Select Best Eigenvalue
-        sort_inds = np.argsort(np.real(E))#[::-1]
-        #print('Inds = {}'.format(sort_inds))
-        #print('inds(fnc) = {}'.format(sort_inds[min(self.target_state,len(sort_inds)-1)]))
-        #print('E = {}'.format(E[sort_inds[min(self.target_state,len(sort_inds)-1)]]))
+        def precond(dx,e,x0):
+            return dx
+        init_guess = np.reshape(self.M[j],-1)
+        E,v = self.eig(opt_fun,init_guess,precond,max_cycle=self.max_eig_iter,nroots=min(self.target_state+1,n1*n2*n3-1))
+        print(E)
+        sort_inds = np.argsort(np.real(E))[::-1]
         if len(sort_inds) > 1:
+            self.saved_eigs = []
+            for k in range(len(sort_inds)):
+                self.saved_eigs.insert(len(self.saved_eigs),np.reshape(v[sort_inds[k]],(n1,n2,n3)))
             E = E[sort_inds[min(self.target_state,len(sort_inds)-1)]]
-            v = v[:,sort_inds[min(self.target_state,len(sort_inds)-1)]]
+            v = v[sort_inds[min(self.target_state,len(sort_inds)-1)]]
         else:
-            E = E[0]
+            self.saved_eigs = None
         self.M[j] = np.reshape(v,(n1,n2,n3))
         self.add_noise_func(j)
         if self.verbose > 3:
