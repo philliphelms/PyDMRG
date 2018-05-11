@@ -250,7 +250,7 @@ class MPS_OPT:
             return np.reshape(fin_sum,-1)
         #init_guess = np.reshape(self.M[j],-1)
         opt_lin_op = LinearOperator((n1*n2*n3,n1*n2*n3),matvec=opt_fun)
-        E,v = self.eig(opt_lin_op,k=min(self.target_state+1,n1*n2*n3-2),which='SR')#,v0=np.reshape(self.M[j],-1))
+        E,v = self.eig(opt_lin_op,k=min(self.target_state+1,n1*n2*n3-2),which='SR',tol=1e-5)#,v0=np.reshape(self.M[j],-1))
         #print(E)
         #print('ts = {}'.format(self.target_state))
         # Select Best Eigenvalue

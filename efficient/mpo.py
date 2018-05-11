@@ -472,8 +472,6 @@ class MPO:
         self.nops = len(self.ops)
     
     def return_full_ham(self,verbose=2):
-        # This function calculates the full hamiltonian matrix
-        # As a warning, it is computationally expensive 
         H = np.zeros((2**self.N_mpo,2**self.N_mpo))
         if verbose > 0:
             print('Hamiltonian Size: {}'.format(H.shape))
@@ -492,6 +490,61 @@ class MPO:
                     for k in range(self.N_mpo):
                         if verbose > 4:
                             print('\t\t\t\tk-Loop progress: {}%'.format(k/self.N_mpo*100))
+                        if self.ops[l][k] is not None:
+                            tmp_mat = np.einsum('ij,jk->ik',tmp_mat,self.ops[l][k][:,:,i_occ[k],j_occ[k]])
+                        else:
+                            multiplier = np.array([[np.eye(2)]])
+                            tmp_mat = np.einsum('ij,jk->ik',tmp_mat,multiplier[:,:,i_occ[k],j_occ[k]])
+                    H[i,j] += tmp_mat[[0]]
+        return H
+    
+    def return_block_ham(self):
+        H = np.zeros((2**self.N_mpo,2**self.N_mpo))
+        occ = np.zeros((2**self.N_mpo,self.N_mpo),dtype=int)
+        sum_occ = np.zeros(2**self.N_mpo)
+        for i in range(2**self.N_mpo):
+            occ[i,:] = np.asarray(list(map(lambda x: int(x),'0'*(self.N_mpo-len(bin(i)[2:]))+bin(i)[2:])))
+            sum_occ[i] = np.sum(occ[i,:])
+        inds = np.argsort(sum_occ)
+        sum_occ = sum_occ[inds]
+        occ = occ[inds,:]
+        for i in range(2**self.N_mpo):
+            print('\ti-Loop Progress: {}%'.format(i/2**self.N_mpo*100))
+            i_occ = occ[i,:]
+            for j in range(2**self.N_mpo):
+                j_occ = occ[j,:]
+                for l in range(self.nops):
+                    tmp_mat = np.array([[1]])
+                    for k in range(self.N_mpo):
+                        if self.ops[l][k] is not None:
+                            tmp_mat = np.einsum('ij,jk->ik',tmp_mat,self.ops[l][k][:,:,i_occ[k],j_occ[k]])
+                        else:
+                            multiplier = np.array([[np.eye(2)]])
+                            tmp_mat = np.einsum('ij,jk->ik',tmp_mat,multiplier[:,:,i_occ[k],j_occ[k]])
+                    H[i,j] += tmp_mat[[0]]
+        return H
+
+    def return_single_block_ham(self,n):
+        occ = np.zeros((2**self.N_mpo,self.N_mpo),dtype = int)
+        sum_occ = np.zeros(2**self.N_mpo)
+        ind = 0
+        for i in range(2**self.N_mpo):
+            tmp_occ = np.asarray(list(map(lambda x: int(x),'0'*(self.N_mpo-len(bin(i)[2:]))+bin(i)[2:])))
+            tmp_sum = np.sum(tmp_occ)
+            if int(tmp_sum) is int(n):
+                occ[ind,:] = tmp_occ
+                sum_occ[ind] = tmp_sum
+                ind += 1
+        occ = occ[:ind+1,:]
+        sum_occ = sum_occ[:ind+1]
+        H = np.zeros((len(sum_occ),len(sum_occ)))
+        for i in range(len(sum_occ)):
+            i_occ = occ[i,:]
+            for j in range(len(sum_occ)):
+                j_occ = occ[j,:]
+                for l in range(self.nops):
+                    tmp_mat = np.array([[1]])
+                    for k in range(self.N_mpo):
                         if self.ops[l][k] is not None:
                             tmp_mat = np.einsum('ij,jk->ik',tmp_mat,self.ops[l][k][:,:,i_occ[k],j_occ[k]])
                         else:

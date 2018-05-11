@@ -4,11 +4,8 @@ import numpy as np
 # Model
 alpha = 0.35  # In at left
 beta = 2/3    # Exit at right
-s = -1        # Exponential weighting
-gamma = 0     # Exit at left
-delta = 0     # In at right
+s = 0         # Exponential weighting
 p = 1         # Jump right
-q = 0         # Jump Left
 # Optimization
 tol = 1e-5
 maxIter = 10
@@ -92,7 +89,8 @@ while not converged:
     print('\tSite 0')
     H = np.einsum('jlp,lmin,kmq->ijknpq',F[0],W[0],F[1])
     H = np.reshape(H,(4,4))
-    u,v = np.linalg.eig(H)
+    u,v = np.linalg.eig(-H)
+    print(u)
     # select max eigenvalue
     max_ind = np.argsort(u)[-1]
     E = u[max_ind]
@@ -122,9 +120,10 @@ while not converged:
     print('\tSite 1')
     H = np.einsum('jlp,lmin,kmq->ijknpq',F[1],W[1],F[2])
     H = np.reshape(H,(16,16))
-    u,v = np.linalg.eig(H)
+    u,v = np.linalg.eig(-H)
+    print(u)
     # select max eigenvalue
-    max_ind = np.argsort(u)[-1]
+    max_ind = np.argsort(-u)[-1]
     E = u[max_ind]
     v = v[:,max_ind]
     print('\t\tCurrent Energy = {}'.format(E))
