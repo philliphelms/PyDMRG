@@ -1,16 +1,15 @@
 import numpy as np
+from scipy.sparse.linalg import LinearOperator, eigs
+#from pyscf import lib # Library containing davidson algorithm
 
 ######## Inputs ##############################
 # SEP Model
-N = 20
-alpha = 0.35  # In at left
-beta = 2/3    # Exit at right
-s = -1        # Exponential weighting
-gamma = 0     # Exit at left
-delta = 0     # In at right
-p = 1         # Jump right
-q = 0         # Jump Left
-loc_val = 0.5
+N = 10
+alpha = 0.35     # In at left
+beta = 2/3       # Exit at right
+s = -1           # Exponential weighting
+p = 1            # Jump right
+target_state = 2 # The targeted excited state
 # Optimization
 tol = 1e-5
 maxIter = 10
@@ -18,6 +17,12 @@ maxBondDim = 16
 ##############################################
 
 ######## Prereqs #############################
+# Create MPS
+M = []
+for i in range(int(N/2)):
+    M.insert(len(M),np.ones((2,min(2**(i),maxBondDim),min(2**(i+1),maxBondDim))))
+for i in range(int(N/2))[::-1]:
+    M.insert(len(M),np.ones((2,min(2**(i+1),maxBondDim),min(2**i,maxBondDim))))
 # Create MPO
 Sp = np.array([[0,1],[0,0]])
 Sm = np.array([[0,0],[1,0]])
@@ -30,26 +35,6 @@ W.insert(len(W),np.array([[alpha*(np.exp(-s)*Sm-v),np.exp(-s)*Sp,-n,I]]))
 for i in range(N-2):
     W.insert(len(W),np.array([[I,z,z,z],[Sm,z,z,z],[v,z,z,z],[z,np.exp(-s)*Sp,-n,I]]))
 W.insert(len(W),np.array([[I],[Sm],[v],[beta*(np.exp(-s)*Sp-n)]]))
-# Initialize MPS at dimension D=1
-M = []
-for i in range(int(N/2)):
-    tmp_vec = np.zeros((2,1,1))
-    tmp_vec[1,:,:] = np.sqrt(loc_val)
-    M.insert(len(M),tmp_vec)
-for i in range(int(N/2))[::-1]:
-    tmp_vec = np.zeros((2,1,1))
-    tmp_vec[1,:,:] = np.sqrt(loc_val)
-    M.insert(len(M),tmp_vec)
-# Increase Bond Dimension
-Mnew = []
-for i in range(int(N/2)):
-    Mnew.insert(len(Mnew),np.ones((2,min(2**(i),maxBondDim),min(2**(i+1),maxBondDim))))
-for i in range(int(N/2))[::-1]:
-    Mnew.insert(len(Mnew),np.ones((2,min(2**(i+1),maxBondDim),min(2**i,maxBondDim))))
-for i in range(len(Mnew)):
-    nx,ny,nz = M[i].shape
-    Mnew[i][:nx,:ny,:nz] = M[i]
-    M[i] = Mnew[i]
 # Create F
 F = []
 F.insert(len(F),np.array([[[1]]]))
@@ -68,7 +53,6 @@ for i in range(int(N)-1,0,-1):
     (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
     M_reshape = np.reshape(V,(n1,n2,n3))
     M[i] = np.swapaxes(M_reshape,0,1)
-    print(M[i].shape)
     M[i-1] = np.einsum('klj,ji,i->kli',M[i-1],U,s)
 ##############################################
 
@@ -85,19 +69,37 @@ while not converged:
 # Right Sweep ----------------------------
     print('Right Sweep {}'.format(iterCnt))
     for i in range(N-1):
+        (n1,n2,n3) = M[i].shape
+        def opt_fun(x): # Function to be called by Davidson algorithm
+            x_reshape = np.reshape(x,M[i].shape)
+            in_sum1 = np.einsum('ijk,lmk->ijlm',F[i+1],x_reshape)
+            in_sum2 = np.einsum('njol,ijlm->noim',W[i],in_sum1)
+            fin_sum = np.einsum('pnm,noim->opi',F[i],in_sum2)
+            return np.reshape(fin_sum,-1)
+        # Cheating way to get size
         H = np.einsum('jlp,lmin,kmq->ijknpq',F[i],W[i],F[i+1])
         (n1,n2,n3,n4,n5,n6) = H.shape
-        H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
-        u,v = np.linalg.eig(H)
+        opt_lin_op = LinearOperator((n1*n2*n3,n4*n5*n6),matvec=opt_fun)
+        #init_guess = [np.reshape(M[i],-1)]*(target_state+1)
+        u,v = eigs(opt_lin_op,k=min(target_state+1,n1*n2*n3-2),which='LR')
         # select max eigenvalue
-        max_ind = np.argsort(u)[-1]
-        E = u[max_ind]
-        v = v[:,max_ind]
-        print('\tEnergy at site {}= {}'.format(i,E))
+        sort_inds = np.argsort(np.real(u))[::-1]
+        try:
+            E = u[sort_inds[min(target_state,len(u)-1)]]
+            v = v[:,sort_inds[min(target_state,len(u)-1)]]
+        except:
+            E = u
+            v = v
+        print('\tEnergy at site {} = {}'.format(i,E))
+        print('M = {}'.format(M[i].shape))
         M[i] = np.reshape(v,(n1,n2,n3))
         # Right Normalize
         M_reshape = np.reshape(M[i],(n1*n2,n3))
+        print(M_reshape.shape)
         (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
+        print('U = {}'.format(U.shape))
+        print('s = {}'.format(s.shape))
+        print('V = {}'.format(V.shape))
         M[i] = np.reshape(U,(n1,n2,n3))
         M[i+1] = np.einsum('i,ij,kjl->kil',s,V,M[i+1])
         # Update F
@@ -105,15 +107,28 @@ while not converged:
 # Left Sweep -----------------------------
     print('Left Sweep {}'.format(iterCnt))
     for i in range(N-1,0,-1):
+        (n1,n2,n3) = M[i].shape
+        def opt_fun(x): # Function to be called by Davidson algorithm
+            x_reshape = np.reshape(x,M[i].shape)
+            in_sum1 = np.einsum('ijk,lmk->ijlm',F[i+1],x_reshape)
+            in_sum2 = np.einsum('njol,ijlm->noim',W[i],in_sum1)
+            fin_sum = np.einsum('pnm,noim->opi',F[i],in_sum2)
+            return np.reshape(fin_sum,-1)
+        # Cheating way to get size
         H = np.einsum('jlp,lmin,kmq->ijknpq',F[i],W[i],F[i+1])
         (n1,n2,n3,n4,n5,n6) = H.shape
-        H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
-        u,v = np.linalg.eig(H)
+        opt_lin_op = LinearOperator((n1*n2*n3,n4*n5*n6),matvec=opt_fun)
+        #init_guess = [np.reshape(M[i],-1)]*(target_state+1)
+        u,v = eigs(opt_lin_op,k=min(target_state+1,n1*n2*n3-2),which='LR')
         # select max eigenvalue
-        max_ind = np.argsort(u)[-1]
-        E = u[max_ind]
-        v = v[:,max_ind]
-        print('\tEnergy at site {}= {}'.format(i,E))
+        sort_inds = np.argsort(np.real(u))[::-1]
+        try:
+            E = u[sort_inds[min(target_state,len(u)-1)]]
+            v = v[:,sort_inds[min(target_state,len(u)-1)]]
+        except:
+            E = u
+            v = v
+        print('\tEnergy at site {} = {}'.format(i,E))
         M[i] = np.reshape(v,(n1,n2,n3))
         # Right Normalize 
         M_reshape = np.swapaxes(M[i],0,1)
