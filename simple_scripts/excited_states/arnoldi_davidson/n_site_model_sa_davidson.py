@@ -9,7 +9,7 @@ alpha = 0.35     # In at left
 beta = 2/3       # Exit at right
 s = -1           # Exponential weighting
 p = 1            # Jump right
-target_state = 1 # The targeted excited state
+target_state = 2 # The targeted excited state
 # Optimization
 tol = 1e-5
 maxIter = 10
@@ -20,9 +20,9 @@ maxBondDim = 50
 # Create MPS
 M = []
 for i in range(int(N/2)):
-    M.insert(len(M),np.ones((2,min(2**(i),maxBondDim),min(2**(i+1),maxBondDim))))
+    M.insert(len(M),np.ones((2,min(2**(i),maxBondDim),min(2**(i+1),maxBondDim)),dtype=np.complex128))
 for i in range(int(N/2))[::-1]:
-    M.insert(len(M),np.ones((2,min(2**(i+1),maxBondDim),min(2**i,maxBondDim))))
+    M.insert(len(M),np.ones((2,min(2**(i+1),maxBondDim),min(2**i,maxBondDim)),dtype=np.complex128))
 for i in range(len(M)):
     print(M[i].shape)
 # Create MPO
@@ -39,12 +39,12 @@ for i in range(N-2):
 W.insert(len(W),np.array([[I],[Sm],[v],[beta*(np.exp(-s)*Sp-n)]]))
 # Create F
 F = []
-F.insert(len(F),np.array([[[1]]]))
+F.insert(len(F),np.array([[[1]]],dtype=np.complex128))
 for i in range(int(N/2)):
-    F.insert(len(F),np.zeros((min(2**(i+1),maxBondDim),4,min(2**(i+1),maxBondDim))))
+    F.insert(len(F),np.zeros((min(2**(i+1),maxBondDim),4,min(2**(i+1),maxBondDim)),dtype=np.complex128))
 for i in range(int(N/2)-1,0,-1):
-    F.insert(len(F),np.zeros((min(2**(i),maxBondDim),4,min(2**i,maxBondDim))))
-F.insert(len(F),np.array([[[1]]]))
+    F.insert(len(F),np.zeros((min(2**(i),maxBondDim),4,min(2**i,maxBondDim)),dtype=np.complex128))
+F.insert(len(F),np.array([[[1]]],dtype=np.complex128))
 ##############################################
 
 # Make MPS Right Canonical ###################
@@ -61,6 +61,20 @@ for i in range(int(N)-1,0,-1):
 # Calculate Initial F ########################
 for i in range(int(N)-1,0,-1):
     F[i] = np.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(M[i]),W[i],M[i],F[i+1])
+##############################################
+
+# Define Function to pick correct eigs #######
+def pick_eigs(w, v, nroots, x0): 
+    # Here we pick the eigenvalues with smallest imaginary component,
+    # where we are forced to choose at least one eigenvalue.
+    abs_imag = abs(w.imag)
+    max_imag_tol = max(1e100,min(abs_imag)*1.1)
+    realidx = np.where((abs_imag < max_imag_tol))[0]
+    if len(realidx) < nroots:
+        idx = w.real.argsort()
+    else:
+        idx = realidx[w[realidx].real.argsort()]
+    return w[idx], v[:,idx], idx
 ##############################################
 
 # Optimization Sweeps ########################
@@ -81,7 +95,7 @@ while not converged:
         def precond(dx,e,x0):
             return dx
         init_guess = np.reshape(M[i],-1)
-        u,v = lib.eig(opt_fun,init_guess,precond,nroots=min(target_state+1,n1*n2*n3-1))
+        u,v = lib.eig(opt_fun,init_guess,precond,nroots=min(target_state+1,n1*n2*n3-1),pick=pick_eigs)
         # State Averaging
         for j in range(len(v)):
             M_tmp = np.reshape(v[j],(n1,n2,n3))
@@ -122,7 +136,7 @@ while not converged:
         def precond(dx,e,x0):
             return dx
         init_guess = np.reshape(M[i],-1)
-        u,v = lib.eig(opt_fun,init_guess,precond,nroots=min(target_state+1,n1*n2*n3-1))
+        u,v = lib.eig(opt_fun,init_guess,precond,nroots=min(target_state+1,n1*n2*n3-1),pick=pick_eigs)
         # State Averaging
         for j in range(len(v)):
             M_tmp = np.reshape(v[j],(n1,n2,n3))

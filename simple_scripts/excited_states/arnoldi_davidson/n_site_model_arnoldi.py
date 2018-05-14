@@ -9,7 +9,7 @@ alpha = 0.35     # In at left
 beta = 2/3       # Exit at right
 s = -1           # Exponential weighting
 p = 1            # Jump right
-target_state = 2 # The targeted excited state
+target_state = 1 # The targeted excited state
 # Optimization
 tol = 1e-5
 maxIter = 10
