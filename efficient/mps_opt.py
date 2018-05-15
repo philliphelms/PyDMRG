@@ -1,8 +1,6 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import time
 import mpo
-from mpl_toolkits.mplot3d import axes3d
 #from scipy.sparse.linalg import eigs, LinearOperator
 
 class MPS_OPT:
@@ -10,7 +8,7 @@ class MPS_OPT:
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-5, maxIter=5,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
                  plotExpVals=False, plotConv=False,\
-                 usePyscf=True,initialGuess=0.001,ed_limit=12,max_eig_iter=50,\
+                 usePyscf=True,initialGuess=.1,ed_limit=12,max_eig_iter=50,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
                  saveResults=True,dataFolder='data/',verbose=3):
         # Import parameters
@@ -58,10 +56,10 @@ class MPS_OPT:
     def initialize_containers(self):
         if type(self.N) is not int:
             self.N = self.N[0]*self.N[1]
-        self.inside_iter_time = np.zeros(len(self.maxBondDim),dtype=np.complex128)
-        self.inside_iter_cnt = np.zeros(len(self.maxBondDim),dtype=np.complex128)
-        self.outside_iter_time = np.zeros(len(self.maxBondDim),dtype=np.complex128)
-        self.outside_iter_cnt = np.zeros(len(self.maxBondDim),dtype=np.complex128)
+        self.inside_iter_time = np.zeros(len(self.maxBondDim))
+        self.inside_iter_cnt = np.zeros(len(self.maxBondDim))
+        self.outside_iter_time = np.zeros(len(self.maxBondDim))
+        self.outside_iter_cnt = np.zeros(len(self.maxBondDim))
         self.time_total = time.time()
         self.exp_val_figure=False
         self.conv_figure=False
@@ -70,8 +68,10 @@ class MPS_OPT:
         self.calc_spin_z = [0]*self.N
         self.calc_empty = [0]*self.N
         self.calc_occ = [0]*self.N
-        self.bondDimEnergies = np.zeros(len(self.maxBondDim),dtype=np.complex128)
-        self.saved_eigs = None
+        self.bondDimEnergies = np.zeros(len(self.maxBondDim))
+        if self.plotExpVals or self.plotConv:
+            import matplotlib.pyplot as plt
+            from mpl_toolkits.mplot3d import axes3d
 
     def generate_mps(self):
         if self.verbose > 4:
@@ -138,56 +138,19 @@ class MPS_OPT:
         if self.verbose > 4:
             print('\t'*2+'Normalization at site {} in direction: {}'.format(i,direction))
         if direction is 'right':
-            if self.saved_eigs is None:
-                (n1,n2,n3) = self.M[i].shape
-                M_reshape = np.reshape(self.M[i],(n1*n2,n3))
-                (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
-                self.M[i] = np.reshape(U,(n1,n2,n3))
-                self.M[i+1] = self.einsum('i,ij,kjl->kil',s,V,self.M[i+1])
-            else:
-                # Must do state averaging
-                for k in range(len(self.saved_eigs)):
-                    (n1,n2,n3) = self.saved_eigs[k].shape
-                    M_reshape = np.reshape(self.saved_eigs[k],(n1*n2,n3))
-                    (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
-                    if k is 0:
-                        s_avg = s
-                    else:
-                        s_avg += s
-                s_avg /= len(self.saved_eigs)
-                (n1,n2,n3) = self.M[i].shape
-                M_reshape = np.reshape(self.M[i],(n1*n2,n3))
-                (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
-                self.M[i] = np.reshape(U,(n1,n2,n3))
-                self.M[i+1] = self.einsum('i,ij,kjl->kil',s_avg,V,self.M[i+1])
+            (n1,n2,n3) = self.M[i].shape
+            M_reshape = np.reshape(self.M[i],(n1*n2,n3))
+            (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
+            self.M[i] = np.reshape(U,(n1,n2,n3))
+            self.M[i+1] = self.einsum('i,ij,kjl->kil',s,V,self.M[i+1])
         elif direction is 'left':
-            if self.saved_eigs is None:
-                M_reshape = np.swapaxes(self.M[i],0,1)
-                (n1,n2,n3) = M_reshape.shape
-                M_reshape = np.reshape(M_reshape,(n1,n2*n3))
-                (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
-                M_reshape = np.reshape(V,(n1,n2,n3))
-                self.M[i] = np.swapaxes(M_reshape,0,1)
-                self.M[i-1] = self.einsum('klj,ji,i->kli',self.M[i-1],U,s)
-            else:
-                # Must do state averaging
-                for k in range(len(self.saved_eigs)):
-                    M_reshape = np.swapaxes(self.M[i],0,1)
-                    (n1,n2,n3) = M_reshape.shape
-                    M_reshape = np.reshape(M_reshape,(n1,n2*n3))
-                    (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
-                    if k is 0:
-                        s_avg = s.copy()
-                    else:
-                        s_avg += s
-                s_avg /= len(self.saved_eigs)
-                M_reshape = np.swapaxes(self.M[i],0,1)
-                (n1,n2,n3) = M_reshape.shape
-                M_reshape = np.reshape(M_reshape,(n1,n2*n3))
-                (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
-                M_reshape = np.reshape(V,(n1,n2,n3))
-                self.M[i] = np.swapaxes(M_reshape,0,1)
-                self.M[i-1] = self.einsum('klj,ji,i->kli',self.M[i-1],U,s)
+            M_reshape = np.swapaxes(self.M[i],0,1)
+            (n1,n2,n3) = M_reshape.shape
+            M_reshape = np.reshape(M_reshape,(n1,n2*n3))
+            (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
+            M_reshape = np.reshape(V,(n1,n2,n3))
+            self.M[i] = np.swapaxes(M_reshape,0,1)
+            self.M[i-1] = self.einsum('klj,ji,i->kli',self.M[i-1],U,s)
         else:
             raise NameError('Direction must be left or right')
 
@@ -290,17 +253,16 @@ class MPS_OPT:
         def precond(dx,e,x0):
             return dx
         init_guess = np.reshape(self.M[j],-1)
-        E,v = self.eig(opt_fun,init_guess,precond,max_cycle=self.max_eig_iter,nroots=min(self.target_state+1,n1*n2*n3-1))
-        print(E)
-        sort_inds = np.argsort(np.real(E))[::-1]
+        E,v = self.eig(opt_fun,init_guess,precond,
+                       max_cycle=self.max_eig_iter,
+                       pick = pick_eigs,
+                       nroots=min(self.target_state+1,n1*n2*n3-1))
+        sort_inds = np.argsort(np.real(E))#[::-1]
         if len(sort_inds) > 1:
-            self.saved_eigs = []
-            for k in range(len(sort_inds)):
-                self.saved_eigs.insert(len(self.saved_eigs),np.reshape(v[sort_inds[k]],(n1,n2,n3)))
             E = E[sort_inds[min(self.target_state,len(sort_inds)-1)]]
             v = v[sort_inds[min(self.target_state,len(sort_inds)-1)]]
         else:
-            self.saved_eigs = None
+            E = E[0]
         self.M[j] = np.reshape(v,(n1,n2,n3))
         self.add_noise_func(j)
         if self.verbose > 3:
@@ -330,7 +292,6 @@ class MPS_OPT:
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): H = -H
         u,v = self.eig(H)
         u_sort = u[np.argsort(u)]
-        print(u_sort[:5])
         v = v[:,np.argsort(u)]
         ind = 0
         for j in range(len(u_sort)):
@@ -544,6 +505,7 @@ class MPS_OPT:
                 self.inside_iter_cnt[self.maxBondDimInd] += 1
                 if i is int(self.N/2):
                     self.E_conv = self.E_curr
+                    print(self.E_conv)
             # Check Convergence --------------------
             self.tf = time.time()
             self.outside_iter_time[self.maxBondDimInd] += self.tf-self.t0
@@ -552,6 +514,8 @@ class MPS_OPT:
             if np.abs(self.E_conv-E_prev) < self.tol[self.maxBondDimInd]:
                 if self.maxBondDimInd is (len(self.maxBondDim)-1):
                     self.finalEnergy = self.E_conv
+                    print(self.E_conv)
+                    print(self.bondDimEnergies[self.maxBondDimInd])
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
                     self.time_total = time.time() - self.time_total
                     converged = True
@@ -700,3 +664,10 @@ class MPS_OPT:
         self.E_mf = x.kernel()
         self.saveFinalResults('mf')
         return(self.E_mf)
+
+def pick_eigs(w, v, nroots, x0):
+    abs_imag = abs(w.imag)
+    max_imag_tol = max(1e-5,min(abs_imag)*1.1)
+    realidx = np.where((abs_imag < max_imag_tol))[0]
+    idx = realidx[w[realidx].real.argsort()]
+    return w[idx], v[:,idx], idx

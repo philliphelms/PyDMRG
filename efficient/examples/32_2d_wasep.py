@@ -23,7 +23,7 @@ plt.style.use('fivethirtyeight') #'fivethirtyeight') #'ggplot'
 #-----------------------------------------------------------------------------
 # 2D WASEP
 #-----------------------------------------------------------------------------
-N=3
+N=10
 n_points = 10
 E = 10
 px = 1/2*np.exp(-E/N)
@@ -36,13 +36,14 @@ for i in range(len(s)):
         target_state = 2
     else:
         target_state = 0
+    print(target_state)
     x = mps_opt.MPS_OPT(N = [N,N],
                         hamType = "sep_2d",
                         periodic_x = True,
                         periodic_y = True,
                         maxBondDim = 100,
                         maxIter = 10,
-                        verbose = 5,
+                        verbose = 4,
                         target_state = target_state,#target_state,
                         add_noise = False,
                         #plotConv = True,
