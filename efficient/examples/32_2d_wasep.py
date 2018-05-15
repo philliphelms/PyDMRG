@@ -33,22 +33,23 @@ s = np.array([-10])
 CGF_dmrg = np.zeros(s.shape,dtype=np.complex128)
 for i in range(len(s)):
     if s[i] > -20 and s[i] < 0:
-        target_state = 2
+        target_state = 0#2
     else:
         target_state = 0
     print(target_state)
     x = mps_opt.MPS_OPT(N = [N,N],
                         hamType = "sep_2d",
-                        periodic_x = True,
+                        #periodic_x = True,
                         periodic_y = True,
-                        maxBondDim = 100,
+                        maxBondDim = 10,
                         maxIter = 10,
                         verbose = 4,
                         target_state = target_state,#target_state,
                         add_noise = False,
                         #plotConv = True,
                         #plotExpVals = True,
-                        hamParams = (qx,px,1/2,1/2,0,0,0,0,0,0,0,0,[s[i]/N,0]))
+                        #hamParams = (qx,px,1/2,1/2,0,0,0,0,0,0,0,0,[s[i]/N,0]))
+                        hamParams = (1/2,1/2,qx,px,1/2,1/2,0,0,1/2,1/2,0,0,[0,s[i]/N]))
     print('Performing Calculation for s = {}'.format(s[i]))
     CGF_dmrg[i] = x.kernel()
     print('Final Density Profile = \n{}'.format(x.calc_occ))

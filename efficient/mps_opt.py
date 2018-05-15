@@ -258,11 +258,11 @@ class MPS_OPT:
                        pick = pick_eigs,
                        nroots=min(self.target_state+1,n1*n2*n3-1))
         sort_inds = np.argsort(np.real(E))#[::-1]
-        if len(sort_inds) > 1:
+        try:
             E = E[sort_inds[min(self.target_state,len(sort_inds)-1)]]
             v = v[sort_inds[min(self.target_state,len(sort_inds)-1)]]
-        else:
-            E = E[0]
+        except:
+            E = E
         self.M[j] = np.reshape(v,(n1,n2,n3))
         self.add_noise_func(j)
         if self.verbose > 3:
