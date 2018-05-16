@@ -23,13 +23,12 @@ plt.style.use('fivethirtyeight') #'fivethirtyeight') #'ggplot'
 #-----------------------------------------------------------------------------
 # 2D WASEP
 #-----------------------------------------------------------------------------
-N=10
+N=5
 n_points = 10
 E = 10
 px = 1/2*np.exp(-E/N)
 qx = 1/2*np.exp(E/N)
 s = np.linspace(-10,1,30)
-s = np.array([-10])
 CGF_dmrg = np.zeros(s.shape,dtype=np.complex128)
 for i in range(len(s)):
     if s[i] > -20 and s[i] < 0:
@@ -41,15 +40,16 @@ for i in range(len(s)):
                         hamType = "sep_2d",
                         #periodic_x = True,
                         periodic_y = True,
-                        maxBondDim = 10,
+                        maxBondDim = 100,
                         maxIter = 10,
-                        verbose = 4,
+                        verbose = 3,
                         target_state = target_state,#target_state,
                         add_noise = False,
                         #plotConv = True,
                         #plotExpVals = True,
                         #hamParams = (qx,px,1/2,1/2,0,0,0,0,0,0,0,0,[s[i]/N,0]))
                         hamParams = (1/2,1/2,qx,px,1/2,1/2,0,0,1/2,1/2,0,0,[0,s[i]/N]))
+                        #hamParams = (1/2,1/2,qx,px,1,1,0,0,0,0,0,0,[0,s[i]/N]))
     print('Performing Calculation for s = {}'.format(s[i]))
     CGF_dmrg[i] = x.kernel()
     print('Final Density Profile = \n{}'.format(x.calc_occ))
