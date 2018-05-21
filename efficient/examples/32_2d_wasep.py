@@ -23,33 +23,39 @@ plt.style.use('fivethirtyeight') #'fivethirtyeight') #'ggplot'
 #-----------------------------------------------------------------------------
 # 2D WASEP
 #-----------------------------------------------------------------------------
-N=5
+N=int(argv[3])
 n_points = 10
-E = 10
-px = 1/2*np.exp(-E/N)
-qx = 1/2*np.exp(E/N)
-s = np.linspace(-10,1,30)
+E = 10.
+# Import Bond Dimension
+M = int(argv[1])
+# Import S
+s = np.array([float(argv[2])])
+px = 0.5*np.exp(-E/N)
+qx = 0.5*np.exp(E/N)
+#s = np.linspace(-10,1,30)
 CGF_dmrg = np.zeros(s.shape,dtype=np.complex128)
+print('N = {}'.format(N))
+print('M = {}'.format(M))
+print('s = {}'.format(s[0]))
 for i in range(len(s)):
     if s[i] > -20 and s[i] < 0:
         target_state = 0#2
     else:
         target_state = 0
-    print(target_state)
     x = mps_opt.MPS_OPT(N = [N,N],
                         hamType = "sep_2d",
                         #periodic_x = True,
                         periodic_y = True,
-                        maxBondDim = 100,
+                        maxBondDim = M,
                         maxIter = 10,
-                        verbose = 3,
+                        verbose = 5,
                         target_state = target_state,#target_state,
                         add_noise = False,
                         #plotConv = True,
                         #plotExpVals = True,
-                        #hamParams = (qx,px,1/2,1/2,0,0,0,0,0,0,0,0,[s[i]/N,0]))
-                        hamParams = (1/2,1/2,qx,px,1/2,1/2,0,0,1/2,1/2,0,0,[0,s[i]/N]))
-                        #hamParams = (1/2,1/2,qx,px,1,1,0,0,0,0,0,0,[0,s[i]/N]))
+                        #hamParams = (qx,px,0.5,0.5,0,0,0,0,0,0,0,0,[s[i]/float(N),0]))
+                        hamParams = (0.5,0.5,qx,px,0.5,0.5,0,0,0.5,0.5,0,0,[0,s[i]/float(N)]))
+                        #hamParams = (0.5,0.5,qx,px,1.,1.,0,0,0,0,0,0,[0,s[i]/float(N)]))
     print('Performing Calculation for s = {}'.format(s[i]))
     CGF_dmrg[i] = x.kernel()
     print('Final Density Profile = \n{}'.format(x.calc_occ))

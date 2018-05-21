@@ -8,7 +8,7 @@ class MPS_OPT:
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-5, maxIter=5,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
                  plotExpVals=False, plotConv=False,\
-                 usePyscf=True,initialGuess=.1,ed_limit=12,max_eig_iter=50,\
+                 usePyscf=True,initialGuess=.001,ed_limit=12,max_eig_iter=50,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
                  saveResults=True,dataFolder='data/',verbose=3):
         # Import parameters
@@ -117,6 +117,7 @@ class MPS_OPT:
         for i in range(1,len(self.M))[::-1]:
             self.normalize(i,'left')
             self.calc_observables(i)
+        self.M[0] = np.swapaxes(self.M[-1],1,2)
 
     def generate_f(self):
         if self.verbose > 4:
@@ -505,7 +506,6 @@ class MPS_OPT:
                 self.inside_iter_cnt[self.maxBondDimInd] += 1
                 if i is int(self.N/2):
                     self.E_conv = self.E_curr
-                    print(self.E_conv)
             # Check Convergence --------------------
             self.tf = time.time()
             self.outside_iter_time[self.maxBondDimInd] += self.tf-self.t0
@@ -514,8 +514,6 @@ class MPS_OPT:
             if np.abs(self.E_conv-E_prev) < self.tol[self.maxBondDimInd]:
                 if self.maxBondDimInd is (len(self.maxBondDim)-1):
                     self.finalEnergy = self.E_conv
-                    print(self.E_conv)
-                    print(self.bondDimEnergies[self.maxBondDimInd])
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
                     self.time_total = time.time() - self.time_total
                     converged = True
