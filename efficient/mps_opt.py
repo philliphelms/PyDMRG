@@ -117,6 +117,7 @@ class MPS_OPT:
         for i in range(1,len(self.M))[::-1]:
             self.normalize(i,'left')
             self.calc_observables(i)
+        self.M[0] = np.swapaxes(self.M[-1],1,2)
 
     def generate_f(self):
         if self.verbose > 4:
@@ -184,8 +185,12 @@ class MPS_OPT:
                     self.F[i][j] = self.einsum('bxc,acyb->xya',np.conj(self.M[j]),tmp_sum1)
                 else:
                     tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[i][j+1],self.M[j])
+                    print(tmp_sum1)
                     tmp_sum2 = self.einsum('ydbe,acde->abcy',self.mpo.ops[i][j],tmp_sum1)
+                    print(self.mpo.ops[i][j])
+                    print(tmp_sum2)
                     self.F[i][j] = self.einsum('bxc,abcy->xya',np.conj(self.M[j]),tmp_sum2)
+                print(self.F[i][j])
 
     def update_f(self,j,direction):
         if self.verbose > 4:
@@ -246,6 +251,7 @@ class MPS_OPT:
                     in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
                     fin_sum += sgn*self.einsum('pnm,inom->opi',self.F[i][j],in_sum1)
                 else:
+                    print(self.F[i][j+1])
                     in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
                     in_sum2 = self.einsum('njol,ijlm->noim',self.mpo.ops[i][j],in_sum1)
                     fin_sum += sgn*self.einsum('pnm,noim->opi',self.F[i][j],in_sum2)
@@ -257,6 +263,8 @@ class MPS_OPT:
                        max_cycle=self.max_eig_iter,
                        pick = pick_eigs,
                        nroots=min(self.target_state+1,n1*n2*n3-1))
+        #print(E)
+        #print(v)
         sort_inds = np.argsort(np.real(E))#[::-1]
         try:
             E = E[sort_inds[min(self.target_state,len(sort_inds)-1)]]
