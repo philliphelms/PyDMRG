@@ -9,8 +9,8 @@ class MPS_OPT:
 
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-5, maxIter=5,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
-                 plotExpVals=False, plotConv=False,leftMPS=True,\
-                 usePyscf=True,initialGuess=.001,ed_limit=12,max_eig_iter=50,\
+                 plotExpVals=False, plotConv=False,leftMPS=False,\
+                 usePyscf=True,initialGuess='rand',ed_limit=12,max_eig_iter=50,\
                  periodic_x=False,periodic_y=False,add_noise=True,\
                  saveResults=True,dataFolder='data/',verbose=3):
         # Import parameters
@@ -74,6 +74,7 @@ class MPS_OPT:
         self.bondDimEnergies = np.zeros(len(self.maxBondDim))
         self.entanglement_spectrum = [0]*self.N
         self.entanglement_entropy = [0]*self.N
+        self.final_convergence = None
         #print(self.plotExpVals)
         #print(self.plotConv)
         #print(self.plotExpVals or self.plotConv)
@@ -681,6 +682,8 @@ class MPS_OPT:
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
                     self.time_total = time.time() - self.time_total
                     converged = True
+                    self.final_convergence = True
+                    print(self.final_convergence)
                     if self.verbose > 0:
                         print('\n'+'#'*75)
                         print('Converged at E = {}'.format(self.finalEnergy))
@@ -718,6 +721,8 @@ class MPS_OPT:
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
                     self.finalEnergy = self.E_conv
                     converged = True
+                    self.final_convergence = False
+                    print(self.final_convergence)
                     self.time_total = time.time() - self.time_total
                     if self.verbose > 0:
                         print('\n'+'!'*75)
@@ -758,6 +763,7 @@ class MPS_OPT:
                 self.currIterCnt += 1
                 self.totIterCnt += 1
         self.saveFinalResults('dmrg')
+        print('final energy')
         return self.finalEnergy
 
 
