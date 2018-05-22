@@ -248,7 +248,6 @@ class MPO:
             self.Nx = self.N[0]
             self.Ny = self.N[1]
             self.N_mpo = self.Nx*self.Ny
-            print(param)
             if not isinstance(param[0],(collections.Sequence,np.ndarray)):
                 self.jl = param[0]*np.ones((self.Ny,self.Nx))
                 self.jr = param[1]*np.ones((self.Ny,self.Nx))

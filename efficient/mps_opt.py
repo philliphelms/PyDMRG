@@ -1,14 +1,16 @@
 import numpy as np
 import time
 import mpo
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import axes3d
 #from scipy.sparse.linalg import eigs, LinearOperator
 
 class MPS_OPT:
 
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-5, maxIter=5,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
-                 plotExpVals=False, plotConv=False,\
-                 usePyscf=True,initialGuess=.1,ed_limit=12,max_eig_iter=50,\
+                 plotExpVals=False, plotConv=False,leftMPS=True,\
+                 usePyscf=True,initialGuess=.001,ed_limit=12,max_eig_iter=50,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
                  saveResults=True,dataFolder='data/',verbose=3):
         # Import parameters
@@ -52,6 +54,7 @@ class MPS_OPT:
         self.periodic_x = periodic_x
         self.periodic_y = periodic_y
         self.add_noise = add_noise
+        self.leftMPS = leftMPS
 
     def initialize_containers(self):
         if type(self.N) is not int:
@@ -69,15 +72,19 @@ class MPS_OPT:
         self.calc_empty = [0]*self.N
         self.calc_occ = [0]*self.N
         self.bondDimEnergies = np.zeros(len(self.maxBondDim))
-        if self.plotExpVals or self.plotConv:
-            import matplotlib.pyplot as plt
-            from mpl_toolkits.mplot3d import axes3d
+        self.entanglement_spectrum = [0]*self.N
+        self.entanglement_entropy = [0]*self.N
+        #print(self.plotExpVals)
+        #print(self.plotConv)
+        #print(self.plotExpVals or self.plotConv)
+        #if (self.plotExpVals or self.plotConv):
+        #    import matplotlib.pyplot as plt
+        #    from mpl_toolkits.mplot3d import axes3d
 
     def generate_mps(self):
         if self.verbose > 4:
             print('\t'*2+'Generating MPS')
         self.M = []
-        base = np.array([[-1/np.sqrt(2),-1/np.sqrt(2)],[-1/np.sqrt(2),1/np.sqrt(2)]])
         for i in range(int(self.N/2)):
             if self.initialGuess is "zeros":
                 self.M.insert(len(self.M),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
@@ -105,6 +112,35 @@ class MPS_OPT:
                 self.M.insert(len(self.M),np.random.rand(self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr)))
             else:
                 self.M.insert(len(self.M),self.initialGuess*np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
+        if self.leftMPS:
+            self.Ml = []
+            for i in range(int(self.N/2)):
+                if self.initialGuess is "zeros":
+                    self.Ml.insert(len(self.Ml),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+                elif self.initialGuess is "ones":
+                    self.Ml.insert(len(self.Ml),np.ones((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+                elif self.initialGuess is "rand":
+                    self.Ml.insert(len(self.Ml),np.random.rand(self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))) 
+                else:
+                    self.Ml.insert(len(self.Ml),self.initialGuess*np.ones((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+            if self.N%2 is 1: # Check if system size is odd
+                if self.initialGuess is "zeros":
+                    self.Ml.insert(len(self.Ml),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+                elif self.initialGuess is "ones":
+                    self.Ml.insert(len(self.Ml),np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+                elif self.initialGuess is "rand":
+                    self.Ml.insert(len(self.Ml),np.random.rand(self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)))
+                else:
+                    self.Ml.insert(len(self.Ml),self.initialGuess*np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+            for i in range(int(self.N/2))[::-1]:
+                if self.initialGuess is "zeros":
+                    self.Ml.insert(len(self.Ml),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
+                elif self.initialGuess is "ones":
+                    self.Ml.insert(len(self.Ml),np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
+                elif self.initialGuess is "rand":
+                    self.Ml.insert(len(self.Ml),np.random.rand(self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr)))
+                else:
+                    self.Ml.insert(len(self.Ml),self.initialGuess*np.ones((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
 
     def generate_mpo(self):
         if self.verbose > 4:
@@ -118,6 +154,8 @@ class MPS_OPT:
             self.normalize(i,'left')
             self.calc_observables(i)
         self.M[0] = np.swapaxes(self.M[-1],1,2)
+        if self.leftMPS:
+            self.Ml[0] = np.swapaxes(self.Ml[-1],1,2)
 
     def generate_f(self):
         if self.verbose > 4:
@@ -134,6 +172,21 @@ class MPS_OPT:
                 F_tmp.insert(len(F_tmp),np.zeros((min(self.d**(j),self.maxBondDimCurr),2,min(self.d**j,self.maxBondDimCurr))))
             F_tmp.insert(len(F_tmp),np.array([[[1]]]))
             self.F.insert(len(self.F),F_tmp)
+        if self.leftMPS:
+            if self.verbose > 4:
+                print('\t'*2+'Generating initial left MPS F arrays')
+            self.Fl = []
+            for i in range(self.mpo.nops):
+                F_tmp = []
+                F_tmp.insert(len(F_tmp),np.array([[[1]]]))
+                for j in range(int(self.N/2)):
+                    F_tmp.insert(len(F_tmp),np.zeros((min(self.d**(j+1),self.maxBondDimCurr),2,min(self.d**(j+1),self.maxBondDimCurr))))
+                if self.N%2 is 1:
+                    F_tmp.insert(len(F_tmp),np.zeros((min(self.d**(j+2),self.maxBondDimCurr),2,min(self.d**(j+2),self.maxBondDimCurr))))
+                for j in range(int(self.N/2)-1,0,-1):
+                    F_tmp.insert(len(F_tmp),np.zeros((min(self.d**(j),self.maxBondDimCurr),2,min(self.d**j,self.maxBondDimCurr))))
+                F_tmp.insert(len(F_tmp),np.array([[[1]]]))
+                self.Fl.insert(len(self.Fl),F_tmp)
 
     def normalize(self,i,direction):
         if self.verbose > 4:
@@ -144,6 +197,15 @@ class MPS_OPT:
             (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
             self.M[i] = np.reshape(U,(n1,n2,n3))
             self.M[i+1] = self.einsum('i,ij,kjl->kil',s,V,self.M[i+1])
+            # Calculate Entanglement Entropy
+            self.entanglement_entropy[i] = -np.sum(s**2*np.log(s**2))
+            self.entanglement_spectrum[i] = -s**2*np.log(s**2)
+            if self.verbose > 3:
+                print('\t\tEntanglement Entropy = {}'.format(self.entanglement_entropy[i]))
+                if self.verbose > 5:
+                    print('\t\t\tEntanglement Spectrum:\n')
+                    for j in range(len(self.entanglement_spectrum[i])):
+                        print('\t\t\t\t{}'.format(self.entanglement_spectrum[i]))
         elif direction is 'left':
             M_reshape = np.swapaxes(self.M[i],0,1)
             (n1,n2,n3) = M_reshape.shape
@@ -152,8 +214,34 @@ class MPS_OPT:
             M_reshape = np.reshape(V,(n1,n2,n3))
             self.M[i] = np.swapaxes(M_reshape,0,1)
             self.M[i-1] = self.einsum('klj,ji,i->kli',self.M[i-1],U,s)
+            # Calculate Entanglement Entropy
+            self.entanglement_entropy[i-1] = -np.sum(s**2*np.log(s**2))
+            self.entanglement_spectrum[i-1] = -s**2*np.log(s**2)
+            if self.verbose > 3:
+                print('\t\tEntanglement Entropy = {}'.format(self.entanglement_entropy[i-1]))
+                if self.verbose > 5:
+                    print('\t\t\tEntanglement Spectrum:\n')
+                    for j in range(len(self.entanglement_spectrum[i-1])):
+                        print('\t\t\t\t{}'.format(self.entanglement_spectrum[i-1]))
         else:
             raise NameError('Direction must be left or right')
+        if self.leftMPS:
+            if self.verbose > 4:
+                print('\t'*2+'Normalization of left MPS at site {} in direction: {}'.format(i,direction))
+            if direction is 'right':
+                (n1,n2,n3) = self.Ml[i].shape
+                M_reshape = np.reshape(self.Ml[i],(n1*n2,n3))
+                (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
+                self.Ml[i] = np.reshape(U,(n1,n2,n3))
+                self.Ml[i+1] = self.einsum('i,ij,kjl->kil',s,V,self.Ml[i+1])
+            elif direction is 'left':
+                M_reshape = np.swapaxes(self.Ml[i],0,1)
+                (n1,n2,n3) = M_reshape.shape
+                M_reshape = np.reshape(M_reshape,(n1,n2*n3))
+                (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
+                M_reshape = np.reshape(V,(n1,n2,n3))
+                self.Ml[i] = np.swapaxes(M_reshape,0,1)
+                self.Ml[i-1] = self.einsum('klj,ji,i->kli',self.Ml[i-1],U,s)
 
     def increaseBondDim(self):
         if self.verbose > 3:
@@ -169,6 +257,20 @@ class MPS_OPT:
             nx,ny,nz = self.M[i].shape
             Mnew[i][:nx,:ny,:nz] = self.M[i]
             self.M[i] = Mnew[i]
+        if self.leftMPS:
+            if self.verbose > 3:
+                print('\t'*2+'Increasing left MPS Bond Dimensions from {} to {}'.format(self.maxBondDim[self.maxBondDimInd-1],self.maxBondDimCurr))
+            Mnew = []
+            for i in range(int(self.N/2)):
+                Mnew.insert(len(Mnew),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+            if self.N%2 is 1:
+                Mnew.insert(len(Mnew),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+            for i in range(int(self.N/2))[::-1]:
+                Mnew.insert(len(Mnew),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
+            for i in range(len(Mnew)):
+                nx,ny,nz = self.Ml[i].shape
+                Mnew[i][:nx,:ny,:nz] = self.Ml[i]
+                self.Ml[i] = Mnew[i]
 
     def calc_initial_f(self):
         if self.verbose > 3:
@@ -185,12 +287,24 @@ class MPS_OPT:
                     self.F[i][j] = self.einsum('bxc,acyb->xya',np.conj(self.M[j]),tmp_sum1)
                 else:
                     tmp_sum1 = self.einsum('cdf,eaf->acde',self.F[i][j+1],self.M[j])
-                    print(tmp_sum1)
                     tmp_sum2 = self.einsum('ydbe,acde->abcy',self.mpo.ops[i][j],tmp_sum1)
-                    print(self.mpo.ops[i][j])
-                    print(tmp_sum2)
                     self.F[i][j] = self.einsum('bxc,abcy->xya',np.conj(self.M[j]),tmp_sum2)
-                print(self.F[i][j])
+        if self.leftMPS:
+            if self.verbose > 3:
+                print('\t'*2+'Calculating all entries for left MPS in F')
+            for i in range(self.mpo.nops):
+                if self.verbose > 4:
+                    print('\t'*3+'For Operator {}/{}'.format(i,self.mpo.nops))
+                for j in range(int(self.N)-1,0,-1):
+                    if self.verbose > 5:
+                        print('\t'*3+'at site {}'.format(j))
+                    if self.mpo.ops[i][j] is None:
+                        tmp_sum1 = self.einsum('cdf,eaf->acde',self.Fl[i][j+1],self.Ml[j])
+                        self.Fl[i][j] = self.einsum('bxc,acyb->xya',np.conj(self.Ml[j]),tmp_sum1)
+                    else:
+                        tmp_sum1 = self.einsum('cdf,eaf->acde',self.Fl[i][j+1],self.Ml[j])
+                        tmp_sum2 = self.einsum('ydbe,acde->abcy',self.mpo.ops[i][j],tmp_sum1)
+                        self.Fl[i][j] = self.einsum('bxc,abcy->xya',np.conj(self.Ml[j]),tmp_sum2)
 
     def update_f(self,j,direction):
         if self.verbose > 4:
@@ -215,6 +329,27 @@ class MPS_OPT:
                     self.F[i][j] = self.einsum('bxc,abcy->xya',np.conj(self.M[j]),tmp_sum2)
         else:
             raise NameError('Direction must be left or right')
+        if self.leftMPS:
+            if self.verbose > 4:
+                print('\t'*2+'Updating left MPS F at site {}'.format(j))
+            if direction is 'right':
+                for i in range(self.mpo.nops):
+                    if self.mpo.ops[i][j] is None:
+                        tmp_sum1 = self.einsum('jlp,ijk->iklp',self.Fl[i][j],np.conj(self.Ml[j]))
+                        self.Fl[i][j+1] = self.einsum('npq,nkmp->kmq',self.Ml[j],tmp_sum1)
+                    else:
+                        tmp_sum1 = self.einsum('jlp,ijk->iklp',self.Fl[i][j],np.conj(self.Ml[j]))
+                        tmp_sum2 = self.einsum('lmin,iklp->kmnp',self.mpo.ops[i][j],tmp_sum1)
+                        self.Fl[i][j+1] = self.einsum('npq,kmnp->kmq',self.Ml[j],tmp_sum2)
+            elif direction is 'left':
+                for i in range(self.mpo.nops):
+                    if self.mpo.ops[i][j] is None:
+                        tmp_sum1 = self.einsum('cdf,eaf->acde',self.Fl[i][j+1],self.Ml[j])
+                        self.Fl[i][j] = self.einsum('bxc,acyb->xya',np.conj(self.Ml[j]),tmp_sum1)
+                    else:
+                        tmp_sum1 = self.einsum('cdf,eaf->acde',self.Fl[i][j+1],self.Ml[j])
+                        tmp_sum2 = self.einsum('ydbe,acde->abcy',self.mpo.ops[i][j],tmp_sum1)
+                        self.Fl[i][j] = self.einsum('bxc,abcy->xya',np.conj(self.Ml[j]),tmp_sum2)
 
     def local_optimization(self,i):
         if self.verbose > 4:
@@ -251,7 +386,6 @@ class MPS_OPT:
                     in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
                     fin_sum += sgn*self.einsum('pnm,inom->opi',self.F[i][j],in_sum1)
                 else:
-                    print(self.F[i][j+1])
                     in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
                     in_sum2 = self.einsum('njol,ijlm->noim',self.mpo.ops[i][j],in_sum1)
                     fin_sum += sgn*self.einsum('pnm,noim->opi',self.F[i][j],in_sum2)
@@ -259,19 +393,30 @@ class MPS_OPT:
         def precond(dx,e,x0):
             return dx
         init_guess = np.reshape(self.M[j],-1)
-        E,v = self.eig(opt_fun,init_guess,precond,
-                       max_cycle=self.max_eig_iter,
-                       pick = pick_eigs,
-                       nroots=min(self.target_state+1,n1*n2*n3-1))
-        #print(E)
-        #print(v)
+        if self.leftMPS:
+            E,vl,vr = self.eig(opt_fun,init_guess,precond,
+                               max_cycle = self.max_eig_iter,
+                               pick = pick_eigs,
+                               left = self.leftMPS,
+                               nroots=min(self.target_state+1,n1*n2*n3-1))
+        else:
+            E,vr = self.eig(opt_fun,init_guess,precond,
+                           max_cycle=self.max_eig_iter,
+                           pick = pick_eigs,
+                           nroots=min(self.target_state+1,n1*n2*n3-1))
         sort_inds = np.argsort(np.real(E))#[::-1]
         try:
             E = E[sort_inds[min(self.target_state,len(sort_inds)-1)]]
-            v = v[sort_inds[min(self.target_state,len(sort_inds)-1)]]
+            if self.leftMPS:
+                vl = vl[sort_inds[min(self.target_state,len(sort_inds)-1)]]
+            vr = vr[sort_inds[min(self.target_state,len(sort_inds)-1)]]
         except:
             E = E
-        self.M[j] = np.reshape(v,(n1,n2,n3))
+        if self.leftMPS:
+            self.Ml[j] = np.reshape(vl,(n1,n2,n3))
+            print(vl)
+            print(vr)
+        self.M[j] = np.reshape(vr,(n1,n2,n3))
         self.add_noise_func(j)
         if self.verbose > 3:
             print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(j,sgn*E))
@@ -317,13 +462,21 @@ class MPS_OPT:
         if self.verbose > 5:
             print('\t'*2+'Calculating Observables')
         if (self.hamType is "heis") or (self.hamType is "heis_2d") or (self.hamType is 'ising'):
-            self.calc_spin_x[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sx,self.M[site])
-            self.calc_spin_y[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sy,self.M[site])
-            self.calc_spin_z[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sz,self.M[site])
+            if self.leftMPS:
+                self.calc_spin_x[site] = self.einsum('ijk,il,ljk->',self.Ml[site],self.mpo.Sx,self.M[site])
+                self.calc_spin_y[site] = self.einsum('ijk,il,ljk->',self.Ml[site],self.mpo.Sy,self.M[site])
+                self.calc_spin_z[site] = self.einsum('ijk,il,ljk->',self.Ml[site],self.mpo.Sz,self.M[site])
+            else:
+                self.calc_spin_x[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sx,self.M[site])
+                self.calc_spin_y[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sy,self.M[site])
+                self.calc_spin_z[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.Sz,self.M[site])
         elif (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
-            self.calc_empty[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.v,self.M[site])
-            self.calc_occ[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.n,self.M[site])
-            #self.calc_occ[site] = 1-self.calc_empty[site]
+            if self.leftMPS:
+                self.calc_empty[site] = self.einsum('ijk,il,ljk->',self.Ml[site],self.mpo.v,self.M[site])
+                self.calc_occ[site] = self.einsum('ijk,il,ljk->',self.Ml[site],self.mpo.n,self.M[site])
+            else:
+                self.calc_empty[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.v,self.M[site])
+                self.calc_occ[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.n,self.M[site])
         if self.verbose > 4:
             print('\t'*2+'Total Number of particles: {}'.format(np.sum(self.calc_occ)))
 
@@ -331,9 +484,15 @@ class MPS_OPT:
         E = 0
         for i in range(self.mpo.nops):
             if self.mpo.ops[i][j] is None:
-                E += self.einsum('ijk,olp,mio,nkp->',self.F[i][j],self.F[i][j+1],np.conjugate(self.M[j]),self.M[j])
+                if self.leftMPS:
+                    E += self.einsum('ijk,olp,mio,nkp->',self.Fl[i][j],self.F[i][j+1],np.conj(self.Ml[j]),self.M[j])
+                else:
+                    E += self.einsum('ijk,olp,mio,nkp->',self.F[i][j],self.F[i][j+1],np.conj(self.M[j]),self.M[j])
             else:
-                E += self.einsum('ijk,jlmn,olp,mio,nkp->',self.F[i][j],self.mpo.ops[i][j],self.F[i][j+1],np.conjugate(self.M[j]),self.M[j])
+                if self.leftMPS:
+                    E += self.einsum('ijk,jlmn,olp,mio,nkp->',self.Fl[i][j],self.mpo.ops[i][j],self.F[i][j+1],np.conj(self.Ml[j]),self.M[j])
+                else:
+                    E += self.einsum('ijk,jlmn,olp,mio,nkp->',self.F[i][j],self.mpo.ops[i][j],self.F[i][j+1],np.conj(self.M[j]),self.M[j])
         return E
 
     def plot_observables(self):
@@ -513,7 +672,6 @@ class MPS_OPT:
                 self.inside_iter_cnt[self.maxBondDimInd] += 1
                 if i is int(self.N/2):
                     self.E_conv = self.E_curr
-                    print(self.E_conv)
             # Check Convergence --------------------
             self.tf = time.time()
             self.outside_iter_time[self.maxBondDimInd] += self.tf-self.t0
@@ -522,8 +680,6 @@ class MPS_OPT:
             if np.abs(self.E_conv-E_prev) < self.tol[self.maxBondDimInd]:
                 if self.maxBondDimInd is (len(self.maxBondDim)-1):
                     self.finalEnergy = self.E_conv
-                    print(self.E_conv)
-                    print(self.bondDimEnergies[self.maxBondDimInd])
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
                     self.time_total = time.time() - self.time_total
                     converged = True
@@ -535,6 +691,7 @@ class MPS_OPT:
                             print('  Avg time per iter for final M = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
                                                                                   self.inside_iter_cnt [self.maxBondDimInd]))
                             print('  Total Time = {} s'.format(self.time_total))
+                            print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
                         print('#'*75+'\n')
                 else:
                     if self.verbose > 1:
@@ -546,6 +703,7 @@ class MPS_OPT:
                                                                             self.inside_iter_cnt [self.maxBondDimInd]))
                             print('  Total time for M({}) = {} s'.format(self.maxBondDimCurr,self.outside_iter_time[self.maxBondDimInd]))
                             print('  Required number of iters = {}'.format(self.outside_iter_cnt[self.maxBondDimInd]))
+                            print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
                         print('-'*45+'\n')
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
                     self.maxBondDimInd += 1
@@ -569,6 +727,7 @@ class MPS_OPT:
                             print('  Avg time per iter for final M = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
                                                                                   self.inside_iter_cnt [self.maxBondDimInd]))
                             print('  Total Time = {} s'.format(self.time_total))
+                            print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
                         print('!'*75+'\n')
                 else:
                     if self.verbose > 1:
@@ -580,6 +739,7 @@ class MPS_OPT:
                                                                             self.inside_iter_cnt [self.maxBondDimInd]))
                             print('  Total time for M({}) = {} s'.format(self.maxBondDimCurr,self.outside_iter_time[self.maxBondDimInd]))
                             print('  Required number of iters = {}'.format(self.outside_iter_cnt[self.maxBondDimInd]))
+                            print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
                         print('-'*45+'\n')
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
                     self.maxBondDimInd += 1

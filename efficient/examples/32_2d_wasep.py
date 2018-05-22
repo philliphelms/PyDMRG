@@ -23,19 +23,18 @@ plt.style.use('fivethirtyeight') #'fivethirtyeight') #'ggplot'
 #-----------------------------------------------------------------------------
 # 2D WASEP
 #-----------------------------------------------------------------------------
-N=2
+N=4
 n_points = 10
 E = 10
 px = 1/2*np.exp(-E/N)
 qx = 1/2*np.exp(E/N)
-s = np.linspace(-10,1,30)
+s = np.linspace(-1,0,10)
 CGF_dmrg = np.zeros(s.shape,dtype=np.complex128)
 for i in range(len(s)):
     if s[i] > -20 and s[i] < 0:
         target_state = 0#2
     else:
         target_state = 0
-    print(target_state)
     x = mps_opt.MPS_OPT(N = [N,N],
                         hamType = "sep_2d",
                         #periodic_x = True,
