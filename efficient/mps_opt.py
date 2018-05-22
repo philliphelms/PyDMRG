@@ -11,7 +11,7 @@ class MPS_OPT:
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
                  plotExpVals=False, plotConv=False,leftMPS=True,\
                  usePyscf=True,initialGuess=.001,ed_limit=12,max_eig_iter=50,\
-                 periodic_x=False,periodic_y=False,add_noise=False,\
+                 periodic_x=False,periodic_y=False,add_noise=True,\
                  saveResults=True,dataFolder='data/',verbose=3):
         # Import parameters
         self.N = N
@@ -414,8 +414,6 @@ class MPS_OPT:
             E = E
         if self.leftMPS:
             self.Ml[j] = np.reshape(vl,(n1,n2,n3))
-            print(vl)
-            print(vr)
         self.M[j] = np.reshape(vr,(n1,n2,n3))
         self.add_noise_func(j)
         if self.verbose > 3:
@@ -691,6 +689,7 @@ class MPS_OPT:
                             print('  Avg time per iter for final M = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
                                                                                   self.inside_iter_cnt [self.maxBondDimInd]))
                             print('  Total Time = {} s'.format(self.time_total))
+                            print('  Total Number of particles: {}'.format(np.sum(self.calc_occ)))
                             print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
                         print('#'*75+'\n')
                 else:
@@ -703,6 +702,7 @@ class MPS_OPT:
                                                                             self.inside_iter_cnt [self.maxBondDimInd]))
                             print('  Total time for M({}) = {} s'.format(self.maxBondDimCurr,self.outside_iter_time[self.maxBondDimInd]))
                             print('  Required number of iters = {}'.format(self.outside_iter_cnt[self.maxBondDimInd]))
+                            print('  Total Number of particles: {}'.format(np.sum(self.calc_occ)))
                             print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
                         print('-'*45+'\n')
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
@@ -727,6 +727,7 @@ class MPS_OPT:
                             print('  Avg time per iter for final M = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
                                                                                   self.inside_iter_cnt [self.maxBondDimInd]))
                             print('  Total Time = {} s'.format(self.time_total))
+                            print('  Total Number of particles: {}'.format(np.sum(self.calc_occ)))
                             print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
                         print('!'*75+'\n')
                 else:
@@ -739,6 +740,7 @@ class MPS_OPT:
                                                                             self.inside_iter_cnt [self.maxBondDimInd]))
                             print('  Total time for M({}) = {} s'.format(self.maxBondDimCurr,self.outside_iter_time[self.maxBondDimInd]))
                             print('  Required number of iters = {}'.format(self.outside_iter_cnt[self.maxBondDimInd]))
+                            print('  Total Number of particles: {}'.format(np.sum(self.calc_occ)))
                             print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
                         print('-'*45+'\n')
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
