@@ -7,10 +7,10 @@ from mpl_toolkits.mplot3d import axes3d
 
 class MPS_OPT:
 
-    def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-5, maxIter=5,\
+    def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-5, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
                  plotExpVals=False, plotConv=False,leftMPS=False,\
-                 usePyscf=True,initialGuess='rand',ed_limit=12,max_eig_iter=50,\
+                 usePyscf=True,initialGuess=0.1,ed_limit=12,max_eig_iter=50,\
                  periodic_x=False,periodic_y=False,add_noise=True,\
                  saveResults=True,dataFolder='data/',verbose=3):
         # Import parameters
@@ -676,7 +676,7 @@ class MPS_OPT:
             self.outside_iter_time[self.maxBondDimInd] += self.tf-self.t0
             self.outside_iter_cnt[self.maxBondDimInd] += 1
             self.t0 = time.time()
-            if np.abs(self.E_conv-E_prev) < self.tol[self.maxBondDimInd]:
+            if np.abs((self.E_conv-E_prev)/E_prev) < self.tol[self.maxBondDimInd]:
                 if self.maxBondDimInd is (len(self.maxBondDim)-1):
                     self.finalEnergy = self.E_conv
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
