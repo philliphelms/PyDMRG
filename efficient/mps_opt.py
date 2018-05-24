@@ -9,8 +9,8 @@ class MPS_OPT:
 
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-5, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
-                 plotExpVals=False, plotConv=False,leftMPS=False,\
-                 usePyscf=True,initialGuess=0.1,ed_limit=12,max_eig_iter=50,\
+                 plotExpVals=False, plotConv=False,leftMPS=True,calc_psi=True,\
+                 usePyscf=True,initialGuess='rand',ed_limit=12,max_eig_iter=50,\
                  periodic_x=False,periodic_y=False,add_noise=True,\
                  saveResults=True,dataFolder='data/',verbose=3):
         # Import parameters
@@ -55,6 +55,7 @@ class MPS_OPT:
         self.periodic_y = periodic_y
         self.add_noise = add_noise
         self.leftMPS = leftMPS
+        self.calc_psi = calc_psi
 
     def initialize_containers(self):
         if type(self.N) is not int:
@@ -71,16 +72,10 @@ class MPS_OPT:
         self.calc_spin_z = [0]*self.N
         self.calc_empty = [0]*self.N
         self.calc_occ = [0]*self.N
-        self.bondDimEnergies = np.zeros(len(self.maxBondDim))
+        self.bondDimEnergies = np.zeros(len(self.maxBondDim),dtype=np.complex128)
         self.entanglement_spectrum = [0]*self.N
         self.entanglement_entropy = [0]*self.N
         self.final_convergence = None
-        #print(self.plotExpVals)
-        #print(self.plotConv)
-        #print(self.plotExpVals or self.plotConv)
-        #if (self.plotExpVals or self.plotConv):
-        #    import matplotlib.pyplot as plt
-        #    from mpl_toolkits.mplot3d import axes3d
 
     def generate_mps(self):
         if self.verbose > 4:
@@ -199,8 +194,10 @@ class MPS_OPT:
             self.M[i] = np.reshape(U,(n1,n2,n3))
             self.M[i+1] = self.einsum('i,ij,kjl->kil',s,V,self.M[i+1])
             # Calculate Entanglement Entropy
-            self.entanglement_entropy[i] = -np.sum(s**2*np.log(s**2))
             self.entanglement_spectrum[i] = -s**2*np.log(s**2)
+            if np.isnan(np.sum(self.entanglement_spectrum[i])):
+                self.entanglement_spectrum[i][np.isnan(self.entanglement_spectrum[i])] = 0
+            self.entanglement_entropy[i] = np.sum(self.entanglement_spectrum[i])
             if self.verbose > 3:
                 print('\t\tEntanglement Entropy = {}'.format(self.entanglement_entropy[i]))
                 if self.verbose > 5:
@@ -216,8 +213,10 @@ class MPS_OPT:
             self.M[i] = np.swapaxes(M_reshape,0,1)
             self.M[i-1] = self.einsum('klj,ji,i->kli',self.M[i-1],U,s)
             # Calculate Entanglement Entropy
-            self.entanglement_entropy[i-1] = -np.sum(s**2*np.log(s**2))
-            self.entanglement_spectrum[i-1] = -s**2*np.log(s**2)
+            self.entanglement_spectrum[i] = -s**2*np.log(s**2)
+            if np.isnan(np.sum(self.entanglement_spectrum[i])):
+                self.entanglement_spectrum[i][np.isnan(self.entanglement_spectrum[i])] = 0
+            self.entanglement_entropy[i] = np.sum(self.entanglement_spectrum[i])
             if self.verbose > 3:
                 print('\t\tEntanglement Entropy = {}'.format(self.entanglement_entropy[i-1]))
                 if self.verbose > 5:
@@ -622,6 +621,36 @@ class MPS_OPT:
                 np.savez(self.dataFolder+'ed/'+filename,
                          E_ed = self.E_ed)
 
+    def return_psi(self):
+        if self.calc_psi:
+            rpsi = np.zeros(2**self.N,dtype=np.complex128)
+            if self.leftMPS:
+                lpsi = np.zeros(2**self.N,dtype=np.complex128)
+            occ = np.zeros((2**self.N_mpo,self.N_mpo),dtype=int)
+            sum_occ = np.zeros(2**self.N_mpo)
+            for i in range(2**self.N):
+                occ[i,:] = np.asarray(list(map(lambda x: int(x),'0'*(self.N_mpo-len(bin(i)[2:]))+bin(i)[2:])))
+                sum_occ[i] = np.sum(occ[i,:])
+            inds = np.argsort(sum_occ)
+            sum_occ = sum_occ[inds]
+            occ = occ[inds,:]
+            for i in range(2**self.N):
+                for j in range(self.N):
+                    if j is 0:
+                        tmp_mat = self.M[j][occ[i,j],:,:]
+                        if self.leftMPS:
+                            tmp_mat_l = self.Ml[j][occ[i,j],:,:]
+                    else:
+                        tmp_mat = np.einsum('ij,jk->ik',tmp_mat,self.M[j][occ[i,j],:,:])
+                        if self.leftMPS:
+                            tmp_mat_l = np.einsum('ij,jk->ik',tmp_mat_l,self.Ml[j][occ[i,j],:,:])
+                rpsi[i] = tmp_mat[[0]]
+                if self.leftMPS:
+                    lpsi[i] = tmp_mat[[0]]
+            self.rpsi = rpsi
+            if self.leftMPS:
+                self.lpsi = lpsi
+
     def kernel(self):
         if self.verbose > 1:
             print('Beginning DMRG Ground State Calculation')
@@ -683,7 +712,6 @@ class MPS_OPT:
                     self.time_total = time.time() - self.time_total
                     converged = True
                     self.final_convergence = True
-                    print(self.final_convergence)
                     if self.verbose > 0:
                         print('\n'+'#'*75)
                         print('Converged at E = {}'.format(self.finalEnergy))
@@ -694,6 +722,7 @@ class MPS_OPT:
                             print('  Total Time = {} s'.format(self.time_total))
                             print('  Total Number of particles: {}'.format(np.sum(self.calc_occ)))
                             print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
+                            print('    Entanglement Spectrum at center bond = {}'.format(self.entanglement_spectrum[int(self.N/2)]))
                         print('#'*75+'\n')
                 else:
                     if self.verbose > 1:
@@ -707,6 +736,7 @@ class MPS_OPT:
                             print('  Required number of iters = {}'.format(self.outside_iter_cnt[self.maxBondDimInd]))
                             print('  Total Number of particles: {}'.format(np.sum(self.calc_occ)))
                             print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
+                            print('    Entanglement Spectrum at center bond = {}'.format(self.entanglement_spectrum[int(self.N/2)]))
                         print('-'*45+'\n')
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
                     self.maxBondDimInd += 1
@@ -734,6 +764,7 @@ class MPS_OPT:
                             print('  Total Time = {} s'.format(self.time_total))
                             print('  Total Number of particles: {}'.format(np.sum(self.calc_occ)))
                             print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
+                            print('    Entanglement Spectrum at center bond = {}'.format(self.entanglement_spectrum[int(self.N/2)]))
                         print('!'*75+'\n')
                 else:
                     if self.verbose > 1:
@@ -747,6 +778,7 @@ class MPS_OPT:
                             print('  Required number of iters = {}'.format(self.outside_iter_cnt[self.maxBondDimInd]))
                             print('  Total Number of particles: {}'.format(np.sum(self.calc_occ)))
                             print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
+                            print('    Entanglement Spectrum at center bond = {}'.format(self.entanglement_spectrum[int(self.N/2)]))
                         print('-'*45+'\n')
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
                     self.maxBondDimInd += 1
@@ -763,9 +795,8 @@ class MPS_OPT:
                 self.currIterCnt += 1
                 self.totIterCnt += 1
         self.saveFinalResults('dmrg')
-        print('final energy')
+        self.return_psi()
         return self.finalEnergy
-
 
     # ADD THE ABILITY TO DO OTHER TYPES OF CALCULATIONS FROM THE MPS OBJECT
     def exact_diag(self,maxIter=10000,tol=1e-10):
@@ -779,10 +810,10 @@ class MPS_OPT:
         if self.hamType is 'tasep':
             x = exactDiag_meanField.exactDiag(L=self.N,
                                               clumpSize=self.N,
-                                              alpha=self.mpo.alpha,
+                                              alpha=self.mpo.a,
                                               gamma=0,
                                               beta=0,
-                                              delta=self.mpo.beta,
+                                              delta=self.mpo.b,
                                               s=self.mpo.s,
                                               p=1,
                                               q=0,
@@ -791,13 +822,13 @@ class MPS_OPT:
         elif self.hamType is 'sep':
             x = exactDiag_meanField.exactDiag(L=self.N,
                                               clumpSize=self.N,
-                                              alpha=self.mpo.alpha,
-                                              gamma=self.mpo.gamma,
-                                              beta=self.mpo.beta,
-                                              delta=self.mpo.delta,
+                                              alpha=self.mpo.a,
+                                              gamma=self.mpo.g,
+                                              beta=self.mpo.b,
+                                              delta=self.mpo.d,
                                               s=self.mpo.s,
-                                              p=self.mpo.p,
-                                              q=self.mpo.q,
+                                              p=self.mpo.p[1],
+                                              q=self.mpo.q[1],
                                               maxIter=maxIter,
                                               tol=tol)
         else:
