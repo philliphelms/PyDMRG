@@ -808,7 +808,7 @@ class MPS_OPT:
             self.generate_mpo()
         import exactDiag_meanField
         if self.hamType is 'tasep':
-            x = exactDiag_meanField.exactDiag(L=self.N,
+            self.ed = exactDiag_meanField.exactDiag(L=self.N,
                                               clumpSize=self.N,
                                               alpha=self.mpo.a,
                                               gamma=0,
@@ -820,7 +820,7 @@ class MPS_OPT:
                                               maxIter=maxIter,
                                               tol=tol)
         elif self.hamType is 'sep':
-            x = exactDiag_meanField.exactDiag(L=self.N,
+            self.ed = exactDiag_meanField.exactDiag(L=self.N,
                                               clumpSize=self.N,
                                               alpha=self.mpo.a,
                                               gamma=self.mpo.g,
@@ -833,7 +833,7 @@ class MPS_OPT:
                                               tol=tol)
         else:
             raise ValueError("Only 1D SEP and TASEP are supported for Exact Diagonalization")
-        self.E_ed = x.kernel()
+        self.E_ed = self.ed.kernel()
         self.saveFinalResults('ed')
         return(self.E_ed)
 
@@ -843,7 +843,7 @@ class MPS_OPT:
             self.generate_mpo()
         import exactDiag_meanField
         if self.hamType is 'tasep':
-            x = exactDiag_meanField.exactDiag(L=self.N,
+            self.mf = exactDiag_meanField.exactDiag(L=self.N,
                                               clumpSize=clumpSize,
                                               alpha=self.mpo.alpha,
                                               gamma=0,
@@ -855,7 +855,7 @@ class MPS_OPT:
                                               maxIter=maxIter,
                                               tol=tol)
         elif self.hamType is 'sep':
-            x = exactDiag_meanField.exactDiag(L=self.N,
+            self.mf = exactDiag_meanField.exactDiag(L=self.N,
                                               clumpSize=clumpSize,
                                               alpha=self.mpo.alpha,
                                               gamma=self.mpo.gamma,
@@ -868,7 +868,7 @@ class MPS_OPT:
                                               tol=tol)
         else:
             raise ValueError("Only 1D SEP and TASEP are supported for Mean Field")
-        self.E_mf = x.kernel()
+        self.E_mf = self.mf.kernel()
         self.saveFinalResults('mf')
         return(self.E_mf)
 

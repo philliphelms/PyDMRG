@@ -50,7 +50,7 @@ class exactDiag:
         isproj = np.zeros((int(L/clumpSize), 2**clumpSize),dtype=np.complex128)
 
         # Create Initial Guess
-        nv = 0.5*np.ones(L,dtype=np.complex128)
+        self.nv = 0.5*np.ones(L,dtype=np.complex128)
         cdv = 0.5*np.ones(L,dtype=np.complex128)
         cv = 0.5*np.ones(L,dtype=np.complex128)
 
@@ -115,16 +115,16 @@ class exactDiag:
                 if clump is 0:
                     leftSide = m1
                 else:
-                    leftSide = np.array([[-p*nv[leftClump-1],qw*cdv[leftClump-1]],
-                                         [pw*cv[leftClump-1],-q*(1-nv[leftClump-1])]])
+                    leftSide = np.array([[-p*self.nv[leftClump-1],qw*cdv[leftClump-1]],
+                                         [pw*cv[leftClump-1],-q*(1-self.nv[leftClump-1])]])
                     leftSide = np.kron(leftSide,np.eye(2**(clumpSize-1)));
                 # Couple Right Side
                 rightSide = np.zeros((2,2))
                 if clump is int(L/clumpSize-1):
                     rightSide = mL
                 else:
-                    rightSide = np.array([[-q*nv[rightClump+1],pw*cdv[rightClump+1]],
-                                          [qw*cv[rightClump+1],-p*(1-nv[rightClump+1])]])
+                    rightSide = np.array([[-q*self.nv[rightClump+1],pw*cdv[rightClump+1]],
+                                          [qw*cv[rightClump+1],-p*(1-self.nv[rightClump+1])]])
                     rightSide = np.kron(np.eye(2**(clumpSize-1)),rightSide)
                 # Create Main Matrix
                 M = mc+leftSide+rightSide
@@ -153,11 +153,11 @@ class exactDiag:
                 sproj[clump,:] = v[:,ind]
                 isproj[clump,:] = iv[ind,:]
             # Determine change in values
-            nvdiff = norm(nv_new-nv);
+            nvdiff = norm(nv_new-self.nv);
             cvdiff = norm(cv_new-cv);
             cdvdiff = norm(cdv_new-cdv);
             # Update Values
-            nv = nv_new
+            self.nv = nv_new
             cv = cv_new
             cdv = cdv_new
             # Check for convergence
@@ -190,8 +190,8 @@ class exactDiag:
                 lpsi = np.kron(isproj[clump,:],isproj[clump+1,:])
                 rpsi = np.kron(sproj[clump,:],sproj[clump+1,:]).transpose()
                 E += np.dot(lpsi,np.dot(mi_x,rpsi))
-        for k in range(len(nv)):
-            print(np.real(nv[k]))
+        for k in range(len(self.nv)):
+            print(np.real(self.nv[k]))
         return E
 
 

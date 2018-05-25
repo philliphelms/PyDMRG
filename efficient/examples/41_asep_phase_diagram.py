@@ -36,7 +36,8 @@ print('\n\n')
 CGF = np.zeros((len(p),len(s)),dtype=np.complex128)   # CGF
 nPart = np.zeros((len(p),len(s)),dtype=np.complex128) # Number of particles
 EE = np.zeros((len(p),len(s)),dtype=np.complex128)    # Entanglement Entropy
-ED = np.zeros((len(p),len(s)),dtype=np.complex128)    # Entanglement Entropy
+CGF_ed = np.zeros((len(p),len(s)),dtype=np.complex128)    # Entanglement Entropy
+nPart_ed = np.zeros((len(p),len(s)),dtype=np.complex128)    # Entanglement Entropy
 for i in range(len(p)):
     for j in range(len(s)):
         print('s = {}'.format(s[j]))
@@ -50,10 +51,13 @@ for i in range(len(p)):
                             #plotConv = True,
                             hamParams = (rho_l,1-rho_l,p[i],1-p[i],1-rho_r,rho_r,s[j]))
         x.kernel()
-        ED[i,j] = x.exact_diag()
+        CGF_ed[i,j] = x.exact_diag()
+        nPart_ed[i,j] = np.sum(x.ed.nv)
         CGF[i,j] = x.finalEnergy
         EE[i,j] = x.entanglement_entropy[int(x.N/2)]
         nPart[i,j] = np.sum(x.calc_occ)
+        print('Density Profile (ed)   = {}'.format(x.ed.nv))
+        print('Density Profile (dmrg) = {}'.format(x.calc_occ))
     print('CGF for p = {}'.format(p[i]))
     for j in range(len(s)):
         print(np.real(CGF[i,j]))
@@ -63,10 +67,14 @@ for i in range(len(p)):
     print('nPart for p = {}'.format(p[i]))
     for j in range(len(s)):
         print(np.real(nPart[i,j]))
-    print('ED for p = {}'.format(p[i]))
+    print('CGF (ed) for p = {}'.format(p[i]))
     for j in range(len(s)):
-        print(np.real(ED[i,j]))
+        print(np.real(CGF_ed[i,j]))
+    print('nPart (ed) for p = {}'.format(p[i]))
+    for j in range(len(s)):
+        print(np.real(nPart_ed[i,j]))
 
+"""    
 p,s = np.meshgrid(p,s)
 fig = plt.figure()
 ax = fig.gca(projection='3d')
@@ -80,3 +88,4 @@ fig = plt.figure()
 ax = fig.gca(projection='3d')
 surf = ax.plot_surface(p,s,nPart)
 plt.show()
+"""
