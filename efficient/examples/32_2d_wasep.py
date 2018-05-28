@@ -59,3 +59,120 @@ for i in range(len(s)):
     print('Performing Calculation for s = {}'.format(s[i]))
     CGF_dmrg[i] = x.kernel()
     print('Final Density Profile = \n{}'.format(x.calc_occ))
+N=10
+n_points = 10
+E = 10.
+px = 0.5*np.exp(-E/N)
+qx = 0.5*np.exp(E/N)
+s = np.linspace(-10,1,30)
+CGF_dmrg = np.zeros(s.shape,dtype=np.complex128)
+for i in range(len(s)):
+    if s[i] > -20 and s[i] < 0:
+        target_state = 0#2
+    else:
+        target_state = 0
+    x = mps_opt.MPS_OPT(N = [N,N],
+                        hamType = "sep_2d",
+                        #periodic_x = True,
+                        periodic_y = True,
+                        maxBondDim = 500,
+                        maxIter = 10,
+                        verbose = 3,
+                        target_state = target_state,#target_state,
+                        add_noise = False,
+                        #plotConv = True,
+                        #plotExpVals = True,
+                        #hamParams = (qx,px,0.5,0.5,0,0,0,0,0,0,0,0,[s[i]/float(N),0]))
+                        hamParams = (0.5,0.5,qx,px,0.5,0.5,0,0,0.5,0.5,0,0,[0,s[i]/float(N)]))
+                        #hamParams = (0.5,0.5,qx,px,1.,1.,0,0,0,0,0,0,[0,s[i]/float(N)]))
+    print('Performing Calculation for s = {}'.format(s[i]))
+    CGF_dmrg[i] = x.kernel()
+    print('Final Density Profile = \n{}'.format(x.calc_occ))
+N=10
+n_points = 10
+E = 10.
+px = 0.5*np.exp(-E/N)
+qx = 0.5*np.exp(E/N)
+s = np.linspace(-10,1,30)
+CGF_dmrg = np.zeros(s.shape,dtype=np.complex128)
+for i in range(len(s)):
+    if s[i] > -20 and s[i] < 0:
+        target_state = 0#2
+    else:
+        target_state = 0
+    x = mps_opt.MPS_OPT(N = [N,N],
+                        hamType = "sep_2d",
+                        #periodic_x = True,
+                        periodic_y = True,
+                        maxBondDim = 1000,
+                        maxIter = 10,
+                        verbose = 3,
+                        target_state = target_state,#target_state,
+                        add_noise = False,
+                        #plotConv = True,
+                        #plotExpVals = True,
+                        #hamParams = (qx,px,0.5,0.5,0,0,0,0,0,0,0,0,[s[i]/float(N),0]))
+                        hamParams = (0.5,0.5,qx,px,0.5,0.5,0,0,0.5,0.5,0,0,[0,s[i]/float(N)]))
+                        #hamParams = (0.5,0.5,qx,px,1.,1.,0,0,0,0,0,0,[0,s[i]/float(N)]))
+    print('Performing Calculation for s = {}'.format(s[i]))
+    CGF_dmrg[i] = x.kernel()
+    print('Final Density Profile = \n{}'.format(x.calc_occ))
+
+N=10
+n_points = 10
+E = 10.
+px = 0.5*np.exp(-E/N)
+qx = 0.5*np.exp(E/N)
+s = np.linspace(-10,1,30)
+CGF_dmrg = np.zeros(s.shape,dtype=np.complex128)
+for i in range(len(s)):
+    if s[i] > -20 and s[i] < 0:
+        target_state = 0#2
+    else:
+        target_state = 0
+    x = mps_opt.MPS_OPT(N = [N,N],
+                        hamType = "sep_2d",
+                        #periodic_x = True,
+                        periodic_y = True,
+                        maxBondDim = 1500,
+                        maxIter = 10,
+                        verbose = 3,
+                        target_state = target_state,#target_state,
+                        add_noise = False,
+                        #plotConv = True,
+                        #plotExpVals = True,
+                        #hamParams = (qx,px,0.5,0.5,0,0,0,0,0,0,0,0,[s[i]/float(N),0]))
+                        hamParams = (0.5,0.5,qx,px,0.5,0.5,0,0,0.5,0.5,0,0,[0,s[i]/float(N)]))
+                        #hamParams = (0.5,0.5,qx,px,1.,1.,0,0,0,0,0,0,[0,s[i]/float(N)]))
+    print('Performing Calculation for s = {}'.format(s[i]))
+    CGF_dmrg[i] = x.kernel()
+    print('Final Density Profile = \n{}'.format(x.calc_occ))
+N=10
+n_points = 10
+E = 10.
+px = 0.5*np.exp(-E/N)
+qx = 0.5*np.exp(E/N)
+s = np.linspace(-10,1,30)
+CGF_dmrg = np.zeros(s.shape,dtype=np.complex128)
+for i in range(len(s)):
+    if s[i] > -20 and s[i] < 0:
+        target_state = 0#2
+    else:
+        target_state = 0
+    x = mps_opt.MPS_OPT(N = [N,N],
+                        hamType = "sep_2d",
+                        #periodic_x = True,
+                        periodic_y = True,
+                        maxBondDim = 2000,
+                        maxIter = 10,
+                        verbose = 3,
+                        target_state = target_state,#target_state,
+                        add_noise = False,
+                        #plotConv = True,
+                        #plotExpVals = True,
+                        #hamParams = (qx,px,0.5,0.5,0,0,0,0,0,0,0,0,[s[i]/float(N),0]))
+                        hamParams = (0.5,0.5,qx,px,0.5,0.5,0,0,0.5,0.5,0,0,[0,s[i]/float(N)]))
+                        #hamParams = (0.5,0.5,qx,px,1.,1.,0,0,0,0,0,0,[0,s[i]/float(N)]))
+    print('Performing Calculation for s = {}'.format(s[i]))
+    CGF_dmrg[i] = x.kernel()
+    print('Final Density Profile = \n{}'.format(x.calc_occ))

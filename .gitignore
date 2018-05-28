@@ -10,9 +10,11 @@ efficient/data/dmrg/*
 efficient/data/mf/*
 efficient/data/ed/*
 efficient/data/*
+efficient/results/*
 backup/__pycache__/*
 backup/figures/*
 backup/data/dmrg/*
 backup/data/mf/*
 backup/data/ed/*
 backup/data/*
+
