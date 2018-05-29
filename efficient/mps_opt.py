@@ -9,9 +9,9 @@ class MPS_OPT:
 
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-5, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
-                 plotExpVals=False, plotConv=False,leftMPS=True,calc_psi=True,\
-                 usePyscf=True,initialGuess='rand',ed_limit=12,max_eig_iter=50,\
-                 periodic_x=False,periodic_y=False,add_noise=True,\
+                 plotExpVals=False, plotConv=False,leftMPS=False,calc_psi=True,\
+                 usePyscf=True,initialGuess=0.01,ed_limit=12,max_eig_iter=50,\
+                 periodic_x=False,periodic_y=False,add_noise=False,\
                  saveResults=True,dataFolder='data/',verbose=3):
         # Import parameters
         self.N = N
@@ -371,55 +371,100 @@ class MPS_OPT:
     def pyscf_optimization(self,j):
         if self.verbose > 5:
             print('\t'*3+'Using Pyscf optimization routine')
-        sgn = 1.0
-        if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): sgn = -1.0
-        (n1,n2,n3) = self.M[j].shape
-        self.num_opt_fun_calls = 0
-        def opt_fun(x):
-            self.num_opt_fun_calls += 1
-            if self.verbose > 6:
-                print('\t'*5+'Eigenvalue Iteration')
-            x_reshape = np.reshape(x,(n1,n2,n3))
-            fin_sum = np.zeros(x_reshape.shape,dtype=np.complex128)
-            for i in range(self.mpo.nops):
-                if self.mpo.ops[i][j] is None:
-                    in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
-                    fin_sum += sgn*self.einsum('pnm,inom->opi',self.F[i][j],in_sum1)
-                else:
-                    in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
-                    in_sum2 = self.einsum('njol,ijlm->noim',self.mpo.ops[i][j],in_sum1)
-                    fin_sum += sgn*self.einsum('pnm,noim->opi',self.F[i][j],in_sum2)
-            return np.reshape(fin_sum,-1)
-        def precond(dx,e,x0):
-            return dx
-        init_guess = np.reshape(self.M[j],-1)
-        if self.leftMPS:
-            E,vl,vr = self.eig(opt_fun,init_guess,precond,
-                               max_cycle = self.max_eig_iter,
-                               pick = pick_eigs,
-                               left = self.leftMPS,
-                               nroots=min(self.target_state+1,n1*n2*n3-1))
-        else:
-            E,vr = self.eig(opt_fun,init_guess,precond,
-                           max_cycle=self.max_eig_iter,
-                           pick = pick_eigs,
-                           nroots=min(self.target_state+1,n1*n2*n3-1))
-        sort_inds = np.argsort(np.real(E))#[::-1]
-        try:
-            E = E[sort_inds[min(self.target_state,len(sort_inds)-1)]]
+        if True:
+            sgn = 1.0
+            if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): sgn = -1.0
+            (n1,n2,n3) = self.M[j].shape
+            self.num_opt_fun_calls = 0
+            def opt_fun(x):
+                self.num_opt_fun_calls += 1
+                if self.verbose > 6:
+                    print('\t'*5+'Eigenvalue Iteration')
+                x_reshape = np.reshape(x,(n1,n2,n3))
+                fin_sum = np.zeros(x_reshape.shape,dtype=np.complex128)
+                for i in range(self.mpo.nops):
+                    if self.mpo.ops[i][j] is None:
+                        in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
+                        fin_sum += sgn*self.einsum('pnm,inom->opi',self.F[i][j],in_sum1)
+                    else:
+                        in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
+                        in_sum2 = self.einsum('njol,ijlm->noim',self.mpo.ops[i][j],in_sum1)
+                        fin_sum += sgn*self.einsum('pnm,noim->opi',self.F[i][j],in_sum2)
+                return np.reshape(fin_sum,-1)
+            def precond(dx,e,x0):
+                return dx
+            init_guess = np.reshape(self.M[j],-1)
             if self.leftMPS:
-                vl = vl[sort_inds[min(self.target_state,len(sort_inds)-1)]]
-            vr = vr[sort_inds[min(self.target_state,len(sort_inds)-1)]]
-        except:
-            E = E
-        if self.leftMPS:
-            self.Ml[j] = np.reshape(vl,(n1,n2,n3))
-        self.M[j] = np.reshape(vr,(n1,n2,n3))
-        self.add_noise_func(j)
-        if self.verbose > 3:
-            print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(j,sgn*E))
-            if self.verbose > 4:
-                print('\t\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
+                E,vl,vr = self.eig(opt_fun,init_guess,precond,
+                                   max_cycle = self.max_eig_iter,
+                                   pick = pick_eigs,
+                                   left = self.leftMPS,
+                                   nroots=min(self.target_state+1,n1*n2*n3-1))
+                # Make vl & vr biorthonormal:
+                vl /= np.sum(vl*vr)
+                print('pyscf vl = {}'.format(vl))
+                print('pyscf vr = {}'.format(vr))
+            else:
+                E,vr = self.eig(opt_fun,init_guess,precond,
+                               max_cycle=self.max_eig_iter,
+                               pick = pick_eigs,
+                               nroots=min(self.target_state+1,n1*n2*n3-1))
+            sort_inds = np.argsort(np.real(E))#[::-1]
+            try:
+                E = E[sort_inds[min(self.target_state,len(sort_inds)-1)]]
+                if self.leftMPS:
+                    vl = vl[sort_inds[min(self.target_state,len(sort_inds)-1)]]
+                vr = vr[sort_inds[min(self.target_state,len(sort_inds)-1)]]
+            except:
+                E = E
+            if self.leftMPS:
+                self.Ml[j] = np.reshape(vl,(n1,n2,n3))
+            self.M[j] = np.reshape(vr,(n1,n2,n3))
+            self.add_noise_func(j)
+            if self.verbose > 3:
+                print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(j,sgn*E))
+                if self.verbose > 4:
+                    print('\t\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
+        
+        if False:
+            ### JUST FOR FUN
+            sgn = 1.0
+            if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): sgn = -1.0
+            for i in range(self.mpo.nops):
+                if i is 0:
+                    if self.mpo.ops[i][j] is None:
+                        H = sgn*self.einsum('jlp,kmq->ljkmpq',self.F[i][j],self.F[i][j+1])
+                    else:
+                        H = sgn*self.einsum('jlp,lmin,kmq->ijknpq',self.F[i][j],self.mpo.ops[i][j],self.F[i][j+1])
+                else:
+                    if self.mpo.ops[i][j] is None:
+                        H += sgn*self.einsum('jlp,kmq->ljkmpq',self.F[i][j],self.F[i][j+1])
+                    else:
+                        H += sgn*self.einsum('jlp,lmin,kmq->ijknpq',self.F[i][j],self.mpo.ops[i][j],self.F[i][j+1])
+            (n1,n2,n3,n4,n5,n6) = H.shape
+            H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
+            #if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): H = -H
+            import scipy.linalg
+            u,vl,vr = scipy.linalg.eig(H,left=True)
+            u_sort = u[np.argsort(u)]
+            vl = vl[:,np.argsort(u)]
+            vr = vr[:,np.argsort(u)]
+            ind = 0
+            for j in range(len(u_sort)):
+                if np.abs(np.imag(u_sort[j])) < 1e-8:
+                    ind = j
+                break
+            E = u_sort[ind]
+            vr = vr[:,ind]
+            vl = vl[:,ind]
+            #print(np.sum(vl*vr))
+            #print('scipy vl = {}'.format(vl))
+            vl /= np.sum(vl*vr)
+            #print('scipy vl = {}'.format(vl))
+            #print('scipy vr = {}'.format(vr))
+            self.M[i] = np.reshape(vr,(n1,n2,n3))
+            self.Ml[i] = np.reshape(vl,(n1,n2,n3))
+            ### END JUST FOR FUN
         return sgn*E
 
     def slow_optimization(self,i):
@@ -648,8 +693,12 @@ class MPS_OPT:
                 if self.leftMPS:
                     lpsi[i] = tmp_mat[[0]]
             self.rpsi = rpsi
+            #print('rpsi = {}'.format(self.rpsi))
+            #print(self.M)
             if self.leftMPS:
                 self.lpsi = lpsi
+                #print('lpsi = {}'.format(self.lpsi))
+                #print(self.Ml)
 
     def kernel(self):
         if self.verbose > 1:

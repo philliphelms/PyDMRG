@@ -19,13 +19,12 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=10)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-N = 2
+N = 10
 rho_r = 0.5
 rho_l = 0.5
-p = np.linspace(0.,1.,50)
-s = np.linspace(-3.5,2.5,200)
-s = np.array([0])
-p = np.array([0.1])
+p = np.linspace(0.,1.,300)
+s = np.linspace(-5,5,300)
+#p = np.array([p[0]])
 print('s =')
 for i in range(len(s)):
     print(s[i])
@@ -36,8 +35,10 @@ print('\n\n')
 CGF = np.zeros((len(p),len(s)),dtype=np.complex128)   # CGF
 nPart = np.zeros((len(p),len(s)),dtype=np.complex128) # Number of particles
 EE = np.zeros((len(p),len(s)),dtype=np.complex128)    # Entanglement Entropy
+density = np.zeros((len(p),len(s),N),dtype=np.complex128)
 CGF_ed = np.zeros((len(p),len(s)),dtype=np.complex128)    # Entanglement Entropy
 nPart_ed = np.zeros((len(p),len(s)),dtype=np.complex128)    # Entanglement Entropy
+density_ed = np.zeros((len(p),len(s),N),dtype=np.complex128)
 for i in range(len(p)):
     for j in range(len(s)):
         print('s = {}'.format(s[j]))
@@ -56,6 +57,8 @@ for i in range(len(p)):
         CGF[i,j] = x.finalEnergy
         EE[i,j] = x.entanglement_entropy[int(x.N/2)]
         nPart[i,j] = np.sum(x.calc_occ)
+        density[i,j,:] = x.calc_occ
+        density_ed[i,j,:] = x.ed.nv
         print('Density Profile (ed)   = {}'.format(x.ed.nv))
         print('Density Profile (dmrg) = {}'.format(x.calc_occ))
     print('CGF for p = {}'.format(p[i]))
@@ -73,7 +76,7 @@ for i in range(len(p)):
     print('nPart (ed) for p = {}'.format(p[i]))
     for j in range(len(s)):
         print(np.real(nPart_ed[i,j]))
-
+np.savez('10_10_data',s=s,p=p,CGF=CGF,EE=EE,nPart=nPart,CGF_ed=CGF_ed,nPart_ed=nPart_ed,density=density,density_ed=density_ed)
 """    
 p,s = np.meshgrid(p,s)
 fig = plt.figure()
