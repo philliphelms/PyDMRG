@@ -22,8 +22,9 @@ plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 N = 10
 rho_r = 0.5
 rho_l = 0.5
-p = np.linspace(0.,1.,300)
+p = np.linspace(0.,1.,50)
 s = np.linspace(-5,5,300)
+s = np.array([-0.01,0.01])
 #p = np.array([p[0]])
 print('s =')
 for i in range(len(s)):
@@ -76,7 +77,7 @@ for i in range(len(p)):
     print('nPart (ed) for p = {}'.format(p[i]))
     for j in range(len(s)):
         print(np.real(nPart_ed[i,j]))
-np.savez('10_10_data',s=s,p=p,CGF=CGF,EE=EE,nPart=nPart,CGF_ed=CGF_ed,nPart_ed=nPart_ed,density=density,density_ed=density_ed)
+np.savez('10_10_data_p0_forJ',s=s,p=p,CGF=CGF,EE=EE,nPart=nPart,CGF_ed=CGF_ed,nPart_ed=nPart_ed,density=density,density_ed=density_ed)
 """    
 p,s = np.meshgrid(p,s)
 fig = plt.figure()
