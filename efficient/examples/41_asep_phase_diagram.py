@@ -19,13 +19,12 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=10)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-N = 10
+N = 100
 rho_r = 0.5
 rho_l = 0.5
-p = np.linspace(0.,1.,50)
-s = np.linspace(-5,5,300)
-s = np.array([-0.01,0.01])
-#p = np.array([p[0]])
+#p = np.linspace(0.,1.,50)
+s = np.linspace(-5,5,100)
+p = np.array([0.2])
 print('s =')
 for i in range(len(s)):
     print(s[i])
@@ -48,7 +47,7 @@ for i in range(len(p)):
                             maxBondDim = 200,
                             add_noise=False,
                             hamType = "sep",
-                            verbose = 2,
+                            verbose = 4,
                             #plotExpVals = True,
                             #plotConv = True,
                             hamParams = (rho_l,1-rho_l,p[i],1-p[i],1-rho_r,rho_r,s[j]))
@@ -77,7 +76,7 @@ for i in range(len(p)):
     print('nPart (ed) for p = {}'.format(p[i]))
     for j in range(len(s)):
         print(np.real(nPart_ed[i,j]))
-np.savez('10_10_data_p0_forJ',s=s,p=p,CGF=CGF,EE=EE,nPart=nPart,CGF_ed=CGF_ed,nPart_ed=nPart_ed,density=density,density_ed=density_ed)
+np.savez('N'+str(N)+'_data_p20',s=s,p=p,CGF=CGF,EE=EE,nPart=nPart,CGF_ed=CGF_ed,nPart_ed=nPart_ed,density=density,density_ed=density_ed)
 """    
 p,s = np.meshgrid(p,s)
 fig = plt.figure()

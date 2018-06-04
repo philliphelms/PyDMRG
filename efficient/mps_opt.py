@@ -10,7 +10,7 @@ class MPS_OPT:
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-5, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
                  plotExpVals=False, plotConv=False,leftMPS=False,calc_psi=True,\
-                 usePyscf=True,initialGuess=0.01,ed_limit=12,max_eig_iter=50,\
+                 usePyscf=True,initialGuess=0.01,ed_limit=12,max_eig_iter=5,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
                  saveResults=True,dataFolder='data/',verbose=3):
         # Import parameters
@@ -812,8 +812,9 @@ class MPS_OPT:
                                                                                   self.inside_iter_cnt [self.maxBondDimInd]))
                             print('  Total Time = {} s'.format(self.time_total))
                             print('  Total Number of particles: {}'.format(np.sum(self.calc_occ)))
-                            print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
-                            print('    Entanglement Spectrum at center bond = {}'.format(self.entanglement_spectrum[int(self.N/2)]))
+                            if self.verbose > 4:
+                                print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
+                                print('    Entanglement Spectrum at center bond = {}'.format(self.entanglement_spectrum[int(self.N/2)]))
                         print('!'*75+'\n')
                 else:
                     if self.verbose > 1:
@@ -824,10 +825,11 @@ class MPS_OPT:
                             print('  Avg time per inner iter = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
                                                                             self.inside_iter_cnt [self.maxBondDimInd]))
                             print('  Total time for M({}) = {} s'.format(self.maxBondDimCurr,self.outside_iter_time[self.maxBondDimInd]))
-                            print('  Required number of iters = {}'.format(self.outside_iter_cnt[self.maxBondDimInd]))
                             print('  Total Number of particles: {}'.format(np.sum(self.calc_occ)))
-                            print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
-                            print('    Entanglement Spectrum at center bond = {}'.format(self.entanglement_spectrum[int(self.N/2)]))
+                            if self.verbose > 4:
+                                print('  Required number of iters = {}'.format(self.outside_iter_cnt[self.maxBondDimInd]))
+                                print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
+                                print('    Entanglement Spectrum at center bond = {}'.format(self.entanglement_spectrum[int(self.N/2)]))
                         print('-'*45+'\n')
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
                     self.maxBondDimInd += 1
@@ -844,7 +846,7 @@ class MPS_OPT:
                 self.currIterCnt += 1
                 self.totIterCnt += 1
         self.saveFinalResults('dmrg')
-        self.return_psi()
+        #self.return_psi()
         return self.finalEnergy
 
     # ADD THE ABILITY TO DO OTHER TYPES OF CALCULATIONS FROM THE MPS OBJECT

@@ -27,12 +27,12 @@ rho_right = 0.5
 rho_left = 0.5
 rho_top = 0.5
 rho_bottom = 0.5
-px = np.linspace(0.,1.,10)
+#px = np.linspace(0.,1.,10)
 py = np.array([0.5])
-sx = np.linspace(-5,5,10)
+sx = np.linspace(-5,5,100)
 sy = np.array([0])
 px = np.array([0.2])
-boundary_cond = 'open' #'periodic' 'open' 'closed'
+boundary_cond = 'closed' #'periodic' 'open' 'closed'
 #########################################
 print('sx =')
 for i in range(len(sx)):
@@ -91,7 +91,7 @@ for i in range(len(px)):
                 x = mps_opt.MPS_OPT(N=[Nx,Ny],
                                     add_noise=False,
                                     hamType = 'sep_2d',
-                                    plotExpVals = True,
+                                    #plotExpVals = True,
                                     #plotConv = True,
                                     hamParams = (jl,jr,jd,ju,cr,cl,cd,cu,dr,dl,dd,du,[sx[j],sy[l]]))
                 x.kernel()
@@ -100,4 +100,17 @@ for i in range(len(px)):
                 EE[i,j,k,l] = x.entanglement_entropy[int(x.N/2)]
                 nPart[i,j,k,l] = np.sum(x.calc_occ)
                 density[i,j,k,l,:] = x.calc_occ
-                np.savez('10_2_data_p10',sx=sx,px=px,sy=sy,py=py,CGF=CGF,EE=EE,nPart=nPart,density=density)
+                np.savez('10_2_data_p10_s100pts_closed',sx=sx,px=px,sy=sy,py=py,CGF=CGF,EE=EE,nPart=nPart,density=density)
+print('CGF,EE,nPart')
+for i in range(len(px)):
+    for j in range(len(sx)):
+        for k in range(len(py)):
+            for l in range(len(sy)):
+                print('{},{},{}'.format(CGF[i,j,k,l],EE[i,j,k,l],nPart[i,j,k,l]))
+print('\n')
+print('Density')
+for i in range(len(px)):
+    for j in range(len(sx)):
+        for k in range(len(py)):
+            for l in range(len(sy)):
+                print(density[i,j,k,l,:])
