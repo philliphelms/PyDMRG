@@ -61,7 +61,6 @@ class exactDiag:
         mL = np.array([[-d,bw],[dw,-b]])
         mL = np.kron(np.eye(2**(clumpSize-1)),mL)
 
-        print(q)
         mi = np.array([[0,0, 0, 0],
                        [0,-q,pw,0],
                        [0,qw,-p,0],
@@ -190,8 +189,6 @@ class exactDiag:
                 lpsi = np.kron(isproj[clump,:],isproj[clump+1,:])
                 rpsi = np.kron(sproj[clump,:],sproj[clump+1,:]).transpose()
                 E += np.dot(lpsi,np.dot(mi_x,rpsi))
-        for k in range(len(self.nv)):
-            print(np.real(self.nv[k]))
         return E
 
 

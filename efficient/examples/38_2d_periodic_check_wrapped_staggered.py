@@ -40,7 +40,7 @@ for i in range(Ny):
 dl = np.zeros((Nx,Ny))
 du = np.zeros((Nx,Ny))
 dd = np.zeros((Nx,Ny))
-x = mps_opt.MPS_OPT(N=[Nx,Ny],
+x = mps_opt.MPS_OPT(N=[Ny,Nx],
                     hamType = 'sep_2d',
                     periodic_x = True,
                     periodic_y = True,

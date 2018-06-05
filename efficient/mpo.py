@@ -310,6 +310,18 @@ class MPO:
             # Allocate general operator container
             self.ops = []
             # Build generic operator (not including periodicity)
+            #ham_dim = 6+(self.Ny)*4
+            #w_arr = np.zeros((ham_dim,ham_dim,2,2))
+            # Work down left column
+            #w_arr[0,0,:,:] = self.I
+            #w_arr[1,0,:,:] = self.exp_ju[]*self.Sm
+            #w_arr[2,0,:,:] = self.ju[]*self.v
+            #w_arr[3,0,:,:] = self.exp_jd[]*self.Sp
+
+            
+
+
+
             ham_dim = 10+(self.Ny-2)*4
             # Now build actual operator
             tmp_op = []
@@ -368,13 +380,13 @@ class MPO:
                 if self.verbose > 2:
                     print('including periodicity in x-direction')
                 for i in range(self.Ny):
-                    coupled_sites.insert(0,[i,self.Nx*(self.Ny-1)+i,'horz'])
+                    coupled_sites.insert(0,[i,self.Ny*(self.Nx-1)+i,'horz'])
             # Determine periodic coupling along y-axis
             if self.periodic_y:
                 if self.verbose > 2:
                     print('including periodicity in y-direction')
                 for i in range(self.Nx):
-                    coupled_sites.insert(0,[self.Nx*(i+1)-1,self.Nx*i,'vert'])
+                    coupled_sites.insert(0,[self.Ny*(i+1)-1,self.Ny*i,'vert'])
             # Build All Operators
             for i in range(len(coupled_sites)):
                 inds = coupled_sites[i][:2]
