@@ -3,6 +3,7 @@
 *.txt
 *.pyc
 *.log
+*.npz
 simple/__pycache__/*
 efficient/__pycache__/*
 efficient/figures/*
