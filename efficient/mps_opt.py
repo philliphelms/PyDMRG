@@ -10,7 +10,7 @@ class MPS_OPT:
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-5, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
                  plotExpVals=False, plotConv=False,leftMPS=False,calc_psi=True,\
-                 usePyscf=True,initialGuess=0.01,ed_limit=12,max_eig_iter=5,\
+                 usePyscf=True,initialGuess=0.01,ed_limit=12,max_eig_iter=1000,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
                  saveResults=True,dataFolder='data/',verbose=3):
         # Import parameters
@@ -244,6 +244,8 @@ class MPS_OPT:
                 self.Ml[i-1] = self.einsum('klj,ji,i->kli',self.Ml[i-1],U,s)
 
     def increaseBondDim(self):
+        self.return_psi()
+        old_psi = self.rpsi.copy()
         if self.verbose > 3:
             print('\t'*2+'Increasing Bond Dimensions from {} to {}'.format(self.maxBondDim[self.maxBondDimInd-1],self.maxBondDimCurr))
         Mnew = []
@@ -271,6 +273,8 @@ class MPS_OPT:
                 nx,ny,nz = self.Ml[i].shape
                 Mnew[i][:nx,:ny,:nz] = self.Ml[i]
                 self.Ml[i] = Mnew[i]
+        self.return_psi()
+        print(np.sum(np.abs(old_psi-self.rpsi)))
 
     def calc_initial_f(self):
         if self.verbose > 3:
@@ -668,37 +672,45 @@ class MPS_OPT:
 
     def return_psi(self):
         if self.calc_psi:
-            rpsi = np.zeros(2**self.N,dtype=np.complex128)
-            if self.leftMPS:
-                lpsi = np.zeros(2**self.N,dtype=np.complex128)
-            occ = np.zeros((2**self.N_mpo,self.N_mpo),dtype=int)
-            sum_occ = np.zeros(2**self.N_mpo)
-            for i in range(2**self.N):
-                occ[i,:] = np.asarray(list(map(lambda x: int(x),'0'*(self.N_mpo-len(bin(i)[2:]))+bin(i)[2:])))
-                sum_occ[i] = np.sum(occ[i,:])
-            inds = np.argsort(sum_occ)
-            sum_occ = sum_occ[inds]
-            occ = occ[inds,:]
-            for i in range(2**self.N):
-                for j in range(self.N):
-                    if j is 0:
-                        tmp_mat = self.M[j][occ[i,j],:,:]
-                        if self.leftMPS:
-                            tmp_mat_l = self.Ml[j][occ[i,j],:,:]
-                    else:
-                        tmp_mat = np.einsum('ij,jk->ik',tmp_mat,self.M[j][occ[i,j],:,:])
-                        if self.leftMPS:
-                            tmp_mat_l = np.einsum('ij,jk->ik',tmp_mat_l,self.Ml[j][occ[i,j],:,:])
-                rpsi[i] = tmp_mat[[0]]
+            if self.N < 21:
+                rpsi = np.zeros(2**self.N,dtype=np.complex128)
                 if self.leftMPS:
-                    lpsi[i] = tmp_mat[[0]]
-            self.rpsi = rpsi
-            #print('rpsi = {}'.format(self.rpsi))
-            #print(self.M)
-            if self.leftMPS:
-                self.lpsi = lpsi
-                #print('lpsi = {}'.format(self.lpsi))
-                #print(self.Ml)
+                    lpsi = np.zeros(2**self.N,dtype=np.complex128)
+                occ = np.zeros((2**self.N_mpo,self.N_mpo),dtype=int)
+                sum_occ = np.zeros(2**self.N_mpo)
+                for i in range(2**self.N):
+                    occ[i,:] = np.asarray(list(map(lambda x: int(x),'0'*(self.N_mpo-len(bin(i)[2:]))+bin(i)[2:])))
+                    sum_occ[i] = np.sum(occ[i,:])
+                inds = np.argsort(sum_occ)
+                sum_occ = sum_occ[inds]
+                occ = occ[inds,:]
+                for i in range(2**self.N):
+                    for j in range(self.N):
+                        if j is 0:
+                            tmp_mat = self.M[j][occ[i,j],:,:]
+                            if self.leftMPS:
+                                tmp_mat_l = self.Ml[j][occ[i,j],:,:]
+                        else:
+                            tmp_mat = np.einsum('ij,jk->ik',tmp_mat,self.M[j][occ[i,j],:,:])
+                            if self.leftMPS:
+                                tmp_mat_l = np.einsum('ij,jk->ik',tmp_mat_l,self.Ml[j][occ[i,j],:,:])
+                    rpsi[i] = tmp_mat[[0]]
+                    if self.leftMPS:
+                        lpsi[i] = tmp_mat[[0]]
+                self.rpsi = rpsi
+                #print('Right State:')
+                #for i in range(len(self.rpsi)):
+                #    print('{}'.format(np.real(self.rpsi[i])))
+                #print(self.M)
+                if self.leftMPS:
+                    self.lpsi = lpsi
+                    #print('lpsi = {}'.format(self.lpsi))
+                    #print(self.Ml)
+                else:
+                    self.lpsi = None
+            else:
+                self.rpsi = None
+                self.lpsi = None
 
     def kernel(self):
         if self.verbose > 1:

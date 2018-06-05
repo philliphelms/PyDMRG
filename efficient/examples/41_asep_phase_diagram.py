@@ -19,7 +19,7 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=10)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-N = 100
+N = 50
 rho_r = 0.5
 rho_l = 0.5
 #p = np.linspace(0.,1.,50)
@@ -44,22 +44,22 @@ for i in range(len(p)):
         print('s = {}'.format(s[j]))
         print('p = {}'.format(p[i]))
         x = mps_opt.MPS_OPT(N=N,
-                            maxBondDim = 200,
+                            maxBondDim = 100,
                             add_noise=False,
                             hamType = "sep",
                             verbose = 4,
-                            #plotExpVals = True,
-                            #plotConv = True,
+#                            plotExpVals = True,
+#                            plotConv = True,
                             hamParams = (rho_l,1-rho_l,p[i],1-p[i],1-rho_r,rho_r,s[j]))
         x.kernel()
-        CGF_ed[i,j] = x.exact_diag()
-        nPart_ed[i,j] = np.sum(x.ed.nv)
+        #CGF_ed[i,j] = x.exact_diag()
+        #nPart_ed[i,j] = np.sum(x.ed.nv)
         CGF[i,j] = x.finalEnergy
         EE[i,j] = x.entanglement_entropy[int(x.N/2)]
         nPart[i,j] = np.sum(x.calc_occ)
         density[i,j,:] = x.calc_occ
-        density_ed[i,j,:] = x.ed.nv
-        print('Density Profile (ed)   = {}'.format(x.ed.nv))
+        #density_ed[i,j,:] = x.ed.nv
+        #print('Density Profile (ed)   = {}'.format(x.ed.nv))
         print('Density Profile (dmrg) = {}'.format(x.calc_occ))
     print('CGF for p = {}'.format(p[i]))
     for j in range(len(s)):
@@ -71,24 +71,9 @@ for i in range(len(p)):
     for j in range(len(s)):
         print(np.real(nPart[i,j]))
     print('CGF (ed) for p = {}'.format(p[i]))
-    for j in range(len(s)):
-        print(np.real(CGF_ed[i,j]))
-    print('nPart (ed) for p = {}'.format(p[i]))
-    for j in range(len(s)):
-        print(np.real(nPart_ed[i,j]))
-np.savez('N'+str(N)+'_data_p20',s=s,p=p,CGF=CGF,EE=EE,nPart=nPart,CGF_ed=CGF_ed,nPart_ed=nPart_ed,density=density,density_ed=density_ed)
-"""    
-p,s = np.meshgrid(p,s)
-fig = plt.figure()
-ax = fig.gca(projection='3d')
-surf = ax.plot_surface(p,s,CGF)
-plt.show()
-fig = plt.figure()
-ax = fig.gca(projection='3d')
-surf = ax.plot_surface(p,s,EE)
-plt.show()
-fig = plt.figure()
-ax = fig.gca(projection='3d')
-surf = ax.plot_surface(p,s,nPart)
-plt.show()
-"""
+    #for j in range(len(s)):
+    #    print(np.real(CGF_ed[i,j]))
+    #print('nPart (ed) for p = {}'.format(p[i]))
+    #for j in range(len(s)):
+    #    print(np.real(nPart_ed[i,j]))
+    np.savez('N'+str(N)+'_data_p'+str(len(p))+'s'+str(len(s)),s=s,p=p,CGF=CGF,EE=EE,nPart=nPart,density=density)#CGF_ed=CGF_ed,nPart_ed=nPart_ed,density=density,density_ed=density_ed)

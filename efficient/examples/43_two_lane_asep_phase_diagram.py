@@ -106,7 +106,7 @@ for i in range(len(px)):
     for j in range(len(sx)):
         for k in range(len(py)):
             for l in range(len(sy)):
-                print('{},{},{}'.format(CGF[i,j,k,l],EE[i,j,k,l],nPart[i,j,k,l]))
+                print('{},{},{}'.format(np.real(CGF[i,j,k,l]),np.real(EE[i,j,k,l]),np.real(nPart[i,j,k,l])))
 print('\n')
 print('Density')
 for i in range(len(px)):

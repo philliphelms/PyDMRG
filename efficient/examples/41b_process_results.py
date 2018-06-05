@@ -3,11 +3,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm # Colormaps
 
-#filename = 'asep_10x10_data_spacing50.npz'
-#filename = 'asep_10x10_data_spacing200.npz'
-filename = 'asep_10x10_data_spacing100.npz'
-#filename = '10_10_data_p0.npz'
-#filename = '10_10_data_p0_forJ.npz'
+filename = '10_2_data_p10_s100pts_closed.npz'
 
 npzfile = np.load(filename)
 #s = npzfile['s']
@@ -15,11 +11,11 @@ npzfile = np.load(filename)
 print(npzfile.files)
 CGF = npzfile['CGF']
 EE = npzfile['EE']
-#nPart = npzfile['nPart']
-CGF_ed = npzfile['CGF_ed']
-nPart_ed = npzfile['nPart_ed']
+nPart = npzfile['nPart']
+#CGF_ed = npzfile['CGF_ed']
+#nPart_ed = npzfile['nPart_ed']
 density = npzfile['density']
-density_ed = npzfile['density_ed']
+#density_ed = npzfile['density_ed']
 s = np.linspace(-5,5,len(CGF))
 p = np.linspace(0,1,len(CGF))
 
@@ -29,10 +25,10 @@ p = np.real(p)
 CGF = np.real(CGF)
 EE = np.real(EE)
 #nPart = np.real(nPart)
-CGF_ed = np.real(CGF_ed)
-nPart_ed = np.real(nPart_ed)
+#CGF_ed = np.real(CGF_ed)
+#nPart_ed = np.real(nPart_ed)
 density = np.real(density)
-density_ed = np.real(density_ed)
+#density_ed = np.real(density_ed)
 
 plt.rc('text', usetex=True)
 plt.rcParams['text.latex.preamble'] = [r'\boldmath']
@@ -67,7 +63,7 @@ if False:
 
 # Current Plot
 if True:
-    Current = (CGF_ed[:,1:]-CGF_ed[:,0:-1])/(s[0]-s[1])
+    Current = (CGF[:,1:]-CGF[:,0:-1])/(s[0]-s[1])
     s_plt = s[0:-1]
     fig = plt.figure()
     ax = fig.gca(projection='3d')
@@ -81,8 +77,8 @@ if True:
     plt.show()
 
 # Current Plot (1d)
-if False:
-    Current = (CGF_ed[:,1:]-CGF_ed[:,0:-1])/(s[0]-s[1])
+if True:
+    Current = (CGF[:,1:]-CGF[:,0:-1])/(s[0]-s[1])
     s_plt = s[0:-1]
     fig = plt.figure()
     ax = fig.gca()
@@ -92,8 +88,8 @@ if False:
     plt.show()
 
 # Current Image
-if False:
-    Current = (CGF_ed[:,1:]-CGF_ed[:,0:-1])/(s[0]-s[1])
+if True:
+    Current = (CGF[:,1:]-CGF[:,0:-1])/(s[0]-s[1])
     s_plt = s[0:-1]
     fig = plt.figure()
     ax = fig.gca()
@@ -105,8 +101,8 @@ if False:
     plt.show()
 
 # Susceptibility Plot
-if False:
-    Current = (CGF_ed[:,1:]-CGF_ed[:,0:-1])/(s[0]-s[1])
+if True:
+    Current = (CGF[:,1:]-CGF[:,0:-1])/(s[0]-s[1])
     s_plt = s[0:-1]
     Susceptibility = (Current[:,1:]-Current[:,0:-1])/(s_plt[0]-s_plt[1])
     s_plt = s_plt[0:-1]
@@ -125,7 +121,7 @@ if False:
 
 # Susceptibility Image
 if True:
-    Current = (CGF_ed[:,1:]-CGF_ed[:,0:-1])/(s[0]-s[1])
+    Current = (CGF[:,1:]-CGF[:,0:-1])/(s[0]-s[1])
     s_plt = s[0:-1]
     Susceptibility = (Current[:,1:]-Current[:,0:-1])/(s_plt[0]-s_plt[1])
     s_plt = s_plt[0:-1]
@@ -142,11 +138,11 @@ if True:
 
 
 # Particle Count Plot
-if False:
+if True:
     fig = plt.figure()
     ax = fig.gca(projection='3d')
     sM,pM = np.meshgrid(s,p)
-    surf = ax.plot_surface(sM,pM,nPart_ed,cmap=colormap,linewidth=0,antialiased=False)
+    surf = ax.plot_surface(sM,pM,nPart,cmap=colormap,linewidth=0,antialiased=False)
     ax.set_xlabel('$\lambda$')
     ax.set_ylabel('$p$')
     ax.set_zlabel('Particles')#, rotation=0)
@@ -154,9 +150,9 @@ if False:
     plt.show()
 
 # Density Profiles Plot
-if False:
+if True:
     len(p)
-    print(density_ed.shape)
+    print(density.shape)
     for p_ind in range(len(p)):
         print('p = {}'.format(p_ind))
         # Trajectory 1
@@ -165,7 +161,7 @@ if False:
         #p_ind = 1
         for i in range(len(s)):
             if not i%4:
-                ax.plot(np.arange(len(density_ed[p_ind,i,:])),s[i]*np.ones(len(density_ed[p_ind,i,:])),density_ed[p_ind,i,:],
+                ax.plot(np.arange(len(density[p_ind,i,:])),s[i]*np.ones(len(density[p_ind,i,:])),density[p_ind,i,:],
                         'k-o',linewidth=1)
         #ax.set_xlabel('Site')
         #ax.set_ylabel('$\lambda$')
@@ -180,7 +176,7 @@ if False:
         #s_ind = 9
         for i in range(len(p)):
             if not i%5:
-                ax.plot(np.arange(len(density_ed[i,s_ind,:])),p[i]*np.ones(len(density_ed[i,s_ind,:])),density_ed[i,s_ind,:],
+                ax.plot(np.arange(len(density[i,s_ind,:])),p[i]*np.ones(len(density[i,s_ind,:])),density[i,s_ind,:],
                         'k-o',linewidth=1)
         #ax.set_xlabel('Site')
         #ax.set_ylabel('$p$')
@@ -189,7 +185,7 @@ if False:
         plt.show()
 
 # ee plot
-if False:
+if True:
     fig = plt.figure()
     ax = fig.gca(projection='3d')
     ax.zaxis.set_rotate_label(False)
@@ -202,7 +198,7 @@ if False:
     plt.show()
 
 # ee plot
-if False:
+if True:
     fig = plt.figure()
     ax = fig.gca()
     sm,pm = np.meshgrid(s,p)
@@ -213,7 +209,7 @@ if False:
     plt.show()
 
 # MatPlotLib Movie
-if False:
+if True:
     import os
     import subprocess
     files = []
