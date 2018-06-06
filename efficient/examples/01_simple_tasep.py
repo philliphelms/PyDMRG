@@ -18,7 +18,7 @@ np.set_printoptions(precision=3)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
 # Create MPS object
-x = mps_opt.MPS_OPT(N = 10,
+x = mps_opt.MPS_OPT(N = 100,
                     hamType = 'tasep',
                     #plotExpVals = True,
                     maxBondDim = 100,
@@ -27,6 +27,7 @@ x = mps_opt.MPS_OPT(N = 10,
                     verbose = 4,
                     periodic_x = False,
                     #plotConv = True,
+                    #plotExpVals = True,
                     add_noise = False,
                     hamParams = (0.35,-1,2/3))
 # Run optimization

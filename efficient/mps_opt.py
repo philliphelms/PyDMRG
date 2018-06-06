@@ -76,6 +76,7 @@ class MPS_OPT:
         self.entanglement_spectrum = [0]*self.N
         self.entanglement_entropy = [0]*self.N
         self.final_convergence = None
+        self.current = None
 
     def generate_mps(self):
         if self.verbose > 4:
@@ -375,101 +376,76 @@ class MPS_OPT:
     def pyscf_optimization(self,j):
         if self.verbose > 5:
             print('\t'*3+'Using Pyscf optimization routine')
-        if True:
-            sgn = 1.0
-            if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): sgn = -1.0
-            (n1,n2,n3) = self.M[j].shape
-            self.num_opt_fun_calls = 0
-            def opt_fun(x):
-                self.num_opt_fun_calls += 1
-                if self.verbose > 6:
-                    print('\t'*5+'Eigenvalue Iteration')
-                x_reshape = np.reshape(x,(n1,n2,n3))
-                fin_sum = np.zeros(x_reshape.shape,dtype=np.complex128)
-                for i in range(self.mpo.nops):
-                    if self.mpo.ops[i][j] is None:
-                        in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
-                        fin_sum += sgn*self.einsum('pnm,inom->opi',self.F[i][j],in_sum1)
-                    else:
-                        in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
-                        in_sum2 = self.einsum('njol,ijlm->noim',self.mpo.ops[i][j],in_sum1)
-                        fin_sum += sgn*self.einsum('pnm,noim->opi',self.F[i][j],in_sum2)
-                return np.reshape(fin_sum,-1)
-            def precond(dx,e,x0):
-                return dx
-            init_guess = np.reshape(self.M[j],-1)
-            if self.leftMPS:
-                E,vl,vr = self.eig(opt_fun,init_guess,precond,
-                                   max_cycle = self.max_eig_iter,
-                                   pick = pick_eigs,
-                                   left = self.leftMPS,
-                                   nroots=min(self.target_state+1,n1*n2*n3-1))
-                # Make vl & vr biorthonormal:
-                vl /= np.sum(vl*vr)
-                print('pyscf vl = {}'.format(vl))
-                print('pyscf vr = {}'.format(vr))
-            else:
-                E,vr = self.eig(opt_fun,init_guess,precond,
-                               max_cycle=self.max_eig_iter,
+        sgn = 1.0
+        if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): sgn = -1.0
+        (n1,n2,n3) = self.M[j].shape
+        self.num_opt_fun_calls = 0
+        def opt_fun(x):
+            self.num_opt_fun_calls += 1
+            if self.verbose > 6:
+                print('\t'*5+'Eigenvalue Iteration')
+            x_reshape = np.reshape(x,(n1,n2,n3))
+            fin_sum = np.zeros(x_reshape.shape,dtype=np.complex128)
+            for i in range(self.mpo.nops):
+                if self.mpo.ops[i][j] is None:
+                    in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
+                    fin_sum += sgn*self.einsum('pnm,inom->opi',self.F[i][j],in_sum1)
+                else:
+                    in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
+                    in_sum2 = self.einsum('njol,ijlm->noim',self.mpo.ops[i][j],in_sum1)
+                    fin_sum += sgn*self.einsum('pnm,noim->opi',self.F[i][j],in_sum2)
+            return np.reshape(fin_sum,-1)
+        def precond(dx,e,x0):
+            return dx
+        def callback(envs_dict):
+            self.davidson_conv = envs_dict['icyc']+2 < self.max_eig_iter
+        init_guess = np.reshape(self.M[j],-1)
+        if self.leftMPS:
+            E,vl,vr = self.eig(opt_fun,init_guess,precond,
+                               max_cycle = self.max_eig_iter,
                                pick = pick_eigs,
+                               left = self.leftMPS,
+                               follow_state = True,
+                               tol = self.tol,
+                               callback = callback,
                                nroots=min(self.target_state+1,n1*n2*n3-1))
-            sort_inds = np.argsort(np.real(E))#[::-1]
-            try:
-                E = E[sort_inds[min(self.target_state,len(sort_inds)-1)]]
-                if self.leftMPS:
-                    vl = vl[sort_inds[min(self.target_state,len(sort_inds)-1)]]
-                vr = vr[sort_inds[min(self.target_state,len(sort_inds)-1)]]
-            except:
-                E = E
+            # Make vl & vr biorthonormal:
+            vl /= np.sum(vl*vr)
+            print('pyscf vl = {}'.format(vl))
+            print('pyscf vr = {}'.format(vr))
+        else:
+            E,vr = self.eig(opt_fun,init_guess,precond,
+                                 max_cycle=self.max_eig_iter,
+                                 pick = pick_eigs,
+                                 follow_state = True,
+                                 tol = self.tol,
+                                 callback = callback,
+                                 nroots=min(self.target_state+1,n1*n2*n3-1))
+        sort_inds = np.argsort(np.real(E))#[::-1]
+        try:
+            E = E[sort_inds[min(self.target_state,len(sort_inds)-1)]]
+            if self.leftMPS:
+                vl = vl[sort_inds[min(self.target_state,len(sort_inds)-1)]]
+            vr = vr[sort_inds[min(self.target_state,len(sort_inds)-1)]]
+        except:
+            E = E
+        if self.davidson_conv:
+            self.M[j] = np.reshape(vr,(n1,n2,n3))
             if self.leftMPS:
                 self.Ml[j] = np.reshape(vl,(n1,n2,n3))
-            self.M[j] = np.reshape(vr,(n1,n2,n3))
-            self.add_noise_func(j)
-            if self.verbose > 3:
-                print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(j,sgn*E))
-                if self.verbose > 4:
-                    print('\t\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
-        
-        if False:
-            ### JUST FOR FUN
-            sgn = 1.0
-            if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): sgn = -1.0
-            for i in range(self.mpo.nops):
-                if i is 0:
-                    if self.mpo.ops[i][j] is None:
-                        H = sgn*self.einsum('jlp,kmq->ljkmpq',self.F[i][j],self.F[i][j+1])
-                    else:
-                        H = sgn*self.einsum('jlp,lmin,kmq->ijknpq',self.F[i][j],self.mpo.ops[i][j],self.F[i][j+1])
-                else:
-                    if self.mpo.ops[i][j] is None:
-                        H += sgn*self.einsum('jlp,kmq->ljkmpq',self.F[i][j],self.F[i][j+1])
-                    else:
-                        H += sgn*self.einsum('jlp,lmin,kmq->ijknpq',self.F[i][j],self.mpo.ops[i][j],self.F[i][j+1])
-            (n1,n2,n3,n4,n5,n6) = H.shape
-            H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
-            #if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): H = -H
-            import scipy.linalg
-            u,vl,vr = scipy.linalg.eig(H,left=True)
-            u_sort = u[np.argsort(u)]
-            vl = vl[:,np.argsort(u)]
-            vr = vr[:,np.argsort(u)]
-            ind = 0
-            for j in range(len(u_sort)):
-                if np.abs(np.imag(u_sort[j])) < 1e-8:
-                    ind = j
-                break
-            E = u_sort[ind]
-            vr = vr[:,ind]
-            vl = vl[:,ind]
-            #print(np.sum(vl*vr))
-            #print('scipy vl = {}'.format(vl))
-            vl /= np.sum(vl*vr)
-            #print('scipy vl = {}'.format(vl))
-            #print('scipy vr = {}'.format(vr))
-            self.M[i] = np.reshape(vr,(n1,n2,n3))
-            self.Ml[i] = np.reshape(vl,(n1,n2,n3))
-            ### END JUST FOR FUN
-        return sgn*E
+        self.add_noise_func(j)
+        print('\t\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
+        if self.verbose > 3:
+            if self.davidson_conv:
+                print('\t'+'Optimization Converged at {}\n\t\tEnergy = {}'.format(j,sgn*E))
+            else:
+                print('\t'+'Optimization Not Converged at {}\n\t\tEnergy = {}'.format(j,sgn*E))
+            if self.verbose > 4:
+                print('\t\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
+        if self.davidson_conv:
+            return sgn*E
+        else:
+            return self.E_curr
 
     def slow_optimization(self,i):
         if self.verbose > 5:
@@ -524,6 +500,11 @@ class MPS_OPT:
             else:
                 self.calc_empty[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.v,self.M[site])
                 self.calc_occ[site] = self.einsum('ijk,il,ljk->',np.conj(self.M[site]),self.mpo.n,self.M[site])
+            # Try to calculate current
+            if self.hamType is "sep":
+                self.current = self.mpo.exp_p[-1]*self.calc_occ[-1]*self.mpo.exp_delta[-1]-self.mpo.exp_q[-1]*self.calc_empty[-1]*self.mpo.exp_beta[-1]
+            if self.hamType is "tasep":
+                self.current = self.calc_occ[-1]*self.mpo.beta
         if self.verbose > 4:
             print('\t'*2+'Total Number of particles: {}'.format(np.sum(self.calc_occ)))
 
@@ -778,12 +759,16 @@ class MPS_OPT:
                         print('Converged at E = {}'.format(self.finalEnergy))
                         if self.verbose > 1:
                             print('  Final Bond Dimension = {}'.format(self.maxBondDimCurr))
-                            print('  Avg time per iter for final M = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
-                                                                                  self.inside_iter_cnt [self.maxBondDimInd]))
-                            print('  Total Time = {} s'.format(self.time_total))
-                            print('  Total Number of particles: {}'.format(np.sum(self.calc_occ)))
+                            print('  Total Current = {}'.format(self.current))
                             print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
-                            print('    Entanglement Spectrum at center bond = {}'.format(self.entanglement_spectrum[int(self.N/2)]))
+                            print('  Total Number of particles: {}'.format(np.sum(self.calc_occ)))
+                            if self.verbose > 4:
+                                print('  Avg time per iter for final M = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
+                                                                                      self.inside_iter_cnt [self.maxBondDimInd]))
+                                print('  Total Time = {} s'.format(self.time_total))
+                                if self.verbose > 6:
+                                    print('    Entanglement Spectrum at center bond = {}'.format(self.entanglement_spectrum[int(self.N/2)]))
+                                    print('    Density = {}'.format(self.calc_occ))
                         print('#'*75+'\n')
                 else:
                     if self.verbose > 1:
@@ -791,13 +776,17 @@ class MPS_OPT:
                         print('Converged at E = {}'.format(self.E_conv))
                         if self.verbose > 2:
                             print('  Current Bond Dimension = {}'.format(self.maxBondDimCurr))
-                            print('  Avg time per inner iter = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
-                                                                            self.inside_iter_cnt [self.maxBondDimInd]))
-                            print('  Total time for M({}) = {} s'.format(self.maxBondDimCurr,self.outside_iter_time[self.maxBondDimInd]))
-                            print('  Required number of iters = {}'.format(self.outside_iter_cnt[self.maxBondDimInd]))
-                            print('  Total Number of particles: {}'.format(np.sum(self.calc_occ)))
+                            print('  Total Current = {}'.format(self.current))
                             print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
-                            print('    Entanglement Spectrum at center bond = {}'.format(self.entanglement_spectrum[int(self.N/2)]))
+                            print('  Total Number of particles: {}'.format(np.sum(self.calc_occ)))
+                            if self.verbose > 4:
+                                print('  Avg time per inner iter = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
+                                                                                self.inside_iter_cnt [self.maxBondDimInd]))
+                                print('  Total time for M({}) = {} s'.format(self.maxBondDimCurr,self.outside_iter_time[self.maxBondDimInd]))
+                                print('  Required number of iters = {}'.format(self.outside_iter_cnt[self.maxBondDimInd]))
+                                if self.verbose > 6:
+                                    print('    Entanglement Spectrum at center bond = {}'.format(self.entanglement_spectrum[int(self.N/2)]))
+                                    print('    Density = {}'.format(self.calc_occ))
                         print('-'*45+'\n')
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
                     self.maxBondDimInd += 1
@@ -820,13 +809,16 @@ class MPS_OPT:
                         print('Not Converged at E = {}'.format(self.finalEnergy))
                         if self.verbose > 1:
                             print('  Final Bond Dimension = {}'.format(self.maxBondDimCurr))
-                            print('  Avg time per iter for final M = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
-                                                                                  self.inside_iter_cnt [self.maxBondDimInd]))
-                            print('  Total Time = {} s'.format(self.time_total))
+                            print('  Total Current = {}'.format(self.current))
+                            print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
                             print('  Total Number of particles: {}'.format(np.sum(self.calc_occ)))
                             if self.verbose > 4:
-                                print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
-                                print('    Entanglement Spectrum at center bond = {}'.format(self.entanglement_spectrum[int(self.N/2)]))
+                                print('  Avg time per iter for final M = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
+                                                                                      self.inside_iter_cnt [self.maxBondDimInd]))
+                                print('  Total Time = {} s'.format(self.time_total))
+                                if self.verbose > 6:
+                                    print('    Entanglement Spectrum at center bond = {}'.format(self.entanglement_spectrum[int(self.N/2)]))
+                                    print('    Density = {}'.format(self.calc_occ))
                         print('!'*75+'\n')
                 else:
                     if self.verbose > 1:
@@ -834,14 +826,17 @@ class MPS_OPT:
                         print('Not Converged at E = {}'.format(self.E_conv))
                         if self.verbose > 2:
                             print('  Current Bond Dimension = {}'.format(self.maxBondDimCurr))
-                            print('  Avg time per inner iter = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
-                                                                            self.inside_iter_cnt [self.maxBondDimInd]))
-                            print('  Total time for M({}) = {} s'.format(self.maxBondDimCurr,self.outside_iter_time[self.maxBondDimInd]))
+                            print('  Total Current = {}'.format(self.current))
+                            print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
                             print('  Total Number of particles: {}'.format(np.sum(self.calc_occ)))
                             if self.verbose > 4:
+                                print('  Total time for M({}) = {} s'.format(self.maxBondDimCurr,self.outside_iter_time[self.maxBondDimInd]))
+                                print('  Avg time per inner iter = {} s'.format(self.inside_iter_time[self.maxBondDimInd]/\
+                                                                                self.inside_iter_cnt [self.maxBondDimInd]))
                                 print('  Required number of iters = {}'.format(self.outside_iter_cnt[self.maxBondDimInd]))
-                                print('  Entanglement Entropy at center bond = {}'.format(self.entanglement_entropy[int(self.N/2)]))
-                                print('    Entanglement Spectrum at center bond = {}'.format(self.entanglement_spectrum[int(self.N/2)]))
+                                if self.verbose > 6:
+                                    print('    Entanglement Spectrum at center bond = {}'.format(self.entanglement_spectrum[int(self.N/2)]))
+                                    print('    Density = {}'.format(self.calc_occ))
                         print('-'*45+'\n')
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
                     self.maxBondDimInd += 1

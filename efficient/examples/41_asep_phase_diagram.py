@@ -19,11 +19,11 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=10)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-N = 50
+N = 10
 rho_r = 0.5
 rho_l = 0.5
 #p = np.linspace(0.,1.,50)
-s = np.linspace(-5,5,100)
+s = np.linspace(-5,5,500)
 p = np.array([0.2])
 print('s =')
 for i in range(len(s)):
@@ -36,8 +36,9 @@ CGF = np.zeros((len(p),len(s)),dtype=np.complex128)   # CGF
 nPart = np.zeros((len(p),len(s)),dtype=np.complex128) # Number of particles
 EE = np.zeros((len(p),len(s)),dtype=np.complex128)    # Entanglement Entropy
 density = np.zeros((len(p),len(s),N),dtype=np.complex128)
-CGF_ed = np.zeros((len(p),len(s)),dtype=np.complex128)    # Entanglement Entropy
-nPart_ed = np.zeros((len(p),len(s)),dtype=np.complex128)    # Entanglement Entropy
+current = np.zeros((len(p),len(s),N),dtype=np.complex128)
+CGF_ed = np.zeros((len(p),len(s)),dtype=np.complex128)    
+nPart_ed = np.zeros((len(p),len(s)),dtype=np.complex128)
 density_ed = np.zeros((len(p),len(s),N),dtype=np.complex128)
 for i in range(len(p)):
     for j in range(len(s)):
@@ -58,22 +59,6 @@ for i in range(len(p)):
         EE[i,j] = x.entanglement_entropy[int(x.N/2)]
         nPart[i,j] = np.sum(x.calc_occ)
         density[i,j,:] = x.calc_occ
+        current[i,j] = x.current
         #density_ed[i,j,:] = x.ed.nv
-        #print('Density Profile (ed)   = {}'.format(x.ed.nv))
-        print('Density Profile (dmrg) = {}'.format(x.calc_occ))
-    print('CGF for p = {}'.format(p[i]))
-    for j in range(len(s)):
-        print(np.real(CGF[i,j]))
-    print('EE for p = {}'.format(p[i]))
-    for j in range(len(s)):
-        print(np.real(EE[i,j]))
-    print('nPart for p = {}'.format(p[i]))
-    for j in range(len(s)):
-        print(np.real(nPart[i,j]))
-    print('CGF (ed) for p = {}'.format(p[i]))
-    #for j in range(len(s)):
-    #    print(np.real(CGF_ed[i,j]))
-    #print('nPart (ed) for p = {}'.format(p[i]))
-    #for j in range(len(s)):
-    #    print(np.real(nPart_ed[i,j]))
-    np.savez('N'+str(N)+'_data_p'+str(len(p))+'s'+str(len(s)),s=s,p=p,CGF=CGF,EE=EE,nPart=nPart,density=density)#CGF_ed=CGF_ed,nPart_ed=nPart_ed,density=density,density_ed=density_ed)
+        np.savez('N'+str(N)+'_data_p'+str(len(p))+'s'+str(len(s)),s=s,p=p,CGF=CGF,EE=EE,nPart=nPart,density=density,current=current)#CGF_ed=CGF_ed,nPart_ed=nPart_ed,density=density,density_ed=density_ed)

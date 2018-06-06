@@ -3,35 +3,33 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm # Colormaps
 
-filename = 'N30_data_p1s100.npz'
+filename = 'N10_data_p1s500.npz'
+#filename = 'asep_psweep_N10_data_p1s100.npz'
 
 npzfile = np.load(filename)
 #print(npzfile.files)
 
 s = npzfile['s']
-#p = npzfile['p']
+p = npzfile['p']
 CGF = npzfile['CGF']
 EE = npzfile['EE']
 nPart = npzfile['nPart']
-#CGF_ed = npzfile['CGF_ed']
-#nPart_ed = npzfile['nPart_ed']
 density = npzfile['density']
-#density_ed = npzfile['density_ed']
+current = npzfile['current']
 
 # Convert to real
 CGF = np.real(CGF)
 EE = np.real(EE)
 nPart = np.real(nPart)
-#CGF_ed = np.real(CGF_ed)
-#nPart_ed = np.real(nPart_ed)
 density = np.real(density)
-#density_ed = np.real(density_ed)
+current = np.real(current)
 
 # Convert to 1D arrays
 CGF = CGF[0,:]
 EE = EE[0,:]
 nPart = nPart[0,:]
 density = density[0,:,:]
+current = current[0,:]
 
 plt.rc('text', usetex=True)
 plt.rcParams['text.latex.preamble'] = [r'\boldmath']
@@ -54,6 +52,7 @@ if True:
     fig = plt.figure()
     ax = fig.gca()
     surf = ax.plot(s_plt,Current)
+    ax.plot(s,current)
     plt.show()
 
 # Susceptibility Plot
