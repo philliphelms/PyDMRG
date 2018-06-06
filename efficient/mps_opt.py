@@ -411,8 +411,6 @@ class MPS_OPT:
                                nroots=min(self.target_state+1,n1*n2*n3-1))
             # Make vl & vr biorthonormal:
             vl /= np.sum(vl*vr)
-            print('pyscf vl = {}'.format(vl))
-            print('pyscf vr = {}'.format(vr))
         else:
             E,vr = self.eig(opt_fun,init_guess,precond,
                                  max_cycle=self.max_eig_iter,
@@ -434,12 +432,11 @@ class MPS_OPT:
             if self.leftMPS:
                 self.Ml[j] = np.reshape(vl,(n1,n2,n3))
         self.add_noise_func(j)
-        print('\t\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
         if self.verbose > 3:
             if self.davidson_conv:
                 print('\t'+'Optimization Converged at {}\n\t\tEnergy = {}'.format(j,sgn*E))
             else:
-                print('\t'+'Optimization Not Converged at {}\n\t\tEnergy = {}'.format(j,sgn*E))
+                print('\t'+'Optimization Not Converged at {}\n\t\tEnergy = {}'.format(j,self.E_curr))
             if self.verbose > 4:
                 print('\t\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
         if self.davidson_conv:
