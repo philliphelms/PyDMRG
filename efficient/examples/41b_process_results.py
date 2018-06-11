@@ -4,6 +4,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm # Colormaps
 
 filename = '10_2_data_p10_s100pts_closed.npz'
+filename = 'asep_original_N10_data_p500s500.npz'
 
 npzfile = np.load(filename)
 #s = npzfile['s']
@@ -24,7 +25,7 @@ s = np.real(s)
 p = np.real(p)
 CGF = np.real(CGF)
 EE = np.real(EE)
-#nPart = np.real(nPart)
+nPart = np.real(nPart)
 #CGF_ed = np.real(CGF_ed)
 #nPart_ed = np.real(nPart_ed)
 density = np.real(density)
@@ -38,7 +39,7 @@ plt.style.use('fivethirtyeight') #'fivethirtyeight'
 colormap = cm.plasma #coolwarm, inferno, viridis
 
 # CGF Plot
-if False:
+if True:
     fig = plt.figure()
     ax = fig.gca(projection='3d')
     ax.zaxis.set_rotate_label(False)
@@ -51,7 +52,7 @@ if False:
     plt.show()
 
 # CGF Image
-if False:
+if True:
     fig = plt.figure()
     ax = fig.gca()
     sM,pM = np.meshgrid(s,p)
@@ -153,14 +154,14 @@ if True:
 if True:
     len(p)
     print(density.shape)
-    for p_ind in range(len(p)):
+    for p_ind in range(0,len(p),int(len(p)/20)):
         print('p = {}'.format(p_ind))
         # Trajectory 1
         fig = plt.figure()
         ax = fig.gca(projection='3d')
         #p_ind = 1
         for i in range(len(s)):
-            if not i%4:
+            if not i%int(len(s)/30):
                 ax.plot(np.arange(len(density[p_ind,i,:])),s[i]*np.ones(len(density[p_ind,i,:])),density[p_ind,i,:],
                         'k-o',linewidth=1)
         #ax.set_xlabel('Site')
@@ -168,14 +169,14 @@ if True:
         #ax.set_zlabel('$\\rho$')
         ax.set_zlim(0,1)
         plt.show()
-    for s_ind in range(len(s)):
+    for s_ind in range(0,len(s),int(len(s)/20)):
         print('s = {}'.format(s_ind))
         # Trajectory 2
         fig = plt.figure()
         ax = fig.gca(projection='3d')
         #s_ind = 9
         for i in range(len(p)):
-            if not i%5:
+            if not i%int(len(p)/30):
                 ax.plot(np.arange(len(density[i,s_ind,:])),p[i]*np.ones(len(density[i,s_ind,:])),density[i,s_ind,:],
                         'k-o',linewidth=1)
         #ax.set_xlabel('Site')
