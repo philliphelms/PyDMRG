@@ -406,7 +406,7 @@ class MPS_OPT:
                                pick = pick_eigs,
                                left = self.leftMPS,
                                follow_state = True,
-                               tol = self.tol,
+                               tol = self.tol[self.maxBondDimInd],
                                callback = callback,
                                nroots=min(self.target_state+1,n1*n2*n3-1))
             # Make vl & vr biorthonormal:
@@ -416,7 +416,7 @@ class MPS_OPT:
                                  max_cycle=self.max_eig_iter,
                                  pick = pick_eigs,
                                  follow_state = True,
-                                 tol = self.tol,
+                                 tol = self.tol[self.maxBondDimInd],
                                  callback = callback,
                                  nroots=min(self.target_state+1,n1*n2*n3-1))
         sort_inds = np.argsort(np.real(E))#[::-1]
@@ -932,4 +932,5 @@ def pick_eigs(w, v, nroots, x0):
     max_imag_tol = max(1e-5,min(abs_imag)*1.1)
     realidx = np.where((abs_imag < max_imag_tol))[0]
     idx = realidx[w[realidx].real.argsort()]
+    #print(w[idx][:5])
     return w[idx], v[:,idx], idx

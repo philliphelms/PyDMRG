@@ -16,14 +16,14 @@ plt.rcParams['text.latex.preamble'] = [r'\boldmath']
 plt.rc('font', family='serif')
 plt.rcParams['text.latex.unicode']=False
 np.set_printoptions(suppress=True)
-np.set_printoptions(precision=10)
+np.set_printoptions(precision=2)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-N = 10
+N = 300
 rho_r = 0.5
 rho_l = 0.5
 #p = np.linspace(0.,1.,50)
-s = np.linspace(-5,5,500)
+s = np.linspace(-5,5,20)
 p = np.array([0.2])
 print('s =')
 for i in range(len(s)):
@@ -49,8 +49,8 @@ for i in range(len(p)):
                             add_noise=False,
                             hamType = "sep",
                             verbose = 4,
-#                            plotExpVals = True,
-#                            plotConv = True,
+                            #plotExpVals = True,
+                            #plotConv = True,
                             hamParams = (rho_l,1-rho_l,p[i],1-p[i],1-rho_r,rho_r,s[j]))
         x.kernel()
         #CGF_ed[i,j] = x.exact_diag()
@@ -61,4 +61,4 @@ for i in range(len(p)):
         density[i,j,:] = x.calc_occ
         current[i,j] = x.current
         #density_ed[i,j,:] = x.ed.nv
-        np.savez('N'+str(N)+'_data_p'+str(len(p))+'s'+str(len(s)),s=s,p=p,CGF=CGF,EE=EE,nPart=nPart,density=density,current=current)#CGF_ed=CGF_ed,nPart_ed=nPart_ed,density=density,density_ed=density_ed)
+        np.savez('bdchk_'+'N'+str(N)+'_data_p'+str(len(p))+'s'+str(len(s)),s=s,p=p,CGF=CGF,EE=EE,nPart=nPart,density=density,current=current)#CGF_ed=CGF_ed,nPart_ed=nPart_ed,density=density,density_ed=density_ed)
