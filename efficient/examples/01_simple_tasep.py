@@ -28,6 +28,7 @@ x = mps_opt.MPS_OPT(N = 500,
                     #plotConv = True,
                     #plotExpVals = True,
                     add_noise = False,
-                    hamParams = (0.35,-1,2/3))
+                    hamParams = (0.35,0,2/3))
 # Run optimization
 x.kernel()
+print(x.calc_occ)

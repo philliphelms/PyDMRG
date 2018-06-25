@@ -19,11 +19,11 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=2)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-N = 300
+N = 200
 rho_r = 0.5
 rho_l = 0.5
 #p = np.linspace(0.,1.,50)
-s = np.linspace(-5,5,20)
+s = np.linspace(-5,5,100)
 p = np.array([0.2])
 print('s =')
 for i in range(len(s)):

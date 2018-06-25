@@ -111,9 +111,7 @@ if True:
     ax = fig.gca(projection='3d')
     #ax.zaxis.set_rotate_label(False)
     sM,pM = np.meshgrid(s_plt,p)
-    start = 20
-    end = 80
-    surf = ax.plot_surface(sM[10:90,start:end],pM[10:90,start:end],Susceptibility[10:90,start:end],cmap=colormap,linewidth=0,antialiased=False)
+    surf = ax.plot_surface(sM,pM,Susceptibility,cmap=colormap,linewidth=0,antialiased=False)
     ax.set_xlabel('$\lambda$')
     ax.set_ylabel('$p$')
     ax.set_zlabel('$\partial^2\lambda(\psi)=\chi$')#, rotation=0)
@@ -129,9 +127,7 @@ if True:
     fig = plt.figure()
     ax = fig.gca()
     sM,pM = np.meshgrid(s_plt,p)
-    start = 20
-    end = 80
-    surf = ax.pcolormesh(sM[10:90,start:end],pM[10:90,start:end],Susceptibility[10:90,start:end],cmap=colormap,linewidth=0,antialiased=False)
+    surf = ax.pcolormesh(sM,pM,Susceptibility,cmap=colormap,linewidth=0,antialiased=False,vmin=0, vmax=10)
     #ax.set_xlabel('$\lambda$')
     #ax.set_ylabel('$p$')
     #fig.colorbar(surf,shrink=0.5,aspect=5)
@@ -161,7 +157,7 @@ if True:
         ax = fig.gca(projection='3d')
         #p_ind = 1
         for i in range(len(s)):
-            if not i%int(len(s)/30):
+            if not i%int(len(s)/40):
                 ax.plot(np.arange(len(density[p_ind,i,:])),s[i]*np.ones(len(density[p_ind,i,:])),density[p_ind,i,:],
                         'k-o',linewidth=1)
         #ax.set_xlabel('Site')
@@ -176,7 +172,7 @@ if True:
         ax = fig.gca(projection='3d')
         #s_ind = 9
         for i in range(len(p)):
-            if not i%int(len(p)/30):
+            if not i%int(len(p)/40):
                 ax.plot(np.arange(len(density[i,s_ind,:])),p[i]*np.ones(len(density[i,s_ind,:])),density[i,s_ind,:],
                         'k-o',linewidth=1)
         #ax.set_xlabel('Site')
@@ -210,7 +206,7 @@ if True:
     plt.show()
 
 # MatPlotLib Movie
-if True:
+if False:
     import os
     import subprocess
     files = []
@@ -244,7 +240,7 @@ if True:
         os.remove(fname)
 
 # MatPlotLib Movie
-if True:
+if False:
     import os
     import subprocess
     files = []

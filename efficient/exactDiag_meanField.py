@@ -143,12 +143,12 @@ class exactDiag:
                 lam[clump,0] = u
                 # Calculate Expectation Values
                 iv = np.linalg.inv(v)
-                lpsi = iv[ind,:]
-                rpsi = v[:,ind]
+                self.lpsi = iv[ind,:]
+                self.rpsi = v[:,ind]
                 for s in range(clumpSize):
-                    nv_new[(clump)*clumpSize+s] = np.dot(lpsi,np.dot(nop[:,:,s],rpsi))
-                    cv_new[(clump)*clumpSize+s] = np.dot(lpsi,np.dot(cop[:,:,s],rpsi))
-                    cdv_new[(clump)*clumpSize+s] = np.dot(lpsi,np.dot(cdop[:,:,s],rpsi))
+                    nv_new[(clump)*clumpSize+s] = np.dot(self.lpsi,np.dot(nop[:,:,s],self.rpsi))
+                    cv_new[(clump)*clumpSize+s] = np.dot(self.lpsi,np.dot(cop[:,:,s],self.rpsi))
+                    cdv_new[(clump)*clumpSize+s] = np.dot(self.lpsi,np.dot(cdop[:,:,s],self.rpsi))
                 sproj[clump,:] = v[:,ind]
                 isproj[clump,:] = iv[ind,:]
             # Determine change in values
@@ -173,22 +173,22 @@ class exactDiag:
         # Intra Clump
         E = 0
         for clump in range(int(L/clumpSize)):
-            lpsi = isproj[clump,:]
-            rpsi = sproj[clump,:]
+            self.lpsi = isproj[clump,:]
+            self.rpsi = sproj[clump,:]
             m = mc.copy() # Why do I have to copy here!!!???!!!???
             if clump is 0:
                 m += m1
             if clump is int(L/clumpSize-1):
                 m += mL
-            E += np.dot(lpsi,np.dot(m,rpsi))
+            E += np.dot(self.lpsi,np.dot(m,self.rpsi))
         # Inter Clump
         if clumpSize is not L:
             mi_x = np.kron(np.eye(2**(clumpSize-1)),mi)
             mi_x = np.kron(mi_x,np.eye(2**(clumpSize-1)))
             for clump in range(int(L/clumpSize-1)):
-                lpsi = np.kron(isproj[clump,:],isproj[clump+1,:])
-                rpsi = np.kron(sproj[clump,:],sproj[clump+1,:]).transpose()
-                E += np.dot(lpsi,np.dot(mi_x,rpsi))
+                self.lpsi = np.kron(isproj[clump,:],isproj[clump+1,:])
+                self.rpsi = np.kron(sproj[clump,:],sproj[clump+1,:]).transpose()
+                E += np.dot(self.lpsi,np.dot(mi_x,self.rpsi))
         return E
 
 
