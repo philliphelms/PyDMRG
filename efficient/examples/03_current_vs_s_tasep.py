@@ -19,8 +19,9 @@ np.set_printoptions(precision=100)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
 # Run TASEP Current Calculations
-N_vec = np.array([30])#,20,30,40,50,60,70,80,90,100])
-s_vec = np.linspace(-1,1,100)
+N_vec = np.array([10])#,20,30,40,50,60,70,80,90,100])
+s_vec = np.linspace(-0.1,0.1,10)
+s_vec = np.array([-1,1])
 fig1 = plt.figure()
 fig2 = plt.figure()
 fig3 = plt.figure()
@@ -37,11 +38,10 @@ for j in range(len(N_vec)):
         print('\tRunning Calcs for s={}'.format(s_vec[i]))
         x = mps_opt.MPS_OPT(N =int(N),
                               hamType = "tasep",
-                              plotExpVals = True,
+                              #plotExpVals = True,
                               hamParams = (0.35,s_vec[i],2/3))
         Evec[i] = x.kernel()
         Evec_adj[i] = Evec[i]/(N+1)
-        print(x.entanglement_entropy)
         EE[i] = x.entanglement_entropy[int(N/2)]
     Ediff = Evec[1:]-Evec[:len(Evec)-1]
     Sdiff = s_vec[1:]-s_vec[:len(s_vec)-1]
@@ -66,6 +66,7 @@ for j in range(len(N_vec)):
     plt.plot(s_vec,EE,col_vec[j]+'-',linewidth=3)
     plt.xlabel('$s$',fontsize=20)
     plt.ylabel('Entanglemente Entropy',fontsize=20)
+print(slope)
 fig1.savefig('varyS_CGF.pdf')
 fig2.savefig('varyS_scaledCGF.pdf')
 fig3.savefig('varyS_current.pdf')

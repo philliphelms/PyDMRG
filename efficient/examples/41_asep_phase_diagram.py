@@ -19,11 +19,11 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=10)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-N = 10
+N = 200
 rho_r = 0.5
 rho_l = 0.5
 #p = np.linspace(0.,1.,50)
-s = np.linspace(-5,5,500)
+s = np.linspace(-5,5,100)
 p = np.array([0.2])
 print('s =')
 for i in range(len(s)):
@@ -49,8 +49,8 @@ for i in range(len(p)):
                             add_noise=False,
                             hamType = "sep",
                             verbose = 4,
-#                            plotExpVals = True,
-#                            plotConv = True,
+                            plotExpVals = True,
+                            plotConv = True,
                             hamParams = (rho_l,1-rho_l,p[i],1-p[i],1-rho_r,rho_r,s[j]))
         x.kernel()
         #CGF_ed[i,j] = x.exact_diag()

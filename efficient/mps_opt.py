@@ -501,7 +501,10 @@ class MPS_OPT:
             if self.hamType is "sep":
                 self.current = self.mpo.exp_p[-1]*self.calc_occ[-1]*self.mpo.exp_delta[-1]-self.mpo.exp_q[-1]*self.calc_empty[-1]*self.mpo.exp_beta[-1]
             if self.hamType is "tasep":
+                # Left Hand Side
+                #self.current = self.calc_occ[0]*
                 self.current = self.calc_occ[-1]*self.mpo.beta
+
         if self.verbose > 4:
             print('\t'*2+'Total Number of particles: {}'.format(np.sum(self.calc_occ)))
 
@@ -672,9 +675,9 @@ class MPS_OPT:
                             tmp_mat = np.einsum('ij,jk->ik',tmp_mat,self.M[j][occ[i,j],:,:])
                             if self.leftMPS:
                                 tmp_mat_l = np.einsum('ij,jk->ik',tmp_mat_l,self.Ml[j][occ[i,j],:,:])
-                    rpsi[i] = tmp_mat[[0]]
+                    rpsi[i] = tmp_mat[[0]][0][0]
                     if self.leftMPS:
-                        lpsi[i] = tmp_mat[[0]]
+                        lpsi[i] = tmp_mat[[0]][0][0]
                 self.rpsi = rpsi
                 #print('Right State:')
                 #for i in range(len(self.rpsi)):
@@ -850,7 +853,7 @@ class MPS_OPT:
                 self.currIterCnt += 1
                 self.totIterCnt += 1
         self.saveFinalResults('dmrg')
-        #self.return_psi()
+        self.return_psi()
         return self.finalEnergy
 
     # ADD THE ABILITY TO DO OTHER TYPES OF CALCULATIONS FROM THE MPS OBJECT
@@ -928,6 +931,7 @@ class MPS_OPT:
         return(self.E_mf)
 
 def pick_eigs(w, v, nroots, x0):
+    #print(w)
     abs_imag = abs(w.imag)
     max_imag_tol = max(1e-5,min(abs_imag)*1.1)
     realidx = np.where((abs_imag < max_imag_tol))[0]
