@@ -1,6 +1,8 @@
 import numpy as np
 import time
 import mpo
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d
 #from scipy.sparse.linalg import eigs, LinearOperator
@@ -245,8 +247,8 @@ class MPS_OPT:
                 self.Ml[i-1] = self.einsum('klj,ji,i->kli',self.Ml[i-1],U,s)
 
     def increaseBondDim(self):
-        self.return_psi()
-        old_psi = self.rpsi.copy()
+        #self.return_psi()
+        #old_psi = self.rpsi.copy()
         if self.verbose > 3:
             print('\t'*2+'Increasing Bond Dimensions from {} to {}'.format(self.maxBondDim[self.maxBondDimInd-1],self.maxBondDimCurr))
         Mnew = []
@@ -274,8 +276,8 @@ class MPS_OPT:
                 nx,ny,nz = self.Ml[i].shape
                 Mnew[i][:nx,:ny,:nz] = self.Ml[i]
                 self.Ml[i] = Mnew[i]
-        self.return_psi()
-        print(np.sum(np.abs(old_psi-self.rpsi)))
+        #self.return_psi()
+        #print(np.sum(np.abs(old_psi-self.rpsi)))
 
     def calc_initial_f(self):
         if self.verbose > 3:
@@ -584,6 +586,7 @@ class MPS_OPT:
                 plt.draw()
             else:
                 raise ValueError("Plotting of expectation values is not implemented for the given hamiltonian type")
+            plt.figure(self.exp_val_figure.number).canvas.manager.window.attributes('-topmost', 0)
             plt.pause(0.0001)
 
     def plot_convergence(self,i):
@@ -602,6 +605,7 @@ class MPS_OPT:
                 plt.plot(self.x_vec[:-2],self.y_vec[:-2],'r-',linewidth=2)
             plt.ylabel('Energy',fontsize=20)
             plt.xlabel('Site',fontsize=20)
+            plt.figure(self.conv_figure.number).canvas.manager.window.attributes('-topmost', 0)
             plt.pause(0.0001)
 
     def saveFinalResults(self,calcType):
