@@ -2,7 +2,7 @@ import numpy as np
 
 ######## Inputs ##############################
 # SEP Model
-N = 20
+N = 10
 h = 1.
 J = 1.
 # Optimization

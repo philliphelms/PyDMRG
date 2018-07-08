@@ -4,7 +4,7 @@ np.set_printoptions(precision=3,linewidth=1000)
 
 ######## Inputs ############################################################################
 # SEP Model
-N = 4
+N = 8
 alpha = 0.35  # In at left
 beta = 2/3    # Exit at right
 s = -1        # Exponential weighting
@@ -56,6 +56,7 @@ rwf_ed = rwf_ed[:,inds[-1]]
 rwf_ed = rwf_ed/np.sum(rwf_ed)
 lwf_ed = lwf_ed/np.sum(lwf_ed*rwf_ed)
 print(rwf_ed)
+print(np.sum(rwf_ed))
 print(lwf_ed)
 ############################################################################################
 
@@ -100,7 +101,7 @@ for i in range(N,1,-1):
     Ml.insert(0,Bl)
     psir = np.einsum('ij,j->ij',ur[:,:mbd_site[i-1]],sr)
     psil = np.einsum('ij,j,jk->ik',ul[:,:mbd_site[i-1]],sl,np.linalg.pinv(Xgauge))
-    psil = np.einsum('ij,j->ij',ul[:,:mbd_site[i-1]],sl)
+    #psil = np.einsum('ij,j->ij',ul[:,:mbd_site[i-1]],sl)
     # Check for Correct Canonicalization?
     print('Check for Both  normalization:\n{}'.format(np.einsum('ijk,ikl->jl',Ml[0],np.transpose(Mr[0],(0,2,1)))))
 Mr.insert(0,np.reshape(psir,(2,1,min(2,maxBondDim))))

@@ -5,6 +5,7 @@ from matplotlib import cm # Colormaps
 
 filename = '10_2_data_p10_s100pts_closed.npz'
 filename = 'asep_original_N10_data_p500s500.npz'
+filename = '10x2_data_p1_s1pts_periodic.npz'
 
 npzfile = np.load(filename)
 #s = npzfile['s']

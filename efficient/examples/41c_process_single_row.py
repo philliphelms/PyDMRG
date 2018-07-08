@@ -4,10 +4,11 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm # Colormaps
 
 filename = 'N10_data_p1s500.npz'
+filename = '10x2_data_p1_s1pts_periodic.npz'
 #filename = 'asep_psweep_N10_data_p1s100.npz'
 
 npzfile = np.load(filename)
-#print(npzfile.files)
+print(npzfile.files)
 
 s = npzfile['s']
 p = npzfile['p']
