@@ -195,7 +195,6 @@ while not converged:
         (ul,sl,vl) = np.linalg.svd(Ml_reshape,full_matrices=False)
         # Now determine X and Xinv to make correct canonicalization
         Xgauge = np.linalg.inv(np.einsum('ji,jk->ik',np.conj(ur),ul))
-        print(Xgauge.shape)
         ul = np.dot(ul,Xgauge)
         sl = np.einsum('ij,jk->ik',Xgauge,np.diag(sl))
         Mr[i] = np.reshape(ur,(n1,n2,n3))
@@ -217,14 +216,50 @@ while not converged:
         E = u[max_ind]
         vr = vr[:,max_ind]
         vl = vl[:,max_ind]
-        #print('vr = {}'.format(vr))
-        #print('vl = {}'.format(vl))
         print('\tEnergy at site {}= {}'.format(i,E))
-        M[i] = np.reshape(vr,(n1,n2,n3))
+        Mr[i] = np.reshape(vr,(n1,n2,n3))
         Ml[i] = np.reshape(vl,(n1,n2,n3))
         # Right Normalize 
+        Mr_reshape = np.swapaxes(Mr[i],0,1)
+        Mr_reshape = np.reshape(Mr_reshape,(n2,n1*n3))
+        Ml_reshape = np.swapaxes(Ml[i],0,1)
+        Ml_reshape = np.reshape(Ml_reshape,(n2,n1*n3))
+        (ur,sr,vr) = np.linalg.svd(Mr_reshape,full_matrices=False)
+        (ul,sl,vl) = np.linalg.svd(Ml_reshape,full_matrices=False)
+        # Determine X and Xinv
+        Xgauge = np.conj(np.linalg.inv(np.einsum('ij,kj->ki',vr,np.conj(vl))))
+        vl = np.dot(Xgauge,vl)
+
+
+        # STUFF FROM ABOVE
+        psir = np.reshape(psir,(2**(i-1),-1))
+        psil = np.reshape(psil,(2**(i-1),-1))
+        (ur,sr,vr) = np.linalg.svd(psir,full_matrices=False)
+        (ul,sl,vl) = np.linalg.svd(psil,full_matrices=False)
+        # make left eigenvector right-canonical
+        Xgauge = np.conj(np.linalg.inv(np.einsum('ij,kj->ki',vr,np.conj(vl))))
+        vl = np.dot(Xgauge,vl)
+        Br = np.reshape(vr,(fbd_site[i-1],2,mbd_site[i]))
+        Bl = np.reshape(vl,(fbd_site[i-1],2,mbd_site[i]))
+        Br = Br[:mbd_site[i-1],:,:mbd_site[i]] 
+        Bl = Bl[:mbd_site[i-1],:,:mbd_site[i]]
+        Br = np.swapaxes(Br,0,1)
+        Bl = np.swapaxes(Bl,0,1)
+        Mr.insert(0,Br)
+        Ml.insert(0,Bl)
+        psir = np.einsum('ij,j->ij',ur[:,:mbd_site[i-1]],sr)
+        psil = np.einsum('ij,j,jk->ik',ul[:,:mbd_site[i-1]],sl,np.linalg.inv(Xgauge))
+
+
+
+
+
+
+
+        # STUFF FROM HERE
         M_reshape = np.swapaxes(M[i],0,1)
         M_reshape = np.reshape(M_reshape,(n2,n1*n3))
+        (ur,sr,vr) = np.linalg.svd(M
         (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
         M_reshape = np.reshape(V,(n2,n1,n3))
         M[i] = np.swapaxes(M_reshape,0,1)
