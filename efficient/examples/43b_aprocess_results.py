@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm # Colormaps
 
-#filename = '10x2_data_p1_s1pts_periodic.npz'
+filename = '10x2_data_p1_s1pts_periodic.npz'
 #filename = '10x3_data_p1_s1pts_periodic.npz'
-filename = '10x4_data_p1_s1pts_periodic.npz'
+#filename = '10x4_data_p1_s1pts_periodic.npz'
 #filename = '20x2_data_p1_s1pts_periodic.npz'
 #filename = '20x3_data_p1_s1pts_periodic.npz'
 #filename = '20x4_data_p1_s1pts_periodic.npz'
@@ -20,7 +20,7 @@ filename = '10x4_data_p1_s1pts_periodic.npz'
 #filename = '50x4_data_p1_s1pts_periodic.npz'
 
 Nx = 10
-Ny = 4
+Ny = 2
 
 npzfile = np.load(filename)
 print(npzfile.files)
