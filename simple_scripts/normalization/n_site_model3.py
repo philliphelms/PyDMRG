@@ -14,7 +14,7 @@ p = 1         # Jump right
 tol = 1e-5
 maxIter = 10
 maxBondDim = 16
-startRightCanonical = False
+startRightCanonical = True # This currently has to be true...
 ############################################################################################
 
 ######## MPO ###############################################################################
@@ -81,7 +81,7 @@ for i in range(int(N/2))[::-1]:
     fbd_site.insert(-1,2**(i+1))
     mbd_site.insert(-1,min(2**(i+1),maxBondDim))
 if startRightCanonical:
-    # Decompose Wavefunction from the right
+    # Decompose Wavefunction from the right -------------------------------------------------
     Mr = [] # Ordering (sigma,a_0,a_1)
     Ml = []
     for i in range(N,1,-1):
@@ -103,11 +103,11 @@ if startRightCanonical:
         psir = np.einsum('ij,j->ij',ur[:,:mbd_site[i-1]],sr)
         psil = np.einsum('ij,j,jk->ik',ul[:,:mbd_site[i-1]],sl,np.linalg.inv(Xgauge))
         # Check for Correct Canonicalization?
-        #print('Check for Both  normalization:\n{}'.format(np.einsum('ijk,ilk->jl',Ml[0],np.conj(Mr[0]))))
+        print('Check for Both  normalization:\n{}'.format(np.einsum('ijk,ilk->jl',Ml[0],np.conj(Mr[0]))))
     Mr.insert(0,np.reshape(psir,(2,1,min(2,maxBondDim))))
     Ml.insert(0,np.reshape(psil,(2,1,min(2,maxBondDim))))
 else:
-    # Decompose Wavefunction from the left
+    # Decompose Wavefunction from the left ------------------------------------------------------
     Mr = []
     Ml = []
     for i in range(N-1):
@@ -153,7 +153,7 @@ for i in range(2**N):
 print('Difference Between Left  ED & MPS WFs: {}'.format(np.sum(np.abs(lwf_dmrg-lwf_ed))))
 print('Difference Between Right ED & MPS WFs: {}'.format(np.sum(np.abs(rwf_dmrg-rwf_ed))))
 ##############################################
-"""
+
 # Create F ###################################
 F = []
 F.insert(len(F),np.array([[[1]]]))
@@ -166,9 +166,6 @@ F.insert(len(F),np.array([[[1]]]))
 for i in range(int(N)-1,0,-1):
     F[i] = np.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(Ml[i]),W[i],Mr[i],F[i+1])
 ##############################################
-
-
-
 
 # Optimization Sweeps ########################
 converged = False
@@ -187,27 +184,25 @@ while not converged:
         E = u[max_ind]
         vr = vr[:,max_ind]
         vl = vl[:,max_ind]
-        print(Mr[i],-1)
-        print(vr)
-
         # TODO - Correct Normalization!!!
         print('\tEnergy at site {}= {}'.format(i,E))
-        print('Initial RMPS:\n{}'.format(Mr[i]))
         Mr[i] = np.reshape(vr,(n1,n2,n3))
-        print('Final   RMPS:\n{}'.format(Mr[i]))
-        print('Initial LMPS:\n{}'.format(Ml[i]))
         Ml[i] = np.reshape(vl,(n1,n2,n3))
-        print('Final   LMPS:\n{}'.format(Ml[i]))
         # Right Normalize
         Mr_reshape = np.reshape(Mr[i],(n1*n2,n3))
         Ml_reshape = np.reshape(Ml[i],(n1*n2,n3))
         (ur,sr,vr) = np.linalg.svd(Mr_reshape,full_matrices=False)
         (ul,sl,vl) = np.linalg.svd(Ml_reshape,full_matrices=False)
         # Now determine X and Xinv to make correct canonicalization
+        Xgauge = np.linalg.inv(np.einsum('ji,jk->ik',np.conj(ur),ul))
+        print(Xgauge.shape)
+        ul = np.dot(ul,Xgauge)
+        sl = np.einsum('ij,jk->ik',Xgauge,np.diag(sl))
         Mr[i] = np.reshape(ur,(n1,n2,n3))
         Mr[i+1] = np.einsum('i,ij,kjl->kil',sr,vr,Mr[i+1])
         Ml[i] = np.reshape(ul,(n1,n2,n3))
-        Ml[i+1] = np.einsum('i,ij,kjl->kil',sl,vl,Ml[i+1])
+        #Ml[i+1] = np.einsum('i,ij,kjl->kil',sl,vl,Ml[i+1])
+        Ml[i+1] = np.einsum('ij,jk,lkm->lim',sl,vl,Ml[i+1])
         # Update F
         F[i+1] = np.einsum('jlp,ijk,lmin,npq->kmq',F[i],np.conj(Ml[i]),W[i],Mr[i])
 # Left Sweep -----------------------------
@@ -222,7 +217,6 @@ while not converged:
         E = u[max_ind]
         vr = vr[:,max_ind]
         vl = vl[:,max_ind]
-        print(vl)
         #print('vr = {}'.format(vr))
         #print('vl = {}'.format(vl))
         print('\tEnergy at site {}= {}'.format(i,E))
@@ -272,4 +266,3 @@ for i in range(2**N):
     #print(np.sum(tmp_mat-tmp_matl))
     rwf_dmrg[i] = tmp_mat[0,0]
 ##############################################
-"""
