@@ -1,11 +1,11 @@
 # THIS ONE IS TO TRY TO GET X* = (VR,VL)^(-1)
 import numpy as np
 import scipy.linalg as la
-np.set_printoptions(precision=2,linewidth=1000)
+np.set_printoptions(precision=1,linewidth=250)
 
 ######## Inputs ############################################################################
 # SEP Model
-N = 4
+N = 8
 alpha = 0.35  # In at left
 beta = 2/3    # Exit at right
 s = -1        # Exponential weighting
@@ -15,7 +15,7 @@ tol = 1e-5
 maxIter = 10
 maxBondDim = 16
 startRightCanonical = True # This currently has to be true...
-printlots = False
+printlots = True
 ############################################################################################
 
 ######## MPO ###############################################################################
@@ -59,6 +59,12 @@ rwf_ed = rwf_ed[:,inds[-1]]
 rwf_ed = rwf_ed/np.sum(rwf_ed)
 lwf_ed = lwf_ed/np.sum(lwf_ed*rwf_ed)
 print('Exact Diagonalization Energy: {}'.format(e[inds[-1]]))
+#print('rwf_ed = {}'.format(rwf_ed))
+#print('lwf_ed = {}'.format(lwf_ed))
+#print('rwf*rwf = {}'.format(np.dot(rwf_ed,rwf_ed)))
+#print('sum(rwf)= {}'.format(np.sum(rwf_ed)))
+#print('rwf*lwf = {}'.format(np.dot(rwf_ed,lwf_ed)))
+#print('lwf*lwf = {}'.format(np.dot(lwf_ed,lwf_ed)))
 ############################################################################################
 
 # Decompose States into MPS ################################################################
@@ -92,6 +98,7 @@ if startRightCanonical:
         (ul,sl,vl) = np.linalg.svd(psil,full_matrices=False)
         # make left eigenvector right-canonical
         Xgauge = np.conj(np.linalg.inv(np.einsum('ij,kj->ki',vr,np.conj(vl))))
+        vl_original = vl
         vl = np.dot(Xgauge,vl)
         Br = np.reshape(vr,(fbd_site[i-1],2,mbd_site[i]))
         Bl = np.reshape(vl,(fbd_site[i-1],2,mbd_site[i]))
@@ -103,8 +110,16 @@ if startRightCanonical:
         Ml.insert(0,Bl)
         psir = np.einsum('ij,j->ij',ur[:,:mbd_site[i-1]],sr)
         psil = np.einsum('ij,j,jk->ik',ul[:,:mbd_site[i-1]],sl,np.linalg.inv(Xgauge))
+        # We can do a check since the insertion of the identity should not affect the overall product
+        #chk1 = np.einsum('ij,jk,kl->il',ul,np.diag(sl),vl_original)
+        #chk2 = np.einsum('ij,jk,kl,lm,mn->in',ul,np.diag(sl),np.linalg.inv(Xgauge),Xgauge,vl_original)
+        #chk3 = np.einsum('ij,jk,kl,lm->im',ul,np.diag(sl),np.linalg.inv(Xgauge),vl)
+        #chk4 = np.einsum('ij,jk->ik',psil,vl)
+        #print('Check 1 {}'.format(np.sum(np.abs(np.abs(chk1)-np.abs(chk2)))))
+        #print('Check 2 {}'.format(np.sum(np.abs(np.abs(chk1)-np.abs(chk3)))))
+        #print('Check 3 {}'.format(np.sum(np.abs(np.abs(chk1)-np.abs(chk4)))))
         # Check for Correct Canonicalization?
-        print('Check for Both  normalization:\n{}'.format(np.einsum('ijk,ilk->jl',Ml[0],np.conj(Mr[0]))))
+        #print('Check for Both  normalization:\n{}'.format(np.einsum('ijk,ilk->jl',Ml[0],np.conj(Mr[0]))))
     Mr.insert(0,np.reshape(psir,(2,1,min(2,maxBondDim))))
     Ml.insert(0,np.reshape(psil,(2,1,min(2,maxBondDim))))
 else:
@@ -128,8 +143,8 @@ else:
         print('Check for Right normalization:\n{}'.format(np.einsum('ikj,ikl->jl',Mr[-1],np.conj(Mr[-1]))))
     Mr.append(np.reshape(psir,(2,min(2,maxBondDim),1)))
     Ml.append(np.reshape(psil,(2,min(2,maxBondDim),1)))
-for i in range(len(Mr)):
-    print('Mr[{}] = {}'.format(i,np.reshape(Mr[i],-1)))
+#for i in range(len(Mr)):
+#    print('Mr[{}] = {}'.format(i,np.reshape(Mr[i],-1)))
 ##############################################
 
 # Now Calculate State from MPS ###############
@@ -179,8 +194,6 @@ while not converged:
         if printlots:
             Mr_prev = np.reshape(Mr[i],-1)
             Ml_prev = np.reshape(Ml[i],-1)
-            print('Initial Mr = {}'.format(np.reshape(Mr[i],-1)))
-            print('Initial Ml = {}'.format(np.reshape(Ml[i],-1)))
         H = np.einsum('jlp,lmin,kmq->ijknpq',F[i],W[i],F[i+1])
         (n1,n2,n3,n4,n5,n6) = H.shape
         H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
@@ -194,20 +207,6 @@ while not converged:
         print('\tEnergy at site {}= {}'.format(i,E))
         Mr[i] = np.reshape(vr,(n1,n2,n3))
         Ml[i] = np.reshape(vl,(n1,n2,n3))
-        if printlots:
-            print('Final   Mr = {}'.format(np.reshape(Mr[i],-1)))
-            print('Final   Ml = {}'.format(np.reshape(Ml[i],-1)))
-            print('Divide  Mr = {}'.format(np.reshape(Mr[i],-1)/Mr_prev))
-            print('Divide  Ml = {}'.format(np.reshape(Ml[i],-1)/Ml_prev))
-            print(np.dot(np.reshape(Mr[i],-1),np.reshape(Mr[i],-1)))
-            print(np.dot(np.reshape(Mr[i],-1),np.reshape(Ml[i],-1)))
-            print(1/np.dot(np.reshape(Mr[i],-1),np.reshape(Ml[i],-1)))
-            print(np.dot(np.reshape(Ml[i],-1),np.reshape(Ml[i],-1)))
-            print(np.dot(Mr_prev,Mr_prev))
-            print(np.dot(Ml_prev,Ml_prev))
-            print(np.dot(Mr_prev,Ml_prev))
-            print(1/np.sum(Mr_prev))
-            print(1/np.sum(np.reshape(Mr[i],-1)))
         # Right Normalize
         Mr_reshape = np.reshape(Mr[i],(n1*n2,n3))
         Ml_reshape = np.reshape(Ml[i],(n1*n2,n3))
@@ -216,7 +215,7 @@ while not converged:
         # Now determine X and Xinv to make correct canonicalization
         Xgauge = np.linalg.inv(np.einsum('ji,jk->ik',np.conj(ur),ul))
         ul = np.dot(ul,Xgauge)
-        sl = np.einsum('ij,jk->ik',Xgauge,np.diag(sl))
+        sl = np.einsum('ij,jk->ik',np.linalg.inv(Xgauge),np.diag(sl))
         Mr[i] = np.reshape(ur,(n1,n2,n3))
         Mr[i+1] = np.einsum('i,ij,kjl->kil',sr,vr,Mr[i+1])
         Ml[i] = np.reshape(ul,(n1,n2,n3))
@@ -224,12 +223,12 @@ while not converged:
         Ml[i+1] = np.einsum('ij,jk,lkm->lim',sl,vl,Ml[i+1])
         # Update F
         F[i+1] = np.einsum('jlp,ijk,lmin,npq->kmq',F[i],np.conj(Ml[i]),W[i],Mr[i])
-        if printlots:
-            print('Final   Mr = {}'.format(np.reshape(Mr[i],-1)))
-            print('Final   Ml = {}'.format(np.reshape(Ml[i],-1)))
 # Left Sweep -----------------------------
     print('Left Sweep {}'.format(iterCnt))
     for i in range(N-1,0,-1):
+        if printlots:
+            Mr_prev = np.reshape(Mr[i],-1)
+            Ml_prev = np.reshape(Ml[i],-1)
         H = np.einsum('jlp,lmin,kmq->ijknpq',F[i],W[i],F[i+1])
         (n1,n2,n3,n4,n5,n6) = H.shape
         H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
@@ -252,7 +251,7 @@ while not converged:
         # Determine X and Xinv
         Xgauge = np.conj(np.linalg.inv(np.einsum('ij,kj->ki',vr,np.conj(vl))))
         vl = np.dot(Xgauge,vl)
-        sl = np.einsum('ij,jk->ik',np.diag(sl),Xgauge)
+        sl = np.einsum('ij,jk->ik',np.diag(sl),np.linalg.inv(Xgauge))
         Mr_reshape = np.reshape(vr,(n2,n1,n3))
         Ml_reshape = np.reshape(vl,(n2,n1,n3))
         Mr[i] = np.swapaxes(Mr_reshape,0,1)
@@ -273,8 +272,6 @@ while not converged:
         E_prev = E
 ##############################################
 
-for i in range(len(Mr)):
-    print('Mr[{}] = {}'.format(i,np.reshape(Mr[i],-1)))
 
 ##############################################
 # Now Calculate State from MPS ###############
@@ -299,8 +296,16 @@ for i in range(2**N):
 # Ensure Proper Normalization
 # <-|R> = 1
 # <L|R> = 1
-rwf_ed = rwf_dmrg/np.sum(rwf_dmrg)
-lwf_ed = lwf_dmrg/np.sum(lwf_dmrg*rwf_dmrg)
+print('\n\nResulting Wavefunctions:')
+print('Need for Right Normalization: {}'.format(np.sum(rwf_dmrg)))
+print('Need for Left  Normalization: {}'.format(np.dot(lwf_dmrg,rwf_dmrg)))
+rwf_dmrg = rwf_dmrg/np.sum(rwf_dmrg)
+lwf_dmrg = lwf_dmrg/np.sum(lwf_dmrg*rwf_dmrg)
 print('Difference Between Left  ED & DMRG WFs: {}'.format(np.sum(np.abs(lwf_dmrg-lwf_ed))))
 print('Difference Between Right ED & DMRG WFs: {}'.format(np.sum(np.abs(rwf_dmrg-rwf_ed))))
+print('='*100)
+print('Occupation\t\trdmrg\t\t\tred\t\t\tldmrg\t\t\tled')
+print('-'*100)
+for i in range(len(rwf_dmrg)):
+    print('{}\t{},\t{},\t{},\t{}'.format(occ[i,:],np.real(rwf_dmrg[i]),np.real(rwf_ed[i]),np.real(lwf_dmrg[i]),np.real(lwf_ed[i])))
 ##############################################
