@@ -5,7 +5,7 @@ np.set_printoptions(precision=2,linewidth=1000)
 
 ######## Inputs ############################################################################
 # SEP Model
-N = 6
+N = 4
 alpha = 0.35  # In at left
 beta = 2/3    # Exit at right
 s = -1        # Exponential weighting
@@ -15,6 +15,7 @@ tol = 1e-5
 maxIter = 10
 maxBondDim = 16
 startRightCanonical = True # This currently has to be true...
+printlots = False
 ############################################################################################
 
 ######## MPO ###############################################################################
@@ -128,7 +129,7 @@ else:
     Mr.append(np.reshape(psir,(2,min(2,maxBondDim),1)))
     Ml.append(np.reshape(psil,(2,min(2,maxBondDim),1)))
 for i in range(len(Mr)):
-    print(Mr[i].shape)
+    print('Mr[{}] = {}'.format(i,np.reshape(Mr[i],-1)))
 ##############################################
 
 # Now Calculate State from MPS ###############
@@ -175,6 +176,11 @@ while not converged:
 # Right Sweep ----------------------------
     print('Right Sweep {}'.format(iterCnt))
     for i in range(N-1):
+        if printlots:
+            Mr_prev = np.reshape(Mr[i],-1)
+            Ml_prev = np.reshape(Ml[i],-1)
+            print('Initial Mr = {}'.format(np.reshape(Mr[i],-1)))
+            print('Initial Ml = {}'.format(np.reshape(Ml[i],-1)))
         H = np.einsum('jlp,lmin,kmq->ijknpq',F[i],W[i],F[i+1])
         (n1,n2,n3,n4,n5,n6) = H.shape
         H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
@@ -188,6 +194,20 @@ while not converged:
         print('\tEnergy at site {}= {}'.format(i,E))
         Mr[i] = np.reshape(vr,(n1,n2,n3))
         Ml[i] = np.reshape(vl,(n1,n2,n3))
+        if printlots:
+            print('Final   Mr = {}'.format(np.reshape(Mr[i],-1)))
+            print('Final   Ml = {}'.format(np.reshape(Ml[i],-1)))
+            print('Divide  Mr = {}'.format(np.reshape(Mr[i],-1)/Mr_prev))
+            print('Divide  Ml = {}'.format(np.reshape(Ml[i],-1)/Ml_prev))
+            print(np.dot(np.reshape(Mr[i],-1),np.reshape(Mr[i],-1)))
+            print(np.dot(np.reshape(Mr[i],-1),np.reshape(Ml[i],-1)))
+            print(1/np.dot(np.reshape(Mr[i],-1),np.reshape(Ml[i],-1)))
+            print(np.dot(np.reshape(Ml[i],-1),np.reshape(Ml[i],-1)))
+            print(np.dot(Mr_prev,Mr_prev))
+            print(np.dot(Ml_prev,Ml_prev))
+            print(np.dot(Mr_prev,Ml_prev))
+            print(1/np.sum(Mr_prev))
+            print(1/np.sum(np.reshape(Mr[i],-1)))
         # Right Normalize
         Mr_reshape = np.reshape(Mr[i],(n1*n2,n3))
         Ml_reshape = np.reshape(Ml[i],(n1*n2,n3))
@@ -204,6 +224,9 @@ while not converged:
         Ml[i+1] = np.einsum('ij,jk,lkm->lim',sl,vl,Ml[i+1])
         # Update F
         F[i+1] = np.einsum('jlp,ijk,lmin,npq->kmq',F[i],np.conj(Ml[i]),W[i],Mr[i])
+        if printlots:
+            print('Final   Mr = {}'.format(np.reshape(Mr[i],-1)))
+            print('Final   Ml = {}'.format(np.reshape(Ml[i],-1)))
 # Left Sweep -----------------------------
     print('Left Sweep {}'.format(iterCnt))
     for i in range(N-1,0,-1):
@@ -229,50 +252,15 @@ while not converged:
         # Determine X and Xinv
         Xgauge = np.conj(np.linalg.inv(np.einsum('ij,kj->ki',vr,np.conj(vl))))
         vl = np.dot(Xgauge,vl)
-
-
-        # STUFF FROM ABOVE
-        psir = np.reshape(psir,(2**(i-1),-1))
-        psil = np.reshape(psil,(2**(i-1),-1))
-        (ur,sr,vr) = np.linalg.svd(psir,full_matrices=False)
-        (ul,sl,vl) = np.linalg.svd(psil,full_matrices=False)
-        # make left eigenvector right-canonical
-        Xgauge = np.conj(np.linalg.inv(np.einsum('ij,kj->ki',vr,np.conj(vl))))
-        vl = np.dot(Xgauge,vl)
-        Br = np.reshape(vr,(fbd_site[i-1],2,mbd_site[i]))
-        Bl = np.reshape(vl,(fbd_site[i-1],2,mbd_site[i]))
-        Br = Br[:mbd_site[i-1],:,:mbd_site[i]] 
-        Bl = Bl[:mbd_site[i-1],:,:mbd_site[i]]
-        Br = np.swapaxes(Br,0,1)
-        Bl = np.swapaxes(Bl,0,1)
-        Mr.insert(0,Br)
-        Ml.insert(0,Bl)
-        psir = np.einsum('ij,j->ij',ur[:,:mbd_site[i-1]],sr)
-        psil = np.einsum('ij,j,jk->ik',ul[:,:mbd_site[i-1]],sl,np.linalg.inv(Xgauge))
-
-
-
-
-
-
-
-        # STUFF FROM HERE
-        M_reshape = np.swapaxes(M[i],0,1)
-        M_reshape = np.reshape(M_reshape,(n2,n1*n3))
-        (ur,sr,vr) = np.linalg.svd(M
-        (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
-        M_reshape = np.reshape(V,(n2,n1,n3))
-        M[i] = np.swapaxes(M_reshape,0,1)
-        M[i-1] = np.einsum('klj,ji,i->kli',M[i-1],U,s)
-        M_reshape = np.swapaxes(Ml[i],0,1)
-        M_reshape = np.reshape(M_reshape,(n2,n1*n3))
-        (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
-        M_reshape = np.reshape(V,(n2,n1,n3))
-        Ml[i] = np.swapaxes(M_reshape,0,1)
-        Ml[i-1] = np.einsum('klj,ji,i->kli',M[i-1],U,s)
+        sl = np.einsum('ij,jk->ik',np.diag(sl),Xgauge)
+        Mr_reshape = np.reshape(vr,(n2,n1,n3))
+        Ml_reshape = np.reshape(vl,(n2,n1,n3))
+        Mr[i] = np.swapaxes(Mr_reshape,0,1)
+        Ml[i] = np.swapaxes(Ml_reshape,0,1)
+        Mr[i-1] = np.einsum('klj,ji,i->kli',Mr[i-1],ur,sr)
+        Ml[i-1] = np.einsum('klj,ji,im->klm',Ml[i-1],ul,sl)
         # Update F
-        F[i] = np.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(M[i]),W[i],M[i],F[i+1])
-        Fl[i] = np.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(Ml[i]),W[i],Ml[i],Fl[i+1])
+        F[i] = np.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(Ml[i]),W[i],Mr[i],F[i+1])
 # Convergence Test -----------------------
     if np.abs(E-E_prev) < tol:
         print('#'*75+'\nConverged at E = {}'.format(E)+'\n'+'#'*75)
@@ -285,6 +273,10 @@ while not converged:
         E_prev = E
 ##############################################
 
+for i in range(len(Mr)):
+    print('Mr[{}] = {}'.format(i,np.reshape(Mr[i],-1)))
+
+##############################################
 # Now Calculate State from MPS ###############
 occ = np.zeros((2**N,N),dtype=int)
 sum_occ = np.zeros(2**N)
@@ -293,11 +285,22 @@ for i in range(2**N):
     sum_occ[i] = np.sum(occ[i,:])
 # Calculate Wavefunction
 rwf_dmrg = np.zeros(2**N,dtype=np.complex128)
+lwf_dmrg = np.zeros(2**N,dtype=np.complex128)
 for i in range(2**N):
     i_occ = occ[i,:]
-    tmp_mat = np.array([[1]])
+    tmp_matr = np.array([[1]])
+    tmp_matl = np.array([[1]])
     for k in range(N):
-        tmp_mat = np.einsum('ij,jk->ik',tmp_mat,M[k][i_occ[k],:,:])
+        tmp_matr = np.einsum('ij,jk->ik',tmp_matr,Mr[k][i_occ[k],:,:])
+        tmp_matl = np.einsum('ij,jk->ik',tmp_matl,Ml[k][i_occ[k],:,:])
     #print(np.sum(tmp_mat-tmp_matl))
-    rwf_dmrg[i] = tmp_mat[0,0]
+    rwf_dmrg[i] = tmp_matr[0,0]
+    lwf_dmrg[i] = tmp_matl[0,0]
+# Ensure Proper Normalization
+# <-|R> = 1
+# <L|R> = 1
+rwf_ed = rwf_dmrg/np.sum(rwf_dmrg)
+lwf_ed = lwf_dmrg/np.sum(lwf_dmrg*rwf_dmrg)
+print('Difference Between Left  ED & DMRG WFs: {}'.format(np.sum(np.abs(lwf_dmrg-lwf_ed))))
+print('Difference Between Right ED & DMRG WFs: {}'.format(np.sum(np.abs(rwf_dmrg-rwf_ed))))
 ##############################################
