@@ -3,10 +3,29 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm # Colormaps
 
-filename = 'asep_bond_dim_check_N30_data_p1s20.npz'
-bd = np.array([2,4,6,8,10,20,30,40,50,60,70,80,90,100,125,150,175,200,250,300,350,400,450,500,600,700,800,900,1000])
-tol = 1e-5
+filename = 'results/asep_2d_PBC_bond_dim_check_Nx10_Ny2_data_p1s10.npz'
+tol = 1e-8
+end_bd = 19
+filename = 'results/asep_2d_PBC_bond_dim_check_Nx10_Ny3_data_p1s10.npz'
+tol = 1e-8
+end_bd = 17
+filename = 'results/asep_2d_PBC_bond_dim_check_Nx10_Ny4_data_p1s10.npz'
+tol = 1e-8
+end_bd = 12
+filename = 'results/asep_2d_PBC_bond_dim_check_Nx20_Ny2_data_p1s10.npz'
+tol = 1e-8
+end_bd = 17
+filename = 'results/asep_2d_PBC_bond_dim_check_Nx20_Ny3_data_p1s10.npz'
+tol = 1e-8
+end_bd = 11
+filename = 'results/asep_2d_PBC_bond_dim_check_Nx20_Ny4_data_p1s10.npz'
+tol = 1e-8
+end_bd = 7
+filename = 'results/asep_2d_PBC_bond_dim_check_Nx30_Ny2_data_p1s10.npz'
+tol = 1e-8
+end_bd = 13
 
+bd = np.array([2,4,6,8,10,20,30,40,50,60,70,80,90,100,125,150,175,200,250,300,350,400,450,500,600,700,800,900,1000])
 npzfile = np.load(filename)
 s = npzfile['s']
 p = npzfile['p']
@@ -42,8 +61,8 @@ if True:
     fig = plt.figure()
     ax = fig.gca()
     ns,nBD = CGF.shape
-    for i in range(nBD):
-        ax.semilogy(s,np.abs((CGF[:,i]-CGF[:,10])/CGF[:,20]),'o-',label='$M='+str(bd[i])+'$',color=colormap(i/nBD))
+    for i in range(end_bd):
+        ax.semilogy(s,np.abs((CGF[:,i]-CGF[:,end_bd])/CGF[:,end_bd])+tol*1e-1,'o-',label='$M='+str(bd[i])+'$',color=colormap(i/end_bd))
     ax.semilogy(np.array([s[0],s[-1]]),np.array([tol,tol]),'k:',label='Tolerance')
     ax.legend()
 
@@ -52,9 +71,8 @@ if True:
     fig = plt.figure()
     ax = fig.gca()
     ns,nBD = CGF.shape
-    end_bd = 28
     for i in range(ns):
-        ax.semilogy(bd[:end_bd],np.abs((CGF[i,:end_bd]-CGF[i,end_bd])/CGF[i,end_bd]),'o-',label='$s='+str(s[i])+'$',color=colormap(i/ns))
+        ax.semilogy(bd[:end_bd],np.abs((CGF[i,:end_bd]-CGF[i,end_bd])/CGF[i,end_bd])+tol*1e-1,'o-',label='$s='+str(s[i])+'$',color=colormap(i/ns))
     ax.semilogy(np.array([bd[0],bd[end_bd-1]]),np.array([tol,tol]),'k:',label='Tolerance',lw=3)
     ax.legend(loc=1)
 
@@ -62,7 +80,6 @@ if True:
 if True:
     fig = plt.figure()
     ax = fig.gca()
-    end_bd = 28
     below_tol_cnt = np.zeros(bd.shape)
     for i in range(ns):
         diff = np.abs((CGF[i,:end_bd]-CGF[i,end_bd])/CGF[i,end_bd])

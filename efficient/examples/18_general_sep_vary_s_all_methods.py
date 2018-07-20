@@ -25,9 +25,12 @@ E = np.zeros(s_vec.shape)
 E_mf = np.zeros(s_vec.shape)
 for i in range(len(s_vec)):
     x = mps_opt.MPS_OPT(N=N,
-                        maxBondDim = 100,
+                        maxBondDim = [10,11,12,13,14,15,16,17,18,19,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200],
+                        maxIter = 1,
                         verbose = 5,
                         hamType = "sep",
+                        plotConv = True,
+                        plotExpVals = True,
                         hamParams = (0.9,0.1,0.5,0.5,0.1,0.9,s_vec[i]))
                         #hamParams = (0.5,0.8,0.2,0.6,0.8,0.7,s_vec[i]))
     E_dmrg[i] = x.kernel()

@@ -7,7 +7,7 @@ np.set_printoptions(precision=1,linewidth=250)
 N = 8
 alpha = 0.35  # In at left
 beta = 2/3    # Exit at right
-s = -1        # Exponential weighting
+s = 1         # Exponential weighting
 p = 1         # Jump right
 # Optimization
 tol = 1e-5
@@ -153,6 +153,7 @@ for i in range(int(N)-1,-1,-1):
 converged = False
 iterCnt = 0
 E_prev = 0
+#density_avg = np.zeros(N)
 while not converged:
 # Right Sweep ----------------------------
     print('Right Sweep {}'.format(iterCnt))
@@ -176,6 +177,9 @@ while not converged:
         norm_factor = np.einsum('j,ijk,k->',Fs[i-1],Mr[i],Fs[i+1])
         Mr[i] /= norm_factor
         Ml[i] /= np.einsum('ijk,ijk->',Mr[i],np.conj(Ml[i]))
+        ## Calculate Local Density
+        #density_avg[i] = np.einsum('ijk,il,ljk->',np.conj(Ml[i]),v,Mr[i])
+        #print('\t\tAveraged Density[{}] = {}'.format(i,density_avg[i]))
         # Put into Canonical Form
         Mr_reshape = np.reshape(Mr[i],(n1*n2,n3))
         Ml_reshape = np.reshape(Ml[i],(n1*n2,n3))
@@ -214,6 +218,9 @@ while not converged:
         norm_factor = np.einsum('j,ijk,k->',Fs[i-1],Mr[i],Fs[i+1])
         Mr[i] /= norm_factor
         Ml[i] /= np.einsum('ijk,ijk->',Mr[i],np.conj(Ml[i]))
+        ## Calculate Local Density
+        #density_avg[i] = np.einsum('ijk,il,ljk->',np.conj(Ml[i]),v,Mr[i])
+        #print('\t\tAveraged Density[{}] = {}'.format(i,density_avg[i]))
         # Put into Canonical Form
         Mr_reshape = np.swapaxes(Mr[i],0,1)
         Mr_reshape = np.reshape(Mr_reshape,(n2,n1*n3))

@@ -211,19 +211,17 @@ M_analytic = []
 M_analytic.insert(len(M_analytic),np.ones((2,1,2)))
 M_analytic.insert(len(M_analytic),np.ones((2,2,1)))
 psi = np.zeros((2,2))
-psi[0,0] = rwf_ed[0]
-psi[0,1] = rwf_ed[1]
-psi[1,0] = rwf_ed[2]
-psi[1,1] = rwf_ed[3]
+psi[0,0] = rwf_ed[3]
+psi[0,1] = rwf_ed[2]
+psi[1,0] = rwf_ed[0]
+psi[1,1] = rwf_ed[1]
 (U,s,V) = np.linalg.svd(psi,full_matrices=True)
-print(V.shape)
-print(U.shape)
-print(s.shape)
 M_analytic[1] = np.reshape(V,(2,2,1))
 M_analytic[0] = np.einsum('ij,j->ij',U,s)
 ##############################################
 print(M_analytic[1])
 print(M[1])
+print('\n\n')
 print(M_analytic[0])
 print(M[0])
 
