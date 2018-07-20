@@ -1,4 +1,3 @@
-# THIS ONE IS TO TRY TO GET X* = (VR,VL)^(-1)
 import numpy as np
 import scipy.linalg as la
 np.set_printoptions(precision=1,linewidth=250)
@@ -59,12 +58,6 @@ rwf_ed = rwf_ed[:,inds[-1]]
 rwf_ed = rwf_ed/np.sum(rwf_ed)
 lwf_ed = lwf_ed/np.sum(lwf_ed*rwf_ed)
 print('Exact Diagonalization Energy: {}'.format(e[inds[-1]]))
-#print('rwf_ed = {}'.format(rwf_ed))
-#print('lwf_ed = {}'.format(lwf_ed))
-#print('rwf*rwf = {}'.format(np.dot(rwf_ed,rwf_ed)))
-#print('sum(rwf)= {}'.format(np.sum(rwf_ed)))
-#print('rwf*lwf = {}'.format(np.dot(rwf_ed,lwf_ed)))
-#print('lwf*lwf = {}'.format(np.dot(lwf_ed,lwf_ed)))
 ############################################################################################
 
 # Decompose States into MPS ################################################################
@@ -87,64 +80,30 @@ for i in range(int(N/2)):
 for i in range(int(N/2))[::-1]:
     fbd_site.insert(-1,2**(i+1))
     mbd_site.insert(-1,min(2**(i+1),maxBondDim))
-if startRightCanonical:
-    # Decompose Wavefunction from the right -------------------------------------------------
-    Mr = [] # Ordering (sigma,a_0,a_1)
-    Ml = []
-    for i in range(N,1,-1):
-        psir = np.reshape(psir,(2**(i-1),-1))
-        psil = np.reshape(psil,(2**(i-1),-1))
-        (ur,sr,vr) = np.linalg.svd(psir,full_matrices=False)
-        (ul,sl,vl) = np.linalg.svd(psil,full_matrices=False)
-        # make left eigenvector right-canonical
-        Xgauge = np.conj(np.linalg.inv(np.einsum('ij,kj->ki',vr,np.conj(vl))))
-        vl_original = vl
-        vl = np.dot(Xgauge,vl)
-        Br = np.reshape(vr,(fbd_site[i-1],2,mbd_site[i]))
-        Bl = np.reshape(vl,(fbd_site[i-1],2,mbd_site[i]))
-        Br = Br[:mbd_site[i-1],:,:mbd_site[i]] 
-        Bl = Bl[:mbd_site[i-1],:,:mbd_site[i]]
-        Br = np.swapaxes(Br,0,1)
-        Bl = np.swapaxes(Bl,0,1)
-        Mr.insert(0,Br)
-        Ml.insert(0,Bl)
-        psir = np.einsum('ij,j->ij',ur[:,:mbd_site[i-1]],sr)
-        psil = np.einsum('ij,j,jk->ik',ul[:,:mbd_site[i-1]],sl,np.linalg.inv(Xgauge))
-        # We can do a check since the insertion of the identity should not affect the overall product
-        #chk1 = np.einsum('ij,jk,kl->il',ul,np.diag(sl),vl_original)
-        #chk2 = np.einsum('ij,jk,kl,lm,mn->in',ul,np.diag(sl),np.linalg.inv(Xgauge),Xgauge,vl_original)
-        #chk3 = np.einsum('ij,jk,kl,lm->im',ul,np.diag(sl),np.linalg.inv(Xgauge),vl)
-        #chk4 = np.einsum('ij,jk->ik',psil,vl)
-        #print('Check 1 {}'.format(np.sum(np.abs(np.abs(chk1)-np.abs(chk2)))))
-        #print('Check 2 {}'.format(np.sum(np.abs(np.abs(chk1)-np.abs(chk3)))))
-        #print('Check 3 {}'.format(np.sum(np.abs(np.abs(chk1)-np.abs(chk4)))))
-        # Check for Correct Canonicalization?
-        #print('Check for Both  normalization:\n{}'.format(np.einsum('ijk,ilk->jl',Ml[0],np.conj(Mr[0]))))
-    Mr.insert(0,np.reshape(psir,(2,1,min(2,maxBondDim))))
-    Ml.insert(0,np.reshape(psil,(2,1,min(2,maxBondDim))))
-else:
-    # Decompose Wavefunction from the left ------------------------------------------------------
-    Mr = []
-    Ml = []
-    for i in range(N-1):
-        psir = np.reshape(psir,(-1,2**(N-i-1)))
-        psil = np.reshape(psil,(-1,2**(N-i-1)))
-        (ur,sr,vr) = np.linalg.svd(psir,full_matrices=False)
-        (ul,sl,vl) = np.linalg.svd(psil,full_matrices=False)
-        Ar = np.reshape(ur,(2,mbd_site[i],fbd_site[i+1]))
-        Al = np.reshape(ul,(2,mbd_site[i],fbd_site[i+1]))
-        Ar = Ar[:,:mbd_site[i],:mbd_site[i+1]]
-        Al = Al[:,:mbd_site[i],:mbd_site[i+1]]
-        Mr.append(Ar)
-        Ml.append(Al)
-        psir = np.einsum('i,ij->ij',sr,vr[:mbd_site[i+1],:])
-        psil = np.einsum('i,ij->ij',sl,vl[:mbd_site[i+1],:])
-        # Check for Correct Canonicalization
-        print('Check for Right normalization:\n{}'.format(np.einsum('ikj,ikl->jl',Mr[-1],np.conj(Mr[-1]))))
-    Mr.append(np.reshape(psir,(2,min(2,maxBondDim),1)))
-    Ml.append(np.reshape(psil,(2,min(2,maxBondDim),1)))
-#for i in range(len(Mr)):
-#    print('Mr[{}] = {}'.format(i,np.reshape(Mr[i],-1)))
+# Decompose Wavefunction from the right -------------------------------------------------
+Mr = [] # Ordering (sigma,a_0,a_1)
+Ml = []
+for i in range(N,1,-1):
+    psir = np.reshape(psir,(2**(i-1),-1))
+    psil = np.reshape(psil,(2**(i-1),-1))
+    (ur,sr,vr) = np.linalg.svd(psir,full_matrices=False)
+    (ul,sl,vl) = np.linalg.svd(psil,full_matrices=False)
+    # make left eigenvector right-canonical
+    Xgauge = np.conj(np.linalg.inv(np.einsum('ij,kj->ki',vr,np.conj(vl))))
+    vl_original = vl
+    vl = np.dot(Xgauge,vl)
+    Br = np.reshape(vr,(fbd_site[i-1],2,mbd_site[i]))
+    Bl = np.reshape(vl,(fbd_site[i-1],2,mbd_site[i]))
+    Br = Br[:mbd_site[i-1],:,:mbd_site[i]] 
+    Bl = Bl[:mbd_site[i-1],:,:mbd_site[i]]
+    Br = np.swapaxes(Br,0,1)
+    Bl = np.swapaxes(Bl,0,1)
+    Mr.insert(0,Br)
+    Ml.insert(0,Bl)
+    psir = np.einsum('ij,j->ij',ur[:,:mbd_site[i-1]],sr)
+    psil = np.einsum('ij,j,jk->ik',ul[:,:mbd_site[i-1]],sl,np.linalg.inv(Xgauge))
+Mr.insert(0,np.reshape(psir,(2,1,min(2,maxBondDim))))
+Ml.insert(0,np.reshape(psil,(2,1,min(2,maxBondDim))))
 ##############################################
 
 # Now Calculate State from MPS ###############
@@ -183,6 +142,13 @@ for i in range(int(N)-1,0,-1):
     F[i] = np.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(Ml[i]),W[i],Mr[i],F[i+1])
 ##############################################
 
+# Create Small F #############################
+Fs = [None]*(N+1)
+Fs[-1] = np.array([1])
+for i in range(int(N)-1,-1,-1):
+    Fs[i] = np.einsum('ijk,k->j',Mr[i],Fs[i+1])
+##############################################
+
 # Optimization Sweeps ########################
 converged = False
 iterCnt = 0
@@ -191,7 +157,7 @@ while not converged:
 # Right Sweep ----------------------------
     print('Right Sweep {}'.format(iterCnt))
     for i in range(N-1):
-        if printlots:
+        if True:
             Mr_prev = np.reshape(Mr[i],-1)
             Ml_prev = np.reshape(Ml[i],-1)
         H = np.einsum('jlp,lmin,kmq->ijknpq',F[i],W[i],F[i+1])
@@ -203,26 +169,29 @@ while not converged:
         E = u[max_ind]
         vr = vr[:,max_ind]
         vl = vl[:,max_ind]
-        # TODO - Correct Normalization!!!
         print('\tEnergy at site {}= {}'.format(i,E))
         Mr[i] = np.reshape(vr,(n1,n2,n3))
         Ml[i] = np.reshape(vl,(n1,n2,n3))
-        # Right Normalize
+        # Correct Normalization
+        norm_factor = np.einsum('j,ijk,k->',Fs[i-1],Mr[i],Fs[i+1])
+        Mr[i] /= norm_factor
+        Ml[i] /= np.einsum('ijk,ijk->',Mr[i],np.conj(Ml[i]))
+        # Put into Canonical Form
         Mr_reshape = np.reshape(Mr[i],(n1*n2,n3))
         Ml_reshape = np.reshape(Ml[i],(n1*n2,n3))
         (ur,sr,vr) = np.linalg.svd(Mr_reshape,full_matrices=False)
         (ul,sl,vl) = np.linalg.svd(Ml_reshape,full_matrices=False)
-        # Now determine X and Xinv to make correct canonicalization
+        # Gauge Transform of Left State
         Xgauge = np.linalg.inv(np.einsum('ji,jk->ik',np.conj(ur),ul))
         ul = np.dot(ul,Xgauge)
         sl = np.einsum('ij,jk->ik',np.linalg.inv(Xgauge),np.diag(sl))
         Mr[i] = np.reshape(ur,(n1,n2,n3))
         Mr[i+1] = np.einsum('i,ij,kjl->kil',sr,vr,Mr[i+1])
         Ml[i] = np.reshape(ul,(n1,n2,n3))
-        #Ml[i+1] = np.einsum('i,ij,kjl->kil',sl,vl,Ml[i+1])
         Ml[i+1] = np.einsum('ij,jk,lkm->lim',sl,vl,Ml[i+1])
-        # Update F
+        # Update F and Fs
         F[i+1] = np.einsum('jlp,ijk,lmin,npq->kmq',F[i],np.conj(Ml[i]),W[i],Mr[i])
+        Fs[i] = np.einsum('j,ijk->k',Fs[i-1],Mr[i])
 # Left Sweep -----------------------------
     print('Left Sweep {}'.format(iterCnt))
     for i in range(N-1,0,-1):
@@ -241,7 +210,11 @@ while not converged:
         print('\tEnergy at site {}= {}'.format(i,E))
         Mr[i] = np.reshape(vr,(n1,n2,n3))
         Ml[i] = np.reshape(vl,(n1,n2,n3))
-        # Right Normalize 
+        # Correct Normalization
+        norm_factor = np.einsum('j,ijk,k->',Fs[i-1],Mr[i],Fs[i+1])
+        Mr[i] /= norm_factor
+        Ml[i] /= np.einsum('ijk,ijk->',Mr[i],np.conj(Ml[i]))
+        # Put into Canonical Form
         Mr_reshape = np.swapaxes(Mr[i],0,1)
         Mr_reshape = np.reshape(Mr_reshape,(n2,n1*n3))
         Ml_reshape = np.swapaxes(Ml[i],0,1)
@@ -260,6 +233,7 @@ while not converged:
         Ml[i-1] = np.einsum('klj,ji,im->klm',Ml[i-1],ul,sl)
         # Update F
         F[i] = np.einsum('bxc,ydbe,eaf,cdf->xya',np.conj(Ml[i]),W[i],Mr[i],F[i+1])
+        Fs[i] = np.einsum('ijk,k->j',Mr[i],Fs[i+1])
 # Convergence Test -----------------------
     if np.abs(E-E_prev) < tol:
         print('#'*75+'\nConverged at E = {}'.format(E)+'\n'+'#'*75)
@@ -271,7 +245,6 @@ while not converged:
         iterCnt += 1
         E_prev = E
 ##############################################
-
 
 ##############################################
 # Now Calculate State from MPS ###############
@@ -306,6 +279,7 @@ print('Difference Between Right ED & DMRG WFs: {}'.format(np.sum(np.abs(rwf_dmrg
 print('='*100)
 print('Occupation\t\trdmrg\t\t\tred\t\t\tldmrg\t\t\tled')
 print('-'*100)
+rwf_ind = np.argsort(rwf_dmrg)[::-1]
 for i in range(len(rwf_dmrg)):
-    print('{}\t{},\t{},\t{},\t{}'.format(occ[i,:],np.real(rwf_dmrg[i]),np.real(rwf_ed[i]),np.real(lwf_dmrg[i]),np.real(lwf_ed[i])))
+    print('{}\t{},\t{},\t{},\t{}'.format(occ[rwf_ind[i],:],np.real(rwf_dmrg[rwf_ind[i]]),np.real(rwf_ed[rwf_ind[i]]),np.real(lwf_dmrg[rwf_ind[i]]),np.real(lwf_ed[rwf_ind[i]])))
 ##############################################
