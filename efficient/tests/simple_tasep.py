@@ -1,6 +1,9 @@
 import numpy as np
 import time
-from PyDMRG.efficient import mps_opt
+try:
+    from PyDMRG.efficient import mps_opt
+except:
+    from pydmrg.efficient import mps_opt
 import matplotlib.pyplot as plt
 
 def run_test():

@@ -1,6 +1,9 @@
 import numpy as np
 import time
-from pydmrg.efficient import mpo
+try:
+    from pydmrg.efficient import mpo
+except:
+    from PyDMRG.efficient import mpo
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
