@@ -6,6 +6,9 @@ sys.path.append("../")
 sys.path.append("../../")
 sys.path.append("./efficient/")
 sys.path.append("./efficient/tests/")
+sys.path.append("/home/travis/build/philliphelms/PyDMRG/efficient")
+sys.path.append("/home/travis/build/philliphelms/PyDMRG")
+
 for i in range(len(sys.path)):
     print(sys.path[i])
 
