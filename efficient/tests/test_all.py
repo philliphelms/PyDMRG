@@ -1,5 +1,7 @@
 import unittest
 import numpy as np
+import sys
+sys.path.append("..")
 
 class pydmrg_test(unittest.TestCase):
 
