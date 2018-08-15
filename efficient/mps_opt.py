@@ -5,13 +5,12 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d
-#from scipy.sparse.linalg import eigs, LinearOperator
 
 class MPS_OPT:
 
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-5, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
-                 plotExpVals=False, plotConv=False,leftMPS=False,calc_psi=True,\
+                 plotExpVals=False, plotConv=False,leftMPS=False,calc_psi=False,\
                  usePyscf=True,initialGuess=0.01,ed_limit=12,max_eig_iter=1000,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
                  saveResults=True,dataFolder='data/',verbose=3):
@@ -43,7 +42,8 @@ class MPS_OPT:
         self.dataFolder = dataFolder
         self.verbose = verbose
         if usePyscf:
-            from pyscf.lib import einsum, eig
+            from pydmrg.efficient.lib.linalg_helper import eig
+            from pyscf.lib.numpy_helper import einsum
             self.einsum = einsum
             self.eig = eig
         else:
@@ -201,7 +201,7 @@ class MPS_OPT:
             if np.isnan(np.sum(self.entanglement_spectrum[i])):
                 self.entanglement_spectrum[i][np.isnan(self.entanglement_spectrum[i])] = 0
             self.entanglement_entropy[i] = np.sum(self.entanglement_spectrum[i])
-            if self.verbose > 3:
+            if self.verbose > 4:
                 print('\t\tEntanglement Entropy = {}'.format(self.entanglement_entropy[i]))
                 if self.verbose > 5:
                     print('\t\t\tEntanglement Spectrum:\n')
@@ -220,7 +220,7 @@ class MPS_OPT:
             if np.isnan(np.sum(self.entanglement_spectrum[i])):
                 self.entanglement_spectrum[i][np.isnan(self.entanglement_spectrum[i])] = 0
             self.entanglement_entropy[i] = np.sum(self.entanglement_spectrum[i])
-            if self.verbose > 3:
+            if self.verbose > 4:
                 print('\t\tEntanglement Entropy = {}'.format(self.entanglement_entropy[i-1]))
                 if self.verbose > 5:
                     print('\t\t\tEntanglement Spectrum:\n')
@@ -247,8 +247,6 @@ class MPS_OPT:
                 self.Ml[i-1] = self.einsum('klj,ji,i->kli',self.Ml[i-1],U,s)
 
     def increaseBondDim(self):
-        #self.return_psi()
-        #old_psi = self.rpsi.copy()
         if self.verbose > 3:
             print('\t'*2+'Increasing Bond Dimensions from {} to {}'.format(self.maxBondDim[self.maxBondDimInd-1],self.maxBondDimCurr))
         Mnew = []
@@ -276,8 +274,6 @@ class MPS_OPT:
                 nx,ny,nz = self.Ml[i].shape
                 Mnew[i][:nx,:ny,:nz] = self.Ml[i]
                 self.Ml[i] = Mnew[i]
-        #self.return_psi()
-        #print(np.sum(np.abs(old_psi-self.rpsi)))
 
     def calc_initial_f(self):
         if self.verbose > 3:
@@ -405,7 +401,6 @@ class MPS_OPT:
         if self.leftMPS:
             E,vl,vr = self.eig(opt_fun,init_guess,precond,
                                max_cycle = self.max_eig_iter,
-                               pick = pick_eigs,
                                left = self.leftMPS,
                                follow_state = True,
                                tol = self.tol[self.maxBondDimInd],
@@ -416,7 +411,6 @@ class MPS_OPT:
         else:
             E,vr = self.eig(opt_fun,init_guess,precond,
                                  max_cycle=self.max_eig_iter,
-                                 pick = pick_eigs,
                                  follow_state = True,
                                  tol = self.tol[self.maxBondDimInd],
                                  callback = callback,
@@ -436,9 +430,9 @@ class MPS_OPT:
         self.add_noise_func(j)
         if self.verbose > 3:
             if self.davidson_conv:
-                print('\t'+'Optimization Converged at {}\n\t\tEnergy = {}'.format(j,sgn*E))
+                print('\t'+'Converged at \t{}\tEnergy = {}'.format(j,sgn*E))
             else:
-                print('\t'+'Optimization Not Converged at {}\n\t\tEnergy = {}'.format(j,self.E_curr))
+                print('\t'+'Not Converged at \t{}\tEnergy = {}'.format(j,self.E_curr))
             if self.verbose > 4:
                 print('\t\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
         if self.davidson_conv:
@@ -477,7 +471,7 @@ class MPS_OPT:
         v = v[:,ind]
         self.M[i] = np.reshape(v,(n1,n2,n3))
         if self.verbose > 3:
-            print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(i,E))
+            print('\t'+'Optimization Complete at \t{}\t\tEnergy = {}'.format(i,E))
         return E
 
     def calc_observables(self,site):
@@ -933,12 +927,3 @@ class MPS_OPT:
         self.E_mf = self.mf.kernel()
         self.saveFinalResults('mf')
         return(self.E_mf)
-
-def pick_eigs(w, v, nroots, x0):
-    #print(w)
-    abs_imag = abs(w.imag)
-    max_imag_tol = max(1e-5,min(abs_imag)*1.1)
-    realidx = np.where((abs_imag < max_imag_tol))[0]
-    idx = realidx[w[realidx].real.argsort()]
-    #print(w[idx][:5])
-    return w[idx], v[:,idx], idx

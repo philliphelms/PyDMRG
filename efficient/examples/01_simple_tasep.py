@@ -18,15 +18,16 @@ np.set_printoptions(precision=3)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
 # Create MPS object
-x = mps_opt.MPS_OPT(N = 500,
+x = mps_opt.MPS_OPT(N = 4,
                     hamType = 'tasep',
-                    maxBondDim = 100,
+                    maxBondDim = 50,
                     tol = 1e-5,
-                    maxIter = 10,
+                    maxIter = 5,
                     verbose = 4,
                     periodic_x = False,
-                    #plotConv = True,
-                    #plotExpVals = True,
+                    periodic_y = False,
+                    plotConv = False,
+                    plotExpVals = False,
                     add_noise = False,
                     hamParams = (0.35,0,2/3))
 # Run optimization
