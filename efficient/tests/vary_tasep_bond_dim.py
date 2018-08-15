@@ -1,21 +1,11 @@
 import numpy as np
 import time
-import mps_opt
-import matplotlib.pyplot as plt
+from pydmrg.efficient import mps_opt
 
 #-----------------------------------------------------------------------------
 # For a single point in the TASEP phase space, we vary the max bond dimension
 # to analyze how the error converges as a function of bond dimension size.
 #-----------------------------------------------------------------------------
-
-# Set Plotting parameters
-plt.rc('text', usetex=True)
-plt.rcParams['text.latex.preamble'] = [r'\boldmath']
-plt.rc('font', family='serif')
-plt.rcParams['text.latex.unicode']=False
-np.set_printoptions(suppress=True)
-np.set_printoptions(precision=100)
-plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
 def run_test():
     N = 20
@@ -30,12 +20,4 @@ def run_test():
                             hamParams = (0.35,-1,2/3))
         Evec[i] = x.kernel()
     diffVec = np.abs(Evec-Evec[-1])
-    fig = plt.figure()
-    plt.semilogy(bondDimVec,diffVec,'b-',linewidth=5)
-    plt.semilogy(bondDimVec,diffVec,'ro',markersize=10)
-    plt.xticks(fontsize=14)
-    plt.yticks(fontsize=14)
-    plt.xlabel('Bond Dimension',fontsize=20)
-    plt.ylabel('$E-E_{exact}$',fontsize=20)
-    fig.savefig('results/test/varyMaxBondDim.pdf')
     return diffVec

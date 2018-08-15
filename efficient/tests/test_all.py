@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 
 class pydmrg_test(unittest.TestCase):
-    """
+
     def test_01_simple_tasep(self):
         from simple_tasep import run_test
         E = run_test()
@@ -50,19 +50,7 @@ class pydmrg_test(unittest.TestCase):
         from simple_ising import run_test
         E = run_test()
         self.assertTrue(np.isclose(E,-2.5))
-    """
 
-    def test_10_chekc_2d_sep(self):
-        from check_2d_sep import run_test
-        E,E1,E2,E3,E4 = run_test()
-        print(np.isclose(E*3,E1))
-        print(np.isclose(E*3,E2))
-        print(np.isclose(E*3,E3))
-        print(np.isclose(E*3,E4))
-        self.assertTrue(np.isclose(E*3,E1))
-        self.assertTrue(np.isclose(E*3,E2))
-        self.assertTrue(np.isclose(E*3,E3))
-        self.assertTrue(np.isclose(E*3,E4))
 
 
 if __name__ == "__main__":

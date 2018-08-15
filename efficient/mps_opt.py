@@ -1,6 +1,6 @@
 import numpy as np
 import time
-import mpo
+from pydmrg.efficient import mpo
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
@@ -13,7 +13,7 @@ class MPS_OPT:
                  plotExpVals=False, plotConv=False,leftMPS=False,calc_psi=False,\
                  usePyscf=True,initialGuess=0.01,ed_limit=12,max_eig_iter=1000,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
-                 saveResults=True,dataFolder='data/',verbose=3):
+                 saveResults=False,dataFolder='data/',verbose=3):
         # Import parameters
         self.N = N
         self.N_mpo = N
