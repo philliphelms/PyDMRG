@@ -2,6 +2,11 @@ import unittest
 import numpy as np
 import sys
 sys.path.append("..")
+sys.path.append("../")
+sys.path.append("../../")
+sys.path.append("./efficient/")
+sys.path.append("./efficient/tests/")
+print(sys.path[0])
 
 class pydmrg_test(unittest.TestCase):
 
