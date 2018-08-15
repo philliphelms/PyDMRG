@@ -1,4 +1,4 @@
-*.swp
+*swp
 *.swo
 *.pdf
 *.txt
@@ -10,6 +10,7 @@ efficient/data/dmrg/*
 efficient/data/mf/*
 efficient/data/ed/*
 efficient/data/*
+efficient/lib/*
 efficient/results/*
 efficint/examples/00_evonet_figs.py
 backup/figures/*
