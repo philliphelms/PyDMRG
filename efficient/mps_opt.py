@@ -395,6 +395,7 @@ class MPS_OPT:
             return np.reshape(fin_sum,-1)
         def precond(dx,e,x0):
             return dx
+        self.davidson_conv = True
         def callback(envs_dict):
             self.davidson_conv = envs_dict['icyc']+2 < self.max_eig_iter
         init_guess = np.reshape(self.M[j],-1)
@@ -800,7 +801,6 @@ class MPS_OPT:
                     self.finalEnergy = self.E_conv
                     converged = True
                     self.final_convergence = False
-                    print(self.final_convergence)
                     self.time_total = time.time() - self.time_total
                     if self.verbose > 0:
                         print('\n'+'!'*75)
