@@ -6,7 +6,8 @@ sys.path.append("../")
 sys.path.append("../../")
 sys.path.append("./efficient/")
 sys.path.append("./efficient/tests/")
-print(sys.path[0])
+for i in range(len(sys.path)):
+    print(sys.path[i])
 
 class pydmrg_test(unittest.TestCase):
 
