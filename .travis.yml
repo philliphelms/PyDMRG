@@ -9,3 +9,5 @@ notifications:
     email: false
 os:
     - linux
+install:
+    - pip install matplotlib
