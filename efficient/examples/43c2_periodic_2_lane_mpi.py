@@ -81,6 +81,7 @@ else:
                         add_noise=False,
                         hamType = 'sep_2d',
                         maxBondDim = 200,
+                        periodic_y = periodic_y,
                         verbose = 3,
                         #plotExpVals = True,
                         #plotConv = True,
