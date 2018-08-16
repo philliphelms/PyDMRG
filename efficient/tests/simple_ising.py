@@ -1,6 +1,5 @@
 import numpy as np
 import time
-from pydmrg.efficient import mps_opt
 try:
     from pydmrg.efficient import mps_opt
 except:
