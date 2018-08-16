@@ -1,6 +1,9 @@
 import numpy as np
 import time
-from pydmrg.efficient import mps_opt
+try:
+    from pydmrg.efficient import mps_opt
+except:
+    from PyDMRG.efficient import mps_opt
 
 #-----------------------------------------------------------------------------
 # For a single point in the TASEP phase space, we vary the max bond dimension

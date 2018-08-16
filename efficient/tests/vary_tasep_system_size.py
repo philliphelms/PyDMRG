@@ -1,6 +1,9 @@
 import numpy as np
 import time
-from pydmrg.efficient import mps_opt
+try:
+    from pydmrg.efficient import mps_opt
+except:
+    from PyDMRG.efficient import mps_opt
 
 #-----------------------------------------------------------------------------
 # Calculations at a single point in phase space for the tasep, where we 

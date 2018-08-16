@@ -1,7 +1,10 @@
 import numpy as np
 import time
 from pydmrg.efficient import mps_opt
-import matplotlib.pyplot as plt
+try:
+    from pydmrg.efficient import mps_opt
+except:
+    from PyDMRG.efficient import mps_opt
 
 #-----------------------------------------------------------------------------
 # Using the Ising Hamiltonian, perform a simple steady state calculation

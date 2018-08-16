@@ -45,7 +45,8 @@ class MPS_OPT:
         self.dataFolder = dataFolder
         self.verbose = verbose
         if usePyscf:
-            from pydmrg.efficient.lib.linalg_helper import eig
+            #from pydmrg.efficient.lib.linalg_helper import eig
+            from pyscf.lib.linalg_helper import eig
             from pyscf.lib.numpy_helper import einsum
             self.einsum = einsum
             self.eig = eig

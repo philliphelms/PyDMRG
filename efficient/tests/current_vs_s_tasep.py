@@ -1,6 +1,9 @@
 import numpy as np
 import time
-from pydmrg.efficient import mps_opt
+try:
+    from pydmrg.efficient import mps_opt
+except:
+    from PyDMRG.efficient import mps_opt
 
 #-----------------------------------------------------------------------------
 # For the TASEP model, this script calculations the current and cumulant 
@@ -20,7 +23,6 @@ def run_test():
         EE = np.zeros(s_vec.shape)
         for i in range(len(s_vec)):
             x = mps_opt.MPS_OPT(N =int(N),
-                                verbose = 0,
                                 hamType = "tasep",
                                 hamParams = (0.35,s_vec[i],2/3))
             Evec[i] = x.kernel()
