@@ -13,7 +13,6 @@ def run_test():
                         maxBondDim = 50,
                         tol = 1e-5,
                         maxIter = 5,
-                        verbose = 0,
                         periodic_x = False,
                         periodic_y = False,
                         plotConv = False,

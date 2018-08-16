@@ -19,7 +19,6 @@ def run_test():
         x = mps_opt.MPS_OPT(N=int(N),
                             maxBondDim = bondDimVec[i],
                             tol = 1e-3,
-                            verbose = 0,
                             hamParams = (0.35,-1,2/3))
         Evec[i] = x.kernel()
     diffVec = np.abs(Evec-Evec[-1])

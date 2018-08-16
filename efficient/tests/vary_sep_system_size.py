@@ -18,7 +18,6 @@ def run_test():
                             periodic_x=False,
                             add_noise = False,
                             tol = 1e-3,
-                            verbose = 0,
                             hamParams=(0.5,0.5,0.2,0.8,0.8,0.5,s[0]))
         E_left = x1.kernel()
         x2 = mps_opt.MPS_OPT(N=N,
@@ -27,7 +26,6 @@ def run_test():
                             periodic_x=False,
                             add_noise = False,
                             tol = 1e-3,
-                            verbose = 0,
                             hamParams=(0.5,0.5,0.2,0.8,0.8,0.5,s[1]))
         E_right = x2.kernel()
         current[i] = (E_right-E_left)/(s[1]-s[0])/(N+1)

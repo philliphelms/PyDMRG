@@ -13,7 +13,6 @@ def run_test():
     N = 10
     x = mps_opt.MPS_OPT(N=N,
                         hamType = "ising",
-                        verbose = 0,
                         periodic_x = True,
                         hamParams = (1,0))
     return x.kernel()

@@ -16,10 +16,8 @@ def run_test():
     N = 10
     x1 = mps_opt.MPS_OPT(N=N,
                         hamType = "sep",
-                        verbose = 0,
                         hamParams = (2/3,0,1,0,0,0.35,-1))
     x2 = mps_opt.MPS_OPT(N=N,
                          hamType = "sep",
-                         verbose = 0,
                          hamParams = (0,0.35,0,1,2/3,0,1))
     return x1.kernel(),x2.kernel()

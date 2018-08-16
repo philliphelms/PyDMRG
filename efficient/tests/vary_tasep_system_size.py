@@ -24,7 +24,6 @@ def run_test():
                             add_noise = False,
                             maxBondDim = 50,
                             tol = 1e-3,
-                            verbose = 0,
                             hamParams=(3/5,s[0],2/3))
         E_left = x1.kernel()
         x2 = mps_opt.MPS_OPT(N=N,
@@ -33,7 +32,6 @@ def run_test():
                             add_noise=False,
                             maxBondDim = 50,
                             tol = 1e-3,
-                            verbose = 0,
                             hamParams=(3/5,s[1],2/3))
         E_right = x2.kernel()
         current[i] = (E_right-E_left)/(s[1]-s[0])/(N+1)

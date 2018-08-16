@@ -15,6 +15,5 @@ def run_test():
     x = mps_opt.MPS_OPT(N=int(N),
                         hamType = "heis",
                         periodic_x = True,
-                        verbose = 0,
                         hamParams = (1,0))
     return x.kernel()

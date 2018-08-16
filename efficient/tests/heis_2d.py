@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 def run_test():
     x = mps_opt.MPS_OPT(N=[3,3],
                         hamType = "heis_2d",
-                        verbose = 0,
                         periodic_x = True,
                         periodic_y = False,
                         maxBondDim=50,
