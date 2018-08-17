@@ -134,7 +134,7 @@ print('Difference Between Right ED & MPS WFs: {}'.format(np.sum(np.abs(rwf_dmrg-
 ##############################################
 
 # Randomize M if desired  ####################
-if True:
+if False:
     for i in range(len(Mr)):
         n1,n2,n3 = Mr[i].shape
         Mr[i] = np.random.rand(n1,n2,n3)
@@ -200,29 +200,25 @@ while not converged:
     print('Right Sweep {}'.format(iterCnt))
     for i in range(N-1):
         (n1,n2,n3) = Mr[i].shape
+        # Set up Eigen problem
         def opt_fun(x):
             x_reshape = np.reshape(x,(n1,n2,n3))
             Hx = einsum('ijk,lmk->ijlm',F[i+1],x_reshape)
             Hx = einsum('njol,ijlm->noim',W[i],Hx)
             Hx = einsum('pnm,noim->opi',F[i],Hx)
             return np.reshape(Hx,-1)
+        def opt_fun_H(x):
+            x_reshape = np.reshape(x,(n1,n2,n3))
+            Hx = np.einsum('pnm,opi->nmoi',F[i].conj(),x_reshape)
+            Hx = np.einsum('njol,nmoi->jlmi',W[i].conj(),Hx)
+            Hx = np.einsum('ijk,jlmi->lmk',F[i+1].conj(),Hx)
+            return np.reshape(Hx,-1)
         def precond(dx,e,x0):
             return dx
-        init_guess = np.reshape(Mr[i],-1)
-        E,vl,vr = eig(opt_fun,init_guess,precond,pick=pick_eigs,left=True)
-        if True:
-            # Print diag results using np.eig()
-            inside_H = np.einsum('jlp,lmin,kmq->ijknpq',F[i],W[i],F[i+1])
-            (inside_n1,inside_n2,inside_n3,inside_n4,inside_n5,inside_n6) = inside_H.shape
-            inside_H = np.reshape(inside_H,(inside_n1*inside_n2*inside_n3,inside_n4*inside_n5*inside_n6))
-            inside_u,inside_vl,inside_vr = la.eig(inside_H,left=True)
-            inside_max_ind = np.argsort(inside_u)[-1]
-            inside_E = inside_u[inside_max_ind]
-            inside_vr = inside_vr[:,inside_max_ind]
-            inside_vl = inside_vl[:,inside_max_ind]
-            print('vr\t\t\tin_vr\t\t\tvl\t\t\tin_vl')
-            for some_ind in range(len(inside_vr)):
-                print('{}\t{}\t{}\t{}'.format(np.real(vr[some_ind]),np.real(inside_vr[some_ind]),np.real(vl[some_ind]),np.real(inside_vl[some_ind])))
+        init_rguess = np.reshape(Mr[i],-1)
+        init_lguess = np.reshape(Ml[i],-1)
+        # Solve Eigenproblem
+        E,vl,vr = eig(opt_fun,opt_fun_H,init_rguess,init_lguess,precond)#,pick=pick_eigs)
         print('\tEnergy at site {}= {}'.format(i,E))
         Mr[i] = np.reshape(vr,(n1,n2,n3))
         Ml[i] = np.reshape(vl,(n1,n2,n3))
@@ -250,16 +246,25 @@ while not converged:
     print('Left Sweep {}'.format(iterCnt))
     for i in range(N-1,0,-1):
         (n1,n2,n3) = Mr[i].shape
+        # Set up Eigenproblem
         def opt_fun(x):
             x_reshape = np.reshape(x,(n1,n2,n3))
             Hx = einsum('ijk,lmk->ijlm',F[i+1],x_reshape)
             Hx = einsum('njol,ijlm->noim',W[i],Hx)
             Hx = einsum('pnm,noim->opi',F[i],Hx)
             return np.reshape(Hx,-1)
+        def opt_fun_H(x):
+            x_reshape = np.reshape(x,(n1,n2,n3))
+            Hx = np.einsum('pnm,opi->nmoi',F[i].conj(),x_reshape)
+            Hx = np.einsum('njol,nmoi->jlmi',W[i].conj(),Hx)
+            Hx = np.einsum('ijk,jlmi->lmk',F[i+1].conj(),Hx)
+            return np.reshape(Hx,-1)
         def precond(dx,e,x0):
             return dx
-        init_guess = np.reshape(Mr[i],-1)
-        E,vl,vr = eig(opt_fun,init_guess,precond,pick=pick_eigs,left=True)
+        init_rguess = np.reshape(Mr[i],-1)
+        init_lguess = np.reshape(Ml[i],-1)
+        # Solve Eigenproblem
+        E,vl,vr = eig(opt_fun,opt_fun_H,init_rguess,init_lguess,precond)#,pick=pick_eigs,left=True)
         print('\tEnergy at site {}= {}'.format(i,E))
         Mr[i] = np.reshape(vr,(n1,n2,n3))
         Ml[i] = np.reshape(vl,(n1,n2,n3))
