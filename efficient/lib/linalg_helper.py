@@ -527,7 +527,6 @@ def my_davidson_nosym1(aop, ahop, xr0, xl0, precond, tol=1e-12, max_cycle=50, ma
     heff = None
     fresh_start = True
     e = 0
-    # PH vl & vr?
     vl = None
     vr = None
     conv = [False] * nroots
@@ -550,8 +549,9 @@ def my_davidson_nosym1(aop, ahop, xr0, xl0, precond, tol=1e-12, max_cycle=50, ma
             # but the eigenvectors x0 might not be strictly orthogonal
             xtl = None
             xtr = None
-            xtl, xl0 = _qr(xl0, dot), None
-            xtr, xr0 = _qr(xr0, dot), None
+            # PH - Could the problem originate here?
+            xtr,xtl = _qr(xr0,xl0,dot)
+            xr0,xl0 = None,None
             max_dx_last = 1e9
         elif len(xtl) > 1:
             xtl = _qr(xtl, dot)
@@ -559,11 +559,11 @@ def my_davidson_nosym1(aop, ahop, xr0, xl0, precond, tol=1e-12, max_cycle=50, ma
             xtl = xtl[:40]  # 40 trial vectors at most
             xtr = xtr[:40] 
 
-        axtl = ahop(xtl)
+        ahxtl = ahop(xtl)
         axtr = aop(xtr)
         for k, xli in enumerate(xtl):
             xsl.append(xtl[k])
-            axl.append(axtl[k])
+            axl.append(ahxtl[k])
         for k, xri in enumerate(xtr):
             xsr.append(xtr[k])
             axr.append(axtr[k])
@@ -571,14 +571,15 @@ def my_davidson_nosym1(aop, ahop, xr0, xl0, precond, tol=1e-12, max_cycle=50, ma
         head, space = space, space+rnow
 
         if heff is None:  # Lazy initilize heff to determine the dtype
-            heff = numpy.empty((max_space+nroots,max_space+nroots), dtype=axtl[0].dtype)
+            heff = numpy.empty((max_space+nroots,max_space+nroots), dtype=ahxtl[0].dtype)
         else:
-            heff = numpy.asarray(heff, dtype=axtl[0].dtype)
+            heff = numpy.asarray(heff, dtype=ahxtl[0].dtype)
 
         elast = e
         vl_last = vl
         vr_last = vr
         conv_last = conv
+        print(np.vstack(xtl).shape)
         for i in range(rnow):
             for k in range(rnow):
                 heff[head+k,head+i] = dot(xtl[k].conj(), axtr[i])
@@ -588,9 +589,12 @@ def my_davidson_nosym1(aop, ahop, xr0, xl0, precond, tol=1e-12, max_cycle=50, ma
             for k in range(rnow):
                 heff[head+k,i] = dot(xtl[k].conj(), axri)
                 heff[i,head+k] = dot(xli.conj(), axtr[k])
+        print(heff[:space,:space].shape)
 
         w, vl, vr = scipy.linalg.eig(heff[:space,:space],left=True,right=True)
+        print(w)
         e, vl, vr, idx = pick(w, vl, vr, nroots, locals())
+        print(e)
 
         e = e[:nroots]
         vl = vl[:,:nroots]
@@ -600,7 +604,7 @@ def my_davidson_nosym1(aop, ahop, xr0, xl0, precond, tol=1e-12, max_cycle=50, ma
         xl0 = _gen_x0(vl, xsl)
 
         if lessio:
-            axl0 = aop(xl0)
+            axl0 = ahop(xl0)
             axr0 = aop(xr0)
         else:
             axl0 = _gen_x0(vl, axl)
@@ -913,17 +917,23 @@ def davidson_nosym1(aop, x0, precond, tol=1e-12, max_cycle=50, max_space=12,
     else:
         return conv, e, x0
 
-def _qr(xs, dot):
-    norm = numpy.sqrt(dot(xs[0].conj(), xs[0]).real)
-    qs = [xs[0]/norm]
-    for i in range(1, len(xs)):
-        xi = xs[i].copy()
-        for j in range(len(qs)):
-            xi -= qs[j] * dot(qs[j].conj(), xi)
-        norm = numpy.sqrt(dot(xi.conj(), xi).real)
+def _qr(xrs, xls, dot):
+    norm = numpy.sqrt(dot(xls[0].conj(), xrs[0]).real)
+    qls = [xls[0]/norm]
+    qrs = [xrs[0]/norm]
+    for i in range(1, len(xrs)):
+        xli = xls[i].copy()
+        qri = qrs[i].copy()
+        for j in range(len(qrs)):
+            xri -= qrs[j] * dot(qls[j].conj(), xri)
+            xli -= qls[j] * dot(qls[j], xri.conj())
+        # Figure out how to normalize correctly
+        normr = np.sum(xri)
+        norml = dot(xli.conj(),xri).real
         if norm > 1e-7:
-            qs.append(xi/norm)
-    return qs
+            qrs.append(xri/normr)
+            qls.append(xli/norml)
+    return qrs, qls
 
 def _gen_x0(v, xs):
     space, nroots = v.shape
