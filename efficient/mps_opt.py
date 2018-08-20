@@ -354,6 +354,7 @@ class MPS_OPT:
         init_rguess = np.reshape(self.Mr[j],-1)
         Er,vr = self.eig(opt_fun,init_rguess,precond,
                         max_cycle = self.max_eig_iter,
+                        pick = pick_eigs,
                         follow_state = True,
                         tol = self.tol[self.maxBondDimInd],
                         callback = callback,
@@ -378,9 +379,9 @@ class MPS_OPT:
                         in_sum1 = self.einsum('pnm,opi->nmoi',self.F[i][j].conj(),x_reshape)
                         fin_sum += sgn*self.einsum('ijk,mjli->lmk',self.F[i][j+1].conj(),in_sum1)
                     else:
-                        in_sum1 = self.einsum('pnm,opi->nmoi',self.F[i][j],x_reshape)
-                        in_sum2 = self.einsum('njol,nmoi->jlmi',self.mpo.ops[i][j],in_sum1)
-                        fin_sum += sgn*self.einsum('ijk,jlmi->lmk',self.F[i][j+1],in_sum2).conj()
+                        in_sum1 = self.einsum('pnm,opi->nmoi',self.F[i][j].conj(),x_reshape)
+                        in_sum2 = self.einsum('njol,nmoi->jlmi',self.mpo.ops[i][j].conj(),in_sum1)
+                        fin_sum += sgn*self.einsum('ijk,jlmi->lmk',self.F[i][j+1].conj(),in_sum2)
                 return np.reshape(fin_sum,-1)
             self.davidson_lconv = True
             def callback(envs_dict):
@@ -388,6 +389,7 @@ class MPS_OPT:
             init_lguess = np.reshape(self.Ml[j],-1)
             El,vl = self.eig(opt_fun,init_lguess,precond,
                             max_cycle = self.max_eig_iter,
+                            pick = pick_eigs,
                             follow_state = True,
                             tol = self.tol[self.maxBondDimInd],
                             callback = callback,
@@ -397,10 +399,10 @@ class MPS_OPT:
                 El = El[sort_linds[min(self.target_state,len(sort_inds)-1)]]
                 vl = vl[sort_linds[min(self.target_state,len(sort_inds)-1)]]
             except: El = El
-        # Check to ensure energies from l- and r- calcs are congruent
-        if not np.isclose(El,Er):
-            print('El = {},Er = {}'.format(El,Er))
-        assert(np.isclose(El,Er))
+            # Check to ensure energies from l- and r- calcs are congruent
+            if not np.isclose(El,Er):
+                print('El = {},Er = {}'.format(El,Er))
+            assert(np.isclose(El,Er))
         # Use new eigenvectors, if converged
         if self.davidson_rconv:
             self.Mr[j] = np.reshape(vr,(n1,n2,n3))
@@ -416,7 +418,7 @@ class MPS_OPT:
                 self.Ml[j] /= np.einsum('ijk,ijk->',self.Mr[j],np.conj(self.Ml[j]))
         # Print Results
         if self.verbose > 3:
-            if self.davidson_conv:
+            if self.davidson_rconv:
                 print('\t'+'Converged at \t{}\tEnergy = {}'.format(j,sgn*Er))
             else:
                 print('\t'+'Not Converged at \t{}\tEnergy = {}'.format(j,self.E_curr))
@@ -450,10 +452,21 @@ class MPS_OPT:
             # Try to calculate current
             if self.hamType is "sep":
                 # PH - Figure out how to do this.
-                self.current = self.mpo.exp_p[-1]*self.calc_occ[-1]*self.mpo.exp_delta[-1]-self.mpo.exp_q[-1]*self.calc_empty[-1]*self.mpo.exp_beta[-1]
+                # Include boundary left
+                self.current =  self.mpo.exp_alpha[0]*self.calc_empty[0]
+                self.current -= self.mpo.exp_delta[0]*self.calc_occ[0]
+                for i in range(self.N-1):
+                    self.current += self.mpo.exp_p[i]*self.calc_occ[i]*self.calc_empty[i+1]
+                    self.current -= self.mpo.exp_q[i]*self.calc_occ[i+1]*self.calc_empty[i]
+                self.current += self.mpo.exp_delta[-1]*self.calc_occ[-1]
+                self.current -= self.mpo.exp_beta[-1]*self.calc_empty[-1]
             if self.hamType is "tasep":
                 # PH - Figure out how to do this too.
-                self.current = self.calc_occ[-1]*self.mpo.beta
+                self.current = self.mpo.alpha[0]*self.calc_occ[0]
+                for i in range(len(self.N)-1):
+                    self.current += self.calc_occ[i]*self.calc_occ[i+1]
+                self.current += self.calc_occ[-1]*self.mpo.beta
+
         if self.verbose > 4:
             print('\t'*2+'Total Number of particles: {}'.format(np.sum(self.calc_occ)))
 
@@ -875,3 +888,11 @@ class MPS_OPT:
         self.E_mf = self.mf.kernel()
         self.saveFinalResults('mf')
         return(self.E_mf)
+
+def pick_eigs(w,v,nroots,x0):
+    abs_imag = abs(w.imag)
+    max_imag_tol = max(1e-5,min(abs_imag)*1.1)
+    realidx = np.where((abs_imag < max_imag_tol))[0]
+    idx = realidx[w[realidx].real.argsort()]
+    return w[idx], v[:,idx], idx
+

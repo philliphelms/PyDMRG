@@ -18,22 +18,22 @@ plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
 run_mf = False
 run_ed = False
-N = 300
-s_vec = np.linspace(-2,2,10)
+N = 4
+s_vec = np.linspace(-1,1,100)
 E_dmrg = np.zeros(s_vec.shape)
 E = np.zeros(s_vec.shape)
 E_mf = np.zeros(s_vec.shape)
+current_mps = np.zeros(s_vec.shape)
 for i in range(len(s_vec)):
     x = mps_opt.MPS_OPT(N=N,
-                        maxBondDim = [10,11,12,13,14,15,16,17,18,19,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200],
-                        maxIter = 1,
-                        verbose = 5,
+                        maxBondDim = [10],#[10,20,100,200],
                         hamType = "sep",
-                        plotConv = True,
-                        plotExpVals = True,
+                        #plotConv = True,
+                        #plotExpVals = True,
                         hamParams = (0.9,0.1,0.5,0.5,0.1,0.9,s_vec[i]))
                         #hamParams = (0.5,0.8,0.2,0.6,0.8,0.7,s_vec[i]))
     E_dmrg[i] = x.kernel()
+    current_mps[i] = x.current
     if run_ed:
         E[i] = x.exact_diag()
     if run_mf:
@@ -75,6 +75,7 @@ fig3 = plt.figure()
 if run_ed:
     plt.plot(s_vec[1:],slope,label='Exact Diag')
 plt.plot(s_vec[1:],slope_dmrg,label='DMRG')
+plt.plot(s_vec,current_mps,label='MPS Calc')
 if run_mf:
     plt.plot(s_vec[1:],slope_mf,label='Mean Field')
 plt.grid(True)

@@ -15,7 +15,6 @@ def run_test():
     for i in range(len(N_vec)):
         print('N = {}'.format(N_vec[i]))
         N = int(N_vec[i])
-        #print('Running Calcs for N={}'.format(N))
         x1 = mps_opt.MPS_OPT(N=N,
                             hamType='tasep',
                             maxBondDim = 50,
@@ -32,3 +31,6 @@ def run_test():
         E_right = x2.kernel()
         current[i] = (E_right-E_left)/(s[1]-s[0])/(N+1)
     return current
+
+if __name__ == "__main__":
+    run_test()
