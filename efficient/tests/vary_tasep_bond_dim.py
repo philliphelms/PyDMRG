@@ -1,9 +1,6 @@
 import numpy as np
 import time
-try:
-    from pydmrg.efficient import mps_opt
-except:
-    from PyDMRG.efficient import mps_opt
+from pydmrg.efficient import mps_opt
 
 #-----------------------------------------------------------------------------
 # For a single point in the TASEP phase space, we vary the max bond dimension
@@ -12,7 +9,7 @@ except:
 
 def run_test():
     N = 20
-    bondDimVec = np.array([10,20,30,40])
+    bondDimVec = np.array([100,150,200])
     Evec = np.zeros(len(bondDimVec))
     diffVec = np.zeros(len(bondDimVec))
     for i in range(len(bondDimVec)):

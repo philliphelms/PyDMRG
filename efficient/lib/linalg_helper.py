@@ -579,7 +579,7 @@ def my_davidson_nosym1(aop, ahop, xr0, xl0, precond, tol=1e-12, max_cycle=50, ma
         vl_last = vl
         vr_last = vr
         conv_last = conv
-        print(np.vstack(xtl).shape)
+        #print(np.vstack(xtl).shape)
         for i in range(rnow):
             for k in range(rnow):
                 heff[head+k,head+i] = dot(xtl[k].conj(), axtr[i])
@@ -589,12 +589,12 @@ def my_davidson_nosym1(aop, ahop, xr0, xl0, precond, tol=1e-12, max_cycle=50, ma
             for k in range(rnow):
                 heff[head+k,i] = dot(xtl[k].conj(), axri)
                 heff[i,head+k] = dot(xli.conj(), axtr[k])
-        print(heff[:space,:space].shape)
+        #print(heff[:space,:space].shape)
 
         w, vl, vr = scipy.linalg.eig(heff[:space,:space],left=True,right=True)
-        print(w)
+        #print(w)
         e, vl, vr, idx = pick(w, vl, vr, nroots, locals())
-        print(e)
+        #print(e)
 
         e = e[:nroots]
         vl = vl[:,:nroots]

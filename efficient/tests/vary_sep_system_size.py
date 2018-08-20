@@ -1,10 +1,6 @@
 import numpy as np
 import time
-try:
-    from pydmrg.efficient import mps_opt
-except:
-    from PyDMRG.efficient import mps_opt
-
+from pydmrg.efficient import mps_opt
 
 def run_test():
     N_vec = np.array([10,15,20])

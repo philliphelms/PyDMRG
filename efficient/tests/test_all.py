@@ -9,9 +9,6 @@ sys.path.append("./efficient/tests/")
 sys.path.append("/home/travis/build/philliphelms/PyDMRG/efficient")
 sys.path.append("/home/travis/build/philliphelms/PyDMRG")
 
-for i in range(len(sys.path)):
-    print(sys.path[i])
-
 class pydmrg_test(unittest.TestCase):
 
     def test_01_simple_tasep(self):

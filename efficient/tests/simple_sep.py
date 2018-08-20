@@ -1,10 +1,6 @@
 import numpy as np
 import time
-try:
-    from pydmrg.efficient import mps_opt
-except:
-    from PyDMRG.efficient import mps_opt
-import matplotlib.pyplot as plt
+from pydmrg.efficient import mps_opt
 
 #-----------------------------------------------------------------------------
 # A simple calculation using the general sep instead of the tasep. This
