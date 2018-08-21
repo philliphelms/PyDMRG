@@ -441,11 +441,11 @@ class MPS_OPT:
                 self.calc_spin_z[site] = self.einsum('ijk,il,ljk->',np.conj(self.Mr[site]),self.mpo.Sz,self.Mr[site])
         elif (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"):
             if self.leftMPS:
-                self.calc_empty[site] = self.einsum('ijk,il,ljk->',self.Ml[site].conj(),self.mpo.v,self.Mr[site])
-                self.calc_occ[site] = self.einsum('ijk,il,ljk->',self.Ml[site].conj(),self.mpo.n,self.Mr[site])
+                self.calc_empty[site] = np.real(self.einsum('ijk,il,ljk->',self.Ml[site].conj(),self.mpo.v,self.Mr[site]))
+                self.calc_occ[site] = np.real(self.einsum('ijk,il,ljk->',self.Ml[site].conj(),self.mpo.n,self.Mr[site]))
             else:
-                self.calc_empty[site] = self.einsum('ijk,il,ljk->',np.conj(self.Mr[site]),self.mpo.v,self.Mr[site])
-                self.calc_occ[site] = self.einsum('ijk,il,ljk->',np.conj(self.Mr[site]),self.mpo.n,self.Mr[site])
+                self.calc_empty[site] = np.real(self.einsum('ijk,il,ljk->',np.conj(self.Mr[site]),self.mpo.v,self.Mr[site]))
+                self.calc_occ[site] = np.real(self.einsum('ijk,il,ljk->',np.conj(self.Mr[site]),self.mpo.n,self.Mr[site]))
             # Try to calculate current
             if self.hamType is "sep":
                 # PH - Figure out how to do this.
@@ -587,6 +587,7 @@ class MPS_OPT:
             print('\t'*2+'Writing final results to output file')
         if self.saveResults:
             # Create Filename:
+            #    filename += ('_'+str(self.hamParams[i]))
             # PH - Come up with a better way of naming & storing files (perhaps with subdirectories)
             filename = 'results_'+self.hamType+'_N'+str(self.N)+'_M'+str(self.maxBondDim[-1])+'_time_'+str(int(time.time()*10))
             if calcType is 'dmrg':
@@ -830,6 +831,10 @@ class MPS_OPT:
                 E_prev = self.E_conv
                 self.currIterCnt += 1
                 self.totIterCnt += 1
+        # Calculate Current
+        # PH - Figure out the best place to put this
+        # PH - Figure out how to calculate susceptibility as well
+        self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
         self.saveFinalResults('dmrg')
         self.return_psi()
         return self.finalEnergy

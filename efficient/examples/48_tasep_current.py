@@ -17,6 +17,7 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=3)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
+"""
 N = 10
 a = 0.35
 b = 2/3
@@ -40,3 +41,39 @@ slope = -Ediff/(Sdiff)
 plt.plot(s_vec[1:]+(s_vec[1]-s_vec[0])/2,slope,'-')
 plt.plot(s_vec,Current,':')
 plt.show()
+"""
+
+
+N = 10
+a = 0.35
+b = 2/3
+s = 0
+ds = 0.1
+# Create MPS object
+x = mps_opt.MPS_OPT(N = N,
+                    maxBondDim = 100,
+                    hamType = 'tasep',
+                    verbose = 4,
+                    hamParams = (a,s,b))
+x.kernel()
+Current = x.current
+for i in range(len(x.calc_occ)):
+    print('\t{}'.format(x.calc_occ[i]))
+
+# Run without using analytical current
+x = mps_opt.MPS_OPT(N = N,
+                    maxBondDim = 100,
+                    hamType = 'tasep',
+                    verbose = 4,
+                    hamParams = (a,s-ds,b))
+E1 = x.kernel()
+x = mps_opt.MPS_OPT(N = N,
+                    maxBondDim = 100,
+                    hamType = 'tasep',
+                    verbose = 4,
+                    hamParams = (a,s+ds,b))
+E2 = x.kernel()
+
+print('MPS Current = {}'.format(Current))
+print('Der Current = {}'.format((E2-E1)/(2*ds)))
+
