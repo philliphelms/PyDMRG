@@ -17,22 +17,25 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=3)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-# Create MPS object
+N = 20
 a = 0.35
 b = 2/3
-s = -10
-x = mps_opt.MPS_OPT(N = 8,
-                    hamType = 'tasep',
-                    hamParams = (a,s,b))
-# Run optimization
-x.kernel()
-# Calculate current
-print('Calculated Current: {}'.format(x.current))
-print('Calculated Current/site: {}'.format(x.current/len(x.calc_occ)))
-if s == 0:
-    if b < 0.5 and a > b:
-        print('Analytic Current (TDL): {}'.format(b*(1-b)))
-    elif a < 0.5 and b > a:
-        print('Analytic Current (TDL): {}'.format(a*(1-a)))
-    else:
-        print('Analytic Current (TDL): {}'.format(0.25))
+s_vec = np.linspace(-5,5,100)
+CGF = np.zeros(s_vec.shape)
+Current = np.zeros(s_vec.shape)
+# Create MPS object
+for i in range(len(s_vec)):
+    x = mps_opt.MPS_OPT(N = N,
+                        maxBondDim = [10,20,100],
+                        hamType = 'tasep',
+                        verbose = 4,
+                        hamParams = (a,s_vec[i],b))
+    CGF[i] = x.kernel()
+    Current[i] = x.current
+plt.figure()
+Ediff = CGF[1:]-CGF[:len(CGF)-1]
+Sdiff = s_vec[1:]-s_vec[:len(s_vec)-1]
+slope = -Ediff/(Sdiff)
+plt.plot(s_vec[1:]+(s_vec[1]-s_vec[0])/2,slope,'-')
+plt.plot(s_vec,Current,':')
+plt.show()
