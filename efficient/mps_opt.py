@@ -13,7 +13,7 @@ class MPS_OPT:
                  plotExpVals=False, plotConv=False,leftMPS=True,calc_psi=False,\
                  usePyscf=True,initialGuess='rand',ed_limit=12,max_eig_iter=1000,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
-                 saveResults=False,dataFolder='data/',verbose=3):
+                 saveResults=True,dataFolder='data/',verbose=3):
         # Import parameters
         self.N = N
         self.N_mpo = N
@@ -564,47 +564,68 @@ class MPS_OPT:
             plt.figure(self.conv_figure.number).canvas.manager.window.attributes('-topmost', 0)
             plt.pause(0.0001)
 
+    def create_data_dir(self):
+        if not (self.dataFolder[-1] is '/'):
+            self.dataFolder += '/'
+        import os
+        cwd = os.getcwd()+'/'
+        print(cwd)
+        print(cwd+self.dataFolder)
+        print(os.path.exists(cwd+self.dataFolder))
+        if not os.path.exists(cwd+self.dataFolder):
+            os.mkdir(cwd+self.dataFolder)
+        if not os.path.exists(cwd+self.dataFolder+'dmrg/'):
+            os.mkdir(cwd+self.dataFolder+'dmrg/')
+        if not os.path.exists(cwd+self.dataFolder+'ed/'):
+            os.mkdir(cwd+self.dataFolder+'ed/')
+        if not os.path.exists(cwd+self.dataFolder+'mf/'):
+            os.mkdir(cwd+self.dataFolder+'mf/')
+
     def saveFinalResults(self,calcType):
-        # PH - Not Updated
+        self.create_data_dir()
         if self.verbose > 5:
             print('\t'*2+'Writing final results to output file')
         if self.saveResults:
             # Create Filename:
+            # PH - Come up with a better way of naming & storing files (perhaps with subdirectories)
             filename = 'results_'+self.hamType+'_N'+str(self.N)+'_M'+str(self.maxBondDim[-1])+'_time_'+str(int(time.time()*10))
-            #for i in range(len(self.hamParams)):
-            #    filename += ('_'+str(self.hamParams[i]))
             if calcType is 'dmrg':
+                # Make a dict to save MPS
+                Mrdict = {}
+                Mldict = {}
+                for i in range(len(self.Mr)):
+                    Mrdict['Mr'+str(i)] = self.Mr[i]
+                    if self.leftMPS: Mldict['Ml'+str(i)] = self.Ml[i]
                 if self.hamType is "sep_2d":
                     np.savez(self.dataFolder+'dmrg/'+filename,
                              N = self.N,
-                             M = self.maxBondDim,
-                             #MPS = self.M,
+                             maxBondDim = self.maxBondDim,
                              periodic_x = self.periodic_x,
                              periodic_y = self.periodic_y,
-                             all_energies = self.bondDimEnergies,
+                             bondDimEnergies = self.bondDimEnergies,
                              hamParams = self.hamParams[:len(self.hamParams)-1],
                              s = self.hamParams[-1],
                              dmrg_energy = self.finalEnergy,
                              calc_empty = self.calc_empty,
                              calc_occ = self.calc_occ,
-                             calc_spin_x = self.calc_spin_x,
-                             calc_spin_y = self.calc_spin_y,
-                             calc_spin_z = self.calc_spin_z)
+                             current = self.current,
+                             **Mrdict, **Mldict)
                 else:
                     np.savez(self.dataFolder+'dmrg/'+filename,
                              N=self.N,
-                             M=self.maxBondDim,
-                             #MPS = self.M,
+                             maxBondDim=self.maxBondDim,
                              hamParams = self.hamParams,
                              periodic_x = self.periodic_x,
                              periodic_y = self.periodic_y,
-                             all_energies = self.bondDimEnergies,
+                             bondDimEnergies = self.bondDimEnergies,
                              dmrg_energy = self.finalEnergy,
                              calc_empty = self.calc_empty,
                              calc_occ = self.calc_occ,
                              calc_spin_x = self.calc_spin_x,
                              calc_spin_y = self.calc_spin_y,
-                             calc_spin_z = self.calc_spin_z)
+                             calc_spin_z = self.calc_spin_z,
+                             current = self.current,
+                             **Mrdict, **Mldict)
             elif calcType is 'mf':
                 np.savez(self.dataFolder+'mf/'+filename,
                          E_mf = self.E_mf)

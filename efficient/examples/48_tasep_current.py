@@ -20,15 +20,16 @@ plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 N = 10
 a = 0.35
 b = 2/3
-s_vec = np.linspace(-5,5,100)
+s_vec = np.linspace(-1,1,100)
 CGF = np.zeros(s_vec.shape)
 Current = np.zeros(s_vec.shape)
 # Create MPS object
 for i in range(len(s_vec)):
     x = mps_opt.MPS_OPT(N = N,
-                        maxBondDim = [10,20,100],
+                        maxBondDim = 2,
                         hamType = 'tasep',
                         verbose = 4,
+                        dataFolder = 'wtf',
                         hamParams = (a,s_vec[i],b))
     CGF[i] = x.kernel()
     Current[i] = x.current
