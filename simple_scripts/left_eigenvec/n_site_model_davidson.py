@@ -1,24 +1,20 @@
 import numpy as np
 import scipy.linalg as la
-#from pyscf import lib
-from pyscf.lib import einsum
-from pydmrg.efficient.lib.linalg_helper import eig
 import time
 np.set_printoptions(precision=1,linewidth=250)
+from pyscf.lib import eig
 
 ######## Inputs ############################################################################
 # SEP Model
 N = 8
 alpha = 0.35  # In at left
 beta = 2/3    # Exit at right
-s = -1         # Exponential weighting
+s = 0         # Exponential weighting
 p = 1         # Jump right
 # Optimization
 tol = 1e-5
 maxIter = 10
-maxBondDim = 16
-startRightCanonical = True # This currently has to be true...
-printlots = True
+maxBondDim = 100
 ############################################################################################
 
 ######## MPO ###############################################################################
@@ -133,6 +129,33 @@ print('Difference Between Left  ED & MPS WFs: {}'.format(np.sum(np.abs(lwf_dmrg-
 print('Difference Between Right ED & MPS WFs: {}'.format(np.sum(np.abs(rwf_dmrg-rwf_ed))))
 ##############################################
 
+# Randomize M if desired  ####################
+if True:
+    for i in range(len(Mr)):
+        n1,n2,n3 = Mr[i].shape
+        Mr[i] = np.random.rand(n1,n2,n3)
+        Ml[i] = np.random.rand(n1,n2,n3)
+    for i in range(int(N)-1,0,-1):
+        n1,n2,n3 = Mr[i].shape
+        # Put into Canonical Form
+        Mr_reshape = np.swapaxes(Mr[i],0,1)
+        Mr_reshape = np.reshape(Mr_reshape,(n2,n1*n3))
+        Ml_reshape = np.swapaxes(Ml[i],0,1)
+        Ml_reshape = np.reshape(Ml_reshape,(n2,n1*n3))
+        (ur,sr,vr) = np.linalg.svd(Mr_reshape,full_matrices=False)
+        (ul,sl,vl) = np.linalg.svd(Ml_reshape,full_matrices=False)
+        # Determine X and Xinv
+        Xgauge = np.conj(np.linalg.inv(np.einsum('ij,kj->ki',vr,np.conj(vl))))
+        vl = np.dot(Xgauge,vl)
+        sl = np.einsum('ij,jk->ik',np.diag(sl),np.linalg.inv(Xgauge))
+        Mr_reshape = np.reshape(vr,(n2,n1,n3))
+        Ml_reshape = np.reshape(vl,(n2,n1,n3))
+        Mr[i] = np.swapaxes(Mr_reshape,0,1)
+        Ml[i] = np.swapaxes(Ml_reshape,0,1)
+        Mr[i-1] = np.einsum('klj,ji,i->kli',Mr[i-1],ur,sr)
+        Ml[i-1] = np.einsum('klj,ji,im->klm',Ml[i-1],ul,sl)
+##############################################
+
 # Create F ###################################
 F = []
 F.insert(len(F),np.array([[[1]]]))
@@ -153,21 +176,12 @@ for i in range(int(N)-1,-1,-1):
     Fs[i] = np.einsum('ijk,k->j',Mr[i],Fs[i+1])
 ##############################################
 
-# Eigenvalue selection function ##############
-def pick_eigs(w,v,nroots,x0):
-    abs_imag = abs(w.imag)
-    max_imag_tol = max(1e-5,min(abs_imag)*1.1)
-    realidx = np.where((abs_imag < max_imag_tol))[0]
-    idx = realidx[w[realidx].real.argsort()]
-    return w[idx],v[:,idx],idx
-##############################################
-
 # Optimization Sweeps ########################
 t0 = time.time()
 converged = False
 iterCnt = 0
 E_prev = 0
-#density_avg = np.zeros(N)
+density_avg = np.zeros(N)
 while not converged:
 # Right Sweep ----------------------------
     print('Right Sweep {}'.format(iterCnt))
@@ -175,14 +189,23 @@ while not converged:
         (n1,n2,n3) = Mr[i].shape
         def opt_fun(x):
             x_reshape = np.reshape(x,(n1,n2,n3))
-            Hx = einsum('ijk,lmk->ijlm',F[i+1],x_reshape)
-            Hx = einsum('njol,ijlm->noim',W[i],Hx)
-            Hx = einsum('pnm,noim->opi',F[i],Hx)
-            return np.reshape(Hx,-1)
+            Hx = np.einsum('ijk,lmk->ijlm',F[i+1],x_reshape)
+            Hx = np.einsum('njol,ijlm->noim',W[i],Hx)
+            Hx = np.einsum('pnm,noim->opi',F[i],Hx)
+            return -np.reshape(Hx,-1)
+        def opt_fun_H(x):
+            x_reshape = np.reshape(x,(n1,n2,n3))
+            Hx = np.einsum('pnm,opi->nmoi',F[i].conj(),x_reshape)
+            Hx = np.einsum('njol,nmoi->jlmi',W[i].conj(),Hx)
+            Hx = np.einsum('ijk,jlmi->lmk',F[i+1].conj(),Hx)
+            return -np.reshape(Hx,-1)
         def precond(dx,e,x0):
             return dx
-        init_guess = np.reshape(Mr[i],-1)
-        E,vl,vr = eig(opt_fun,init_guess,precond,pick=pick_eigs,left=True)
+        init_rguess = np.reshape(Mr[i],-1)
+        init_lguess = np.reshape(Ml[i],-1)
+        Er,vr = eig(opt_fun,init_rguess,precond)
+        El,vl = eig(opt_fun_H,init_lguess,precond)
+        assert(np.isclose(Er,El))
         print('\tEnergy at site {}= {}'.format(i,E))
         Mr[i] = np.reshape(vr,(n1,n2,n3))
         Ml[i] = np.reshape(vl,(n1,n2,n3))
@@ -190,6 +213,8 @@ while not converged:
         norm_factor = np.einsum('j,ijk,k->',Fs[i-1],Mr[i],Fs[i+1])
         Mr[i] /= norm_factor
         Ml[i] /= np.einsum('ijk,ijk->',Mr[i],np.conj(Ml[i]))
+        ## Calculate Local Density
+        density_avg[i] = np.einsum('ijk,il,ljk->',np.conj(Ml[i]),n,Mr[i])
         # Put into Canonical Form
         Mr_reshape = np.reshape(Mr[i],(n1*n2,n3))
         Ml_reshape = np.reshape(Ml[i],(n1*n2,n3))
@@ -212,14 +237,23 @@ while not converged:
         (n1,n2,n3) = Mr[i].shape
         def opt_fun(x):
             x_reshape = np.reshape(x,(n1,n2,n3))
-            Hx = einsum('ijk,lmk->ijlm',F[i+1],x_reshape)
-            Hx = einsum('njol,ijlm->noim',W[i],Hx)
-            Hx = einsum('pnm,noim->opi',F[i],Hx)
-            return np.reshape(Hx,-1)
+            Hx = np.einsum('ijk,lmk->ijlm',F[i+1],x_reshape)
+            Hx = np.einsum('njol,ijlm->noim',W[i],Hx)
+            Hx = np.einsum('pnm,noim->opi',F[i],Hx)
+            return -np.reshape(Hx,-1)
+        def opt_fun_H(x):
+            x_reshape = np.reshape(x,(n1,n2,n3))
+            Hx = np.einsum('pnm,opi->nmoi',F[i].conj(),x_reshape)
+            Hx = np.einsum('njol,nmoi->jlmi',W[i].conj(),Hx)
+            Hx = np.einsum('ijk,jlmi->lmk',F[i+1].conj(),Hx)
+            return -np.reshape(Hx,-1)
         def precond(dx,e,x0):
             return dx
-        init_guess = np.reshape(Mr[i],-1)
-        E,vl,vr = eig(opt_fun,init_guess,precond,pick=pick_eigs,left=True)
+        init_rguess = np.reshape(Mr[i],-1)
+        init_lguess = np.reshape(Ml[i],-1)
+        Er,vr = eig(opt_fun,init_rguess,precond)
+        El,vl = eig(opt_fun_H,init_lguess,precond)
+        assert(np.isclose(Er,El))
         print('\tEnergy at site {}= {}'.format(i,E))
         Mr[i] = np.reshape(vr,(n1,n2,n3))
         Ml[i] = np.reshape(vl,(n1,n2,n3))
@@ -227,6 +261,8 @@ while not converged:
         norm_factor = np.einsum('j,ijk,k->',Fs[i-1],Mr[i],Fs[i+1])
         Mr[i] /= norm_factor
         Ml[i] /= np.einsum('ijk,ijk->',Mr[i],np.conj(Ml[i]))
+        ## Calculate Local Density
+        density_avg[i] = np.einsum('ijk,il,ljk->',np.conj(Ml[i]),n,Mr[i])
         # Put into Canonical Form
         Mr_reshape = np.swapaxes(Mr[i],0,1)
         Mr_reshape = np.reshape(Mr_reshape,(n2,n1*n3))
@@ -291,10 +327,24 @@ lwf_dmrg = lwf_dmrg/np.sum(lwf_dmrg*rwf_dmrg)
 print('Difference Between Left  ED & DMRG WFs: {}'.format(np.sum(np.abs(lwf_dmrg-lwf_ed))))
 print('Difference Between Right ED & DMRG WFs: {}'.format(np.sum(np.abs(rwf_dmrg-rwf_ed))))
 print('='*100)
-print('Occupation\t\trdmrg\t\t\tred\t\t\tldmrg\t\t\tled')
-print('-'*100)
-rwf_ind = np.argsort(rwf_dmrg)[::-1]
-for i in range(len(rwf_dmrg)):
-    print('{}\t{},\t{},\t{},\t{}'.format(occ[rwf_ind[i],:],np.real(rwf_dmrg[rwf_ind[i]]),np.real(rwf_ed[rwf_ind[i]]),np.real(lwf_dmrg[rwf_ind[i]]),np.real(lwf_ed[rwf_ind[i]])))
-print('\nTotal DMRG Time = {}'.format(tf-t0))
+#print('Occupation\t\trdmrg\t\t\tred\t\t\tldmrg\t\t\tled')
+#print('-'*100)
+#rwf_ind = np.argsort(rwf_dmrg)[::-1]
+#for i in range(len(rwf_dmrg)):
+#    print('{}\t{},\t{},\t{},\t{}'.format(occ[rwf_ind[i],:],np.real(rwf_dmrg[rwf_ind[i]]),np.real(rwf_ed[rwf_ind[i]]),np.real(lwf_dmrg[rwf_ind[i]]),np.real(lwf_ed[rwf_ind[i]])))
+print('\tTotal DMRG Time = {}'.format(tf-t0))
+##############################################
+
+##############################################
+# Calculate Current if Possible 
+print('Local Densities:')
+for i in range(len(density_avg)):
+    print('\tSite {}: {}'.format(i,np.real(density_avg[i])))
+current = 0
+current += np.exp(-s)*alpha*(1-density_avg[0])
+for i in range(N-1):
+    current += p*np.exp(-s)*density_avg[i]*(1-density_avg[i+1])
+current += beta*np.exp(-s)*density_avg[-1]
+print('Total Current: {}'.format(current))
+print('Current/Site : {}'.format(current/(N+1)))
 ##############################################
