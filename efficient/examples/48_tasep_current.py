@@ -17,7 +17,7 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=3)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-N = 20
+N = 10
 a = 0.35
 b = 2/3
 s_vec = np.linspace(-5,5,100)

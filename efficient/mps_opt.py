@@ -116,11 +116,12 @@ class MPS_OPT:
                 self.Mr[i] = self.initialGuess*np.ones(self.Mr[i].shape)
                 if self.leftMPS: self.Ml[i] = self.initialGuess*np.ones(self.Ml[i].shape)
 
-    def right_canonicalize_mps(self):
+    def right_canonicalize_mps(self,initialSweep=False):
         if self.verbose > 4:
             print('\t'*2+'Performing Right Canonicalization')
         for i in range(1,len(self.Mr))[::-1]:
-            self.set_initial_MPS(i)
+            if initialSweep:
+                self.set_initial_MPS(i)
             self.canonicalize(i,'left')
             self.calc_observables(i)
         self.set_initial_MPS(0)
@@ -415,7 +416,7 @@ class MPS_OPT:
         # Print Results
         if self.verbose > 3:
             if self.davidson_rconv:
-                print('\t'+'Converged at \t{}\tEnergy = {}'.format(j,sgn*Er))
+                print('\t'+'Converged at \t\t{}\tEnergy = {}'.format(j,sgn*Er))
             else:
                 print('\t'+'Not Converged at \t{}\tEnergy = {}'.format(j,self.E_curr))
             if self.verbose > 4:
@@ -655,7 +656,7 @@ class MPS_OPT:
         self.initialize_containers()
         self.generate_mps()
         self.generate_mpo()
-        self.right_canonicalize_mps()
+        self.right_canonicalize_mps(initialSweep=True)
         self.calc_initial_f()
         converged = False
         self.currIterCnt = 0
