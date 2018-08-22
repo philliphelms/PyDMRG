@@ -247,6 +247,29 @@ class MPS_OPT:
             F_tmp.insert(len(F_tmp),np.array([[[1]]]))
             self.F.insert(len(self.F),F_tmp)
 
+    def operatorContract(self,Op):
+        nops = len(Op)
+        contraction = [np.array([[[1]]])]*nops
+        for i in range(self.N):
+            for j in range(nops):
+                if Op[j] is None:
+                    tmp_sum1 = self.einsum('jlp,ijk->iklp',contraction[j],self.Mr[i])
+                    if self.leftMPS:
+                        contraction[j] = self.einsum('npq,nkmp->kmq',np.conj(self.Ml[i]),tmp_sum1)
+                    else:
+                        contraction[j] = self.einsum('npq,nkmp->kmq',np.conj(self.Mr[i]),tmp_sum1)
+                else:
+                    tmp_sum1 = self.einsum('jlp,ijk->iklp',contraction[j],self.Mr[i])
+                    tmp_sum2 = self.einsum('lmin,iklp->kmnp',Op[j][i],tmp_sum1)
+                    if self.leftMPS:
+                        contraction[j] = self.einsum('npq,kmnp->kmq',np.conj(self.Ml[i]),tmp_sum2)
+                    else:
+                        contraction[j] = self.einsum('npq,kmnp->kmq',np.conj(self.Mr[i]),tmp_sum2)
+        result = 0
+        for j in range(nops):
+            result += contraction[j][0,0,0]
+        return result
+
     def calc_initial_f(self):
         if self.verbose > 3:
             print('\t'*2+'Calculating all entries in F')
@@ -731,6 +754,9 @@ class MPS_OPT:
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
                     self.time_total = time.time() - self.time_total
                     converged = True
+                    print(self.operatorContract(self.mpo.ops))
+                    #self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
+                    #self.current = self.operatorContract(self.mpo.suscOp(self.hamType))
                     self.final_convergence = True
                     if self.verbose > 0:
                         print('\n'+'#'*75)
@@ -780,6 +806,9 @@ class MPS_OPT:
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
                     self.finalEnergy = self.E_conv
                     converged = True
+                    print(self.operatorContract(self.mpo.ops))
+                    #self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
+                    #self.current = self.operatorContract(self.mpo.suscOp(self.hamType))
                     self.final_convergence = False
                     self.time_total = time.time() - self.time_total
                     if self.verbose > 0:
@@ -831,10 +860,6 @@ class MPS_OPT:
                 E_prev = self.E_conv
                 self.currIterCnt += 1
                 self.totIterCnt += 1
-        # Calculate Current
-        # PH - Figure out the best place to put this
-        # PH - Figure out how to calculate susceptibility as well
-        self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
         self.saveFinalResults('dmrg')
         self.return_psi()
         return self.finalEnergy
