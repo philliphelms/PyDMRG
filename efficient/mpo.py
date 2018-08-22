@@ -571,7 +571,7 @@ class MPO:
                 tmp_op1[-1] = np.array([[exp_p*self.Sp]])
                 tmp_op1[0]  = np.array([[self.Sm]])
                 opList.insert(len(opList),tmp_op1)
-            print('\n\nCurrent Operator:\n{}'.format(self.mpo_to_matrix(opList)))
+            #print('\n\nCurrent Operator:\n{}'.format(self.mpo_to_matrix(opList)))
             return opList
         else:
             print('Hamiltonian type not supported for current calculation')

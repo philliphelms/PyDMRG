@@ -1,6 +1,6 @@
 import numpy as np
 import time
-from pydmrg.efficient import mpo
+import mpo
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
@@ -11,7 +11,7 @@ class MPS_OPT:
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-8, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
                  plotExpVals=False, plotConv=False,leftMPS=True,calc_psi=False,\
-                 usePyscf=True,initialGuess='rand',ed_limit=12,max_eig_iter=1000,\
+                 usePyscf=True,initialGuess=0.01,ed_limit=12,max_eig_iter=100,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
                  saveResults=True,dataFolder='data/',verbose=3):
         # Import parameters
@@ -42,8 +42,7 @@ class MPS_OPT:
         self.dataFolder = dataFolder
         self.verbose = verbose
         if usePyscf:
-            from pyscf.lib.linalg_helper import eig
-            from pyscf.lib.numpy_helper import einsum
+            from pyscf.lib import einsum, eig
             self.einsum = einsum
             self.eig = eig
         else:
@@ -119,9 +118,12 @@ class MPS_OPT:
     def right_canonicalize_mps(self,initialSweep=False):
         if self.verbose > 4:
             print('\t'*2+'Performing Right Canonicalization')
-        for i in range(1,len(self.Mr))[::-1]:
-            if initialSweep:
+        if initialSweep:
+            for i in range(0,len(self.Mr))[::-1]:
                 self.set_initial_MPS(i)
+        for i in range(1,len(self.Mr))[::-1]:
+            #if initialSweep:
+            #    self.set_initial_MPS(i)
             self.canonicalize(i,'left')
             self.calc_observables(i)
         self.set_initial_MPS(0)
@@ -252,19 +254,17 @@ class MPS_OPT:
         contraction = [np.array([[[1]]])]*nops
         for i in range(self.N):
             for j in range(nops):
-                if Op[j] is None:
-                    tmp_sum1 = self.einsum('jlp,ijk->iklp',contraction[j],self.Mr[i])
+                if Op[j][i] is None:
+                    print('Not working for None Operator')
                     if self.leftMPS:
-                        contraction[j] = self.einsum('npq,nkmp->kmq',np.conj(self.Ml[i]),tmp_sum1)
+                        contraction[j] = self.einsum('jlo,ijk,iop->klp',contraction[j],np.conj(self.Ml[i]),self.Mr[i])
                     else:
-                        contraction[j] = self.einsum('npq,nkmp->kmq',np.conj(self.Mr[i]),tmp_sum1)
+                        contraction[j] = self.einsum('jlo,ijk,iop->klp',contraction[j],np.conj(self.Mr[i]),self.Mr[i])
                 else:
-                    tmp_sum1 = self.einsum('jlp,ijk->iklp',contraction[j],self.Mr[i])
-                    tmp_sum2 = self.einsum('lmin,iklp->kmnp',Op[j][i],tmp_sum1)
                     if self.leftMPS:
-                        contraction[j] = self.einsum('npq,kmnp->kmq',np.conj(self.Ml[i]),tmp_sum2)
+                        contraction[j] = self.einsum('jlo,ijk,lmin,nop->kmp',contraction[j],np.conj(self.Ml[i]),Op[j][i],self.Mr[i])
                     else:
-                        contraction[j] = self.einsum('npq,kmnp->kmq',np.conj(self.Mr[i]),tmp_sum2)
+                        contraction[j] = self.einsum('jlo,ijk,lmin,nop->kmp',contraction[j],np.conj(self.Mr[i]),Op[j][i],self.Mr[i])
         result = 0
         for j in range(nops):
             result += contraction[j][0,0,0]
@@ -380,7 +380,7 @@ class MPS_OPT:
         init_rguess = np.reshape(self.Mr[j],-1)
         Er,vr = self.eig(opt_fun,init_rguess,precond,
                         max_cycle = self.max_eig_iter,
-                        #pick = pick_eigs,
+                        pick = pick_eigs,
                         follow_state = True,
                         callback = callback,
                         nroots = min(self.target_state+1,n1*n2*n3-1))
@@ -412,9 +412,9 @@ class MPS_OPT:
             def callback(envs_dict):
                 self.davidson_lconv = envs_dict['icyc']+2 < self.max_eig_iter
             init_lguess = np.reshape(self.Ml[j],-1)
-            El,vl = self.eig(opt_fun,init_lguess,precond,
+            El,vl = self.eig(opt_fun_H,init_lguess,precond,
                             max_cycle = self.max_eig_iter,
-                            #pick = pick_eigs,
+                            pick = pick_eigs,
                             follow_state = True,
                             callback = callback,
                             nroots = min(self.target_state+1,n1*n2*n3-1))
@@ -439,9 +439,9 @@ class MPS_OPT:
         # Print Results
         if self.verbose > 3:
             if self.davidson_rconv:
-                print('\t'+'Converged at \t\t{}\tEnergy = {}'.format(j,sgn*Er))
+                print('\t'+'Converged at {}\tEnergy = {}'.format(j,sgn*Er))
             else:
-                print('\t'+'Not Converged at \t{}\tEnergy = {}'.format(j,self.E_curr))
+                print('\t'+'Not Conv  at {}\tEnergy = {}'.format(j,self.E_curr))
             if self.verbose > 4:
                 print('\t\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
         # Return Energy, if converged
@@ -638,41 +638,42 @@ class MPS_OPT:
                          E_ed = self.E_ed)
 
     def return_psi(self):
-        # PH - Not Updated
-        if self.calc_psi:
+        if True: #self.calc_psi:
             if self.N < 21:
                 rpsi = np.zeros(2**self.N,dtype=np.complex128)
-                if self.leftMPS:
-                    lpsi = np.zeros(2**self.N,dtype=np.complex128)
-                occ = np.zeros((2**self.N_mpo,self.N_mpo),dtype=int)
-                sum_occ = np.zeros(2**self.N_mpo)
+                if self.leftMPS: lpsi = np.zeros(2**self.N,dtype=np.complex128)
+                occ = np.zeros((2**self.N,self.N),dtype=int)
+                sum_occ = np.zeros(2**self.N)
                 for i in range(2**self.N):
-                    occ[i,:] = np.asarray(list(map(lambda x: int(x),'0'*(self.N_mpo-len(bin(i)[2:]))+bin(i)[2:])))
+                    occ[i,:] = np.asarray(list(map(lambda x: int(x),'0'*(self.N-len(bin(i)[2:]))+bin(i)[2:])))
                     sum_occ[i] = np.sum(occ[i,:])
-                inds = np.argsort(sum_occ)
-                sum_occ = sum_occ[inds]
-                occ = occ[inds,:]
+                # PH - Sort Inds by blocks, optional
+                #inds = np.argsort(sum_occ)
+                #sum_occ = sum_occ[inds]
+                #occ = occ[inds,:]
                 for i in range(2**self.N):
                     for j in range(self.N):
                         if j is 0:
                             tmp_mat = self.Mr[j][occ[i,j],:,:]
-                            if self.leftMPS:
-                                tmp_mat_l = self.Ml[j][occ[i,j],:,:]
+                            if self.leftMPS: tmp_mat_l = self.Ml[j][occ[i,j],:,:]
                         else:
                             tmp_mat = np.einsum('ij,jk->ik',tmp_mat,self.Mr[j][occ[i,j],:,:])
-                            if self.leftMPS:
-                                tmp_mat_l = np.einsum('ij,jk->ik',tmp_mat_l,self.Ml[j][occ[i,j],:,:])
+                            if self.leftMPS: tmp_mat_l = np.einsum('ij,jk->ik',tmp_mat_l,self.Ml[j][occ[i,j],:,:])
                     rpsi[i] = tmp_mat[[0]][0][0]
-                    if self.leftMPS:
-                        lpsi[i] = tmp_mat[[0]][0][0]
+                    if self.leftMPS: lpsi[i] = tmp_mat_l[[0]][0][0]
                 self.rpsi = rpsi
-                if self.leftMPS:
+                if self.leftMPS: 
                     self.lpsi = lpsi
                 else:
                     self.lpsi = None
             else:
                 self.rpsi = None
                 self.lpsi = None
+            if False:
+                print('\nOccupation\t\t\tred\t\t\tled')
+                print('-'*100)
+                for i in range(len(self.rpsi)):
+                    print('{}\t\t\t{},\t{}'.format(occ[i,:],np.real(self.rpsi[i]),np.real(self.lpsi[i])))
 
     def kernel(self):
         if self.verbose > 1:
@@ -687,7 +688,7 @@ class MPS_OPT:
         self.currIterCnt = 0
         self.totIterCnt = 0
         self.calc_observables(0)
-        E_prev = 0#self.energy_contraction(0)
+        E_prev = self.operatorContract(self.mpo.ops)
         self.E_curr = E_prev
         self.E_conv = E_prev
         while not converged:
@@ -729,6 +730,7 @@ class MPS_OPT:
             self.outside_iter_cnt[self.maxBondDimInd] += 1
             self.t0 = time.time()
             if np.abs((self.E_conv-E_prev)/E_prev) < self.tol[self.maxBondDimInd]:
+                # Converged. at final Max Bond Dim --------------------------------------------------------------------------------
                 if self.maxBondDimInd is (len(self.maxBondDim)-1):
                     self.finalEnergy = self.E_conv
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
@@ -753,7 +755,9 @@ class MPS_OPT:
                                     print('    Entanglement Spectrum at center bond = {}'.format(self.entanglement_spectrum[int(self.N/2)]))
                                     print('    Density = {}'.format(self.calc_occ))
                         print('#'*75+'\n')
+                # Converged, move to next Max Bond Dim -----------------------------------------------------------------------
                 else:
+                    self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
                     if self.verbose > 1:
                         print('\n'+'-'*45)
                         print('Converged at E = {}'.format(self.E_conv))
@@ -781,6 +785,7 @@ class MPS_OPT:
                     self.totIterCnt += 1
                     self.currIterCnt = 0
             elif self.currIterCnt >= self.maxIter[self.maxBondDimInd]-1:
+                # MaxIter Reached, Not Converged at final Bond Dim --------------------------------------------------------------------------------
                 if self.maxBondDimInd is (len(self.maxBondDim)-1):
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
                     self.finalEnergy = self.E_conv
@@ -805,7 +810,9 @@ class MPS_OPT:
                                     print('    Entanglement Spectrum at center bond = {}'.format(self.entanglement_spectrum[int(self.N/2)]))
                                     print('    Density = {}'.format(self.calc_occ))
                         print('!'*75+'\n')
+                # MaxIter Reached, Not Converged, move to next Max Bond Dim -----------------------------------------------------------------------
                 else:
+                    self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
                     if self.verbose > 1:
                         print('\n'+'-'*45)
                         print('Not Converged at E = {}'.format(self.E_conv))
@@ -833,8 +840,9 @@ class MPS_OPT:
                     self.totIterCnt += 1
                     self.currIterCnt = 0
             else:
+                # Not Converged, go to next Max Bond Dim --------------------------------------------------------------------------------
                 if self.verbose > 3:
-                    print('\t'*1+'Energy Change {}\nNeeded <{}'.format(np.abs(self.E_conv-E_prev),self.tol[self.maxBondDimInd]))
+                    print('\t'+'-'*20+'\n\tEnergy Change {}\n\tNeeded <{}'.format(np.abs(self.E_conv-E_prev),self.tol[self.maxBondDimInd]))
                 E_prev = self.E_conv
                 self.currIterCnt += 1
                 self.totIterCnt += 1
@@ -918,7 +926,8 @@ class MPS_OPT:
 
 def pick_eigs(w,v,nroots,x0):
     abs_imag = abs(w.imag)
-    max_imag_tol = max(1e-5,min(abs_imag)*1.1)
+    max_imag_tol = 1e-5#max(1e-5,min(abs_imag)*1.1)
     realidx = np.where((abs_imag < max_imag_tol))[0]
+    #print(realidx)
     idx = realidx[w[realidx].real.argsort()]
     return w[idx], v[:,idx], idx
