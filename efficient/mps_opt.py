@@ -469,23 +469,6 @@ class MPS_OPT:
             else:
                 self.calc_empty[site] = np.real(self.einsum('ijk,il,ljk->',np.conj(self.Mr[site]),self.mpo.v,self.Mr[site]))
                 self.calc_occ[site] = np.real(self.einsum('ijk,il,ljk->',np.conj(self.Mr[site]),self.mpo.n,self.Mr[site]))
-            # Try to calculate current
-            if self.hamType is "sep":
-                # PH - Figure out how to do this.
-                # Include boundary left
-                self.current =  self.mpo.exp_alpha[0]*self.calc_empty[0]
-                self.current -= self.mpo.exp_delta[0]*self.calc_occ[0]
-                for i in range(self.N-1):
-                    self.current += self.mpo.exp_p[i]*self.calc_occ[i]*self.calc_empty[i+1]
-                    self.current -= self.mpo.exp_q[i]*self.calc_occ[i+1]*self.calc_empty[i]
-                self.current += self.mpo.exp_delta[-1]*self.calc_occ[-1]
-                self.current -= self.mpo.exp_beta[-1]*self.calc_empty[-1]
-            if self.hamType is "tasep":
-                exp_s = np.exp(-self.mpo.s)
-                self.current = self.mpo.alpha*exp_s*self.calc_empty[0]
-                for i in range(self.N-1):
-                    self.current += exp_s*self.calc_occ[i]*self.calc_empty[i+1]
-                self.current += self.mpo.beta*exp_s*self.calc_occ[-1]
         if self.verbose > 4:
             print('\t'*2+'Total Number of particles: {}'.format(np.sum(self.calc_occ)))
 
@@ -592,9 +575,6 @@ class MPS_OPT:
             self.dataFolder += '/'
         import os
         cwd = os.getcwd()+'/'
-        print(cwd)
-        print(cwd+self.dataFolder)
-        print(os.path.exists(cwd+self.dataFolder))
         if not os.path.exists(cwd+self.dataFolder):
             os.mkdir(cwd+self.dataFolder)
         if not os.path.exists(cwd+self.dataFolder+'dmrg/'):
@@ -754,8 +734,7 @@ class MPS_OPT:
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
                     self.time_total = time.time() - self.time_total
                     converged = True
-                    print(self.operatorContract(self.mpo.ops))
-                    #self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
+                    self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
                     #self.current = self.operatorContract(self.mpo.suscOp(self.hamType))
                     self.final_convergence = True
                     if self.verbose > 0:
@@ -806,8 +785,7 @@ class MPS_OPT:
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
                     self.finalEnergy = self.E_conv
                     converged = True
-                    print(self.operatorContract(self.mpo.ops))
-                    #self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
+                    self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
                     #self.current = self.operatorContract(self.mpo.suscOp(self.hamType))
                     self.final_convergence = False
                     self.time_total = time.time() - self.time_total

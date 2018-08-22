@@ -155,10 +155,6 @@ class MPO:
                 tmp_op2[-1] = np.array([[-self.n]])
                 tmp_op1[0] = np.array([[self.Sm]])
                 tmp_op2[0] = np.array([[self.v]])
-                #tmp_op1[0] = np.array([[np.exp(-self.s)*self.Sp]])
-                #tmp_op2[0] = np.array([[-self.n]])
-                #tmp_op1[-1] = np.array([[self.Sm]])
-                #tmp_op2[-1] = np.array([[self.v]])
                 self.ops.insert(len(self.ops),tmp_op1)
                 self.ops.insert(len(self.ops),tmp_op2)
         elif hamType is "sep":
@@ -309,19 +305,6 @@ class MPO:
             self.exp_de_u = self.de_u*np.exp(-self.sy)
             # Allocate general operator container
             self.ops = []
-            # Build generic operator (not including periodicity)
-            #ham_dim = 6+(self.Ny)*4
-            #w_arr = np.zeros((ham_dim,ham_dim,2,2))
-            # Work down left column
-            #w_arr[0,0,:,:] = self.I
-            #w_arr[1,0,:,:] = self.exp_ju[]*self.Sm
-            #w_arr[2,0,:,:] = self.ju[]*self.v
-            #w_arr[3,0,:,:] = self.exp_jd[]*self.Sp
-
-            
-
-
-
             ham_dim = 10+(self.Ny-2)*4
             # Now build actual operator
             tmp_op = []
@@ -454,10 +437,6 @@ class MPO:
                         tmp_op4[inds[0]] = np.array([[-self.v]])
                         self.ops.insert(len(self.ops),tmp_op3)
                         self.ops.insert(len(self.ops),tmp_op4)
-            #for i in range(len(self.ops)):
-            #    for j in range(len(self.ops[i])):
-            #        if self.ops[i][j] is not None:
-            #            self.ops[i][j] = -self.ops[i][j]
         elif hamType is "ising":
             self.J = param[0]
             self.h = param[1]
@@ -565,3 +544,63 @@ class MPO:
                             tmp_mat = np.einsum('ij,jk->ik',tmp_mat,multiplier[:,:,i_occ[k],j_occ[k]])
                     H[i,j] += tmp_mat[[0]]
         return H
+
+    def currentOp(self,hamType):
+        if hamType == 'tasep':
+            exp_a = self.alpha*np.exp(-self.s)
+            exp_b = self.beta *np.exp(-self.s)
+            exp_p = np.exp(-self.s)
+            genericOp = np.array([[self.I, self.z,        self.z],
+                                  [self.Sm, self.z,       self.z],
+                                  [self.z, exp_p*self.Sp, self.I]])
+            opList = []
+            tmp_op = []
+            tmp_op = [None]*self.N
+            if not self.periodic_x:
+                tmp_op[0] = np.array([[exp_a*self.Sm,exp_p*self.Sp,self.I]])
+                tmp_op[-1] = np.array([[self.I],[self.Sm],[exp_b*self.Sp]])
+            else:
+                tmp_op[0] = np.expand_dims(genericOp[-1,:],0)
+                tmp_op[-1] = np.expand_dims(genericOp[:,0],1)
+            for i in range(1,self.N-1):
+                tmp_op[i] = genericOp
+            opList.insert(len(opList),tmp_op)
+            # Include periodic terms
+            if self.periodic_x:
+                tmp_op1 = [None]*self.N
+                tmp_op1[-1] = np.array([[exp_p*self.Sp]])
+                tmp_op1[0]  = np.array([[self.Sm]])
+                opList.insert(len(opList),tmp_op1)
+            print('\n\nCurrent Operator:\n{}'.format(self.mpo_to_matrix(opList)))
+            return opList
+        else:
+            print('Hamiltonian type not supported for current calculation')
+            return None
+
+
+    def mpo_to_matrix(self,Op,verbose=0):
+        OpMat = np.zeros((2**self.N,2**self.N))
+        if verbose > 0:
+            print('Operator Size: {}'.format(OpMat.shape))
+        for i in range(2**self.N):
+            if verbose > 1:
+                print('\ti-Loop Progress: {}%'.format(i/2**self.N*100))
+            i_occ = list(map(lambda x: int(x),'0'*(self.N-len(bin(i)[2:]))+bin(i)[2:]))
+            for j in range(2**self.N):
+                if verbose > 2:
+                    print('\t\tj-Loop Progress: {}%'.format(j/2**self.N*100))
+                j_occ = list(map(lambda x: int(x),'0'*(self.N-len(bin(j)[2:]))+bin(j)[2:]))
+                for l in range(len(Op)):
+                    if verbose > 3:
+                        print('\t\t\tWorking with Operator {} of {}'.format(l+1,len(Op)))
+                    tmp_mat = np.array([[1]])
+                    for k in range(self.N):
+                        if verbose > 4:
+                            print('\t\t\t\tk-Loop progress: {}%'.format(k/self.N*100))
+                        if Op[l][k] is not None:
+                            tmp_mat = np.einsum('ij,jk->ik',tmp_mat,Op[l][k][:,:,i_occ[k],j_occ[k]])
+                        else:
+                            multiplier = np.array([[np.eye(2)]])
+                            tmp_mat = np.einsum('ij,jk->ik',tmp_mat,multiplier[:,:,i_occ[k],j_occ[k]])
+                    OpMat[i,j] += tmp_mat[[0]]
+        return OpMat
