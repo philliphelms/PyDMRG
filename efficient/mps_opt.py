@@ -10,8 +10,8 @@ class MPS_OPT:
 
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-8, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
-                 plotExpVals=False, plotConv=False,leftMPS=True,calc_psi=False,\
-                 usePyscf=True,initialGuess=0.01,ed_limit=12,max_eig_iter=100,\
+                 plotExpVals=False, plotConv=False,leftMPS=False,calc_psi=True,\
+                 usePyscf=True,initialGuess=0.01,ed_limit=12,max_eig_iter=1000,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
                  saveResults=True,dataFolder='data/',verbose=3):
         # Import parameters
@@ -332,18 +332,18 @@ class MPS_OPT:
         if direction is 'right':
             for i in range(self.mpo.nops):
                 if self.mpo.ops[i][j] is None:
-                    tmp_sum1 = self.einsum('jlp,ijk->iklp',self.F[i][j],self.Mr[j])
                     if self.leftMPS:
-                        self.F[i][j+1] = self.einsum('npq,nkmp->kmq',np.conj(self.Ml[j]),tmp_sum1)
+                        tmp_sum1 = self.einsum('jlp,ijk->iklp',self.F[i][j],np.conj(self.Ml[j]))
                     else:
-                        self.F[i][j+1] = self.einsum('npq,nkmp->kmq',np.conj(self.Mr[j]),tmp_sum1)
+                        tmp_sum1 = self.einsum('jlp,ijk->iklp',self.F[i][j],np.conj(self.Mr[j]))
+                    self.F[i][j+1] = self.einsum('npq,nkmp->kmq',self.Mr[j],tmp_sum1)
                 else:
-                    tmp_sum1 = self.einsum('jlp,ijk->iklp',self.F[i][j],self.Mr[j])
-                    tmp_sum2 = self.einsum('lmin,iklp->kmnp',self.mpo.ops[i][j],tmp_sum1)
                     if self.leftMPS:
-                        self.F[i][j+1] = self.einsum('npq,kmnp->kmq',np.conj(self.Ml[j]),tmp_sum2)
+                        tmp_sum1 = self.einsum('jlp,ijk->iklp',self.F[i][j],np.conj(self.Ml[j]))
                     else:
-                        self.F[i][j+1] = self.einsum('npq,kmnp->kmq',np.conj(self.Mr[j]),tmp_sum2)
+                        tmp_sum1 = self.einsum('jlp,ijk->iklp',self.F[i][j],np.conj(self.Mr[j]))
+                    tmp_sum2 = self.einsum('lmin,iklp->kmnp',self.mpo.ops[i][j],tmp_sum1)
+                    self.F[i][j+1] = self.einsum('npq,kmnp->kmq',self.Mr[j],tmp_sum2)
         elif direction is 'left':
             for i in range(self.mpo.nops):
                 if self.mpo.ops[i][j] is None:
@@ -405,7 +405,7 @@ class MPS_OPT:
         init_rguess = np.reshape(self.Mr[j],-1)
         Er,vr = self.eig(opt_fun,init_rguess,precond,
                         max_cycle = self.max_eig_iter,
-                        #pick = pick_eigs,
+                        pick = pick_eigs,
                         follow_state = True,
                         callback = callback,
                         nroots = min(self.target_state+1,n1*n2*n3-1))
@@ -439,7 +439,7 @@ class MPS_OPT:
             init_lguess = np.reshape(self.Ml[j],-1)
             El,vl = self.eig(opt_fun_H,init_lguess,precond,
                             max_cycle = self.max_eig_iter,
-                            #pick = pick_eigs,
+                            pick = pick_eigs,
                             follow_state = True,
                             callback = callback,
                             nroots = min(self.target_state+1,n1*n2*n3-1))
