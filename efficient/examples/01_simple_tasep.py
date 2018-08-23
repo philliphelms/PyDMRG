@@ -21,10 +21,11 @@ plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 N = 8
 a = 0.35
 b = 2/3
-s = -10
+s = -1
 ds = 0.01
 x = mps_opt.MPS_OPT(N = N,
                     hamType = 'tasep',
+                    verbose = 4,
                     hamParams = (a,s,b))
 # Run optimization
 x.kernel()

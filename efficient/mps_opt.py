@@ -10,8 +10,8 @@ class MPS_OPT:
 
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-8, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
-                 plotExpVals=False, plotConv=False,leftMPS=False,calc_psi=True,\
-                 usePyscf=True,initialGuess=0.01,ed_limit=12,max_eig_iter=1000,\
+                 plotExpVals=False, plotConv=False,leftMPS=True,calc_psi=True,\
+                 usePyscf=True,initialGuess="rand",ed_limit=12,max_eig_iter=1000,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
                  saveResults=True,dataFolder='data/',verbose=3):
         # Import parameters
@@ -100,18 +100,18 @@ class MPS_OPT:
         self.mpo = mpo.MPO(self.hamType,self.hamParams,self.N_mpo,periodic_x=self.periodic_x,periodic_y=self.periodic_y)
 
     def set_initial_MPS(self,i):
-        if self.initialGuess is "zeros":
+        if self.initialGuess == "zeros":
             self.Mr[i] = np.zeros(self.Mr[i].shape)
             if self.leftMPS: self.Ml[i] = np.zeros(self.Ml[i].shape)
-        if self.initialGuess is "ones":
+        elif self.initialGuess == "ones":
             self.Mr[i] = np.ones(self.Mr[i].shape)
             if self.leftMPS: self.Ml[i] = np.ones(self.Ml[i].shape)
-        if self.initialGuess is "rand":
+        elif self.initialGuess == "rand":
             nx,ny,nz = self.Mr[i].shape
             self.Mr[i] = np.random.rand(nx,ny,nz)
             if self.leftMPS: self.Ml[i] = np.random.rand(nx,ny,nz)
         else:
-            if self.initialGuess is not 'prev':
+            if self.initialGuess != 'prev':
                 self.Mr[i] = self.initialGuess*np.ones(self.Mr[i].shape)
                 if self.leftMPS: self.Ml[i] = self.initialGuess*np.ones(self.Ml[i].shape)
 
@@ -206,6 +206,9 @@ class MPS_OPT:
         self.calculate_entanglement(i,s)
 
     def increaseBondDim(self):
+        if True:
+            self.return_psi()
+            old_psi = self.rpsi.copy()
         if self.verbose > 3:
             print('\t'*2+'Increasing Bond Dimensions from {} to {}'.format(self.maxBondDim[self.maxBondDimInd-1],self.maxBondDimCurr))
         Mrnew = []
@@ -221,11 +224,14 @@ class MPS_OPT:
             if self.leftMPS: Mlnew.insert(len(Mlnew),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr)),dtype=np.complex128))
         for i in range(len(Mrnew)):
             nx,ny,nz = self.Mr[i].shape
-            Mrnew[i][:nx,:ny,:nz] = self.Mr[i]
+            Mrnew[i][:,:ny,:nz] = self.Mr[i]
             self.Mr[i] = Mrnew[i]
             if self.leftMPS: 
-                Mrnew[i][:nx,:ny,:nz] = self.Ml[i]
+                Mlnew[i][:,:ny,:nz] = self.Ml[i]
                 self.Ml[i] = Mlnew[i]
+        if True:
+            self.return_psi()
+            print('\t\t\tDid increased BD change WF? {}'.format(np.sum(np.abs(old_psi-self.rpsi))))
 
     def calc_initial_fs(self):
         self.Fs = [None]*(self.N+1)
@@ -269,7 +275,7 @@ class MPS_OPT:
             result += contraction[j][0,0,0]
         return result
 
-    def squaredOperatorContrat(self,Op):
+    def squaredOperatorContract(self,Op):
         nops = len(Op)
         contraction = [np.array([[[[1]]]])]*nops
         for i in range(self.N):
@@ -413,7 +419,7 @@ class MPS_OPT:
             sort_rinds = np.argsort(np.real(E))
             Er = Er[sort_rinds[min(self.target_state,len(sort_inds)-1)]]
             vr = vr[sort_rinds[min(self.target_state,len(sort_inds)-1)]]
-        except: Er = Er
+        except: Er = Er #vr = np.real(vr) # PH - Will this work?
         if self.leftMPS:
             self.num_opt_fun_calls = 0
             def opt_fun_H(x):
@@ -425,7 +431,6 @@ class MPS_OPT:
                 for i in range(self.mpo.nops):
                     if self.mpo.ops[i][j] is None:
                         # PH - Identity operator might not be correct here
-                        print('PROBLEM IN IDENTITY?')
                         in_sum1 = self.einsum('pnm,opi->nmoi',self.F[i][j].conj(),x_reshape)
                         fin_sum += sgn*self.einsum('ijk,mjli->lmk',self.F[i][j+1].conj(),in_sum1)
                     else:
@@ -433,6 +438,20 @@ class MPS_OPT:
                         in_sum2 = self.einsum('njol,nmoi->jlmi',self.mpo.ops[i][j].conj(),in_sum1)
                         fin_sum += sgn*self.einsum('ijk,jlmi->lmk',self.F[i][j+1].conj(),in_sum2)
                 return np.reshape(fin_sum,-1)
+            def opt_fun_H_slow(x):
+                self.num_opt_fun_calls += 1
+                if self.verbose > 6:
+                    print('\t'*5+'Right Eigen Iteration')
+                fin_sum = np.zeros(x.shape,dtype=np.complex128)
+                for i in range(self.mpo.nops):
+                    if self.mpo.ops[i][j] is None:
+                        print('PROBLEM IN IDENTITY?')
+                    else:
+                        H = self.einsum('jlp,lmin,kmq->ijknpq',self.F[i][j],self.mpo.ops[i][j],self.F[i][j+1])
+                        (na,nb,nc,nd,ne,nf) = H.shape
+                        H = np.reshape(H,(na*nb*nc,nd*ne*nf)).T.conj()
+                        fin_sum += sgn*np.dot(H,x)
+                return fin_sum 
             self.davidson_lconv = True
             def callback(envs_dict):
                 self.davidson_lconv = envs_dict['icyc']+2 < self.max_eig_iter
@@ -447,7 +466,7 @@ class MPS_OPT:
                 sort_linds = np.argsort(np.real(El))
                 El = El[sort_linds[min(self.target_state,len(sort_inds)-1)]]
                 vl = vl[sort_linds[min(self.target_state,len(sort_inds)-1)]]
-            except: El = El
+            except: El = El #vl = np.real(vl) #PH Will this work?
         # Use new eigenvectors, if converged
         if self.davidson_rconv:
             self.Mr[j] = np.reshape(vr,(n1,n2,n3))
@@ -507,7 +526,8 @@ class MPS_OPT:
                     E += self.einsum('ijk,olp,mio,nkp->',self.F[i][j],self.F[i][j+1],np.conj(self.Mr[j]),self.Mr[j])
             else:
                 if self.leftMPS:
-                    E += self.einsum('ijk,jlmn,olp,mio,nkp->',self.F[i][j],self.mpo.ops[i][j],self.F[i][j+1],np.conj(self.Ml[j]),self.Mr[j])
+                    #E += self.einsum('ijk,jlmn,olp,mio,nkp->',self.F[i][j],self.mpo.ops[i][j],self.F[i][j+1],np.conj(self.Ml[j]),self.Mr[j])
+                    E += self.einsum('ijk,jlmn,olp,mio,nkp->',np.real(self.F[i][j]),self.mpo.ops[i][j],np.real(self.F[i][j+1]),np.real(self.Ml[j]),np.real(self.Mr[j]))
                 else:
                     E += self.einsum('ijk,jlmn,olp,mio,nkp->',self.F[i][j],self.mpo.ops[i][j],self.F[i][j+1],np.conj(self.Mr[j]),self.Mr[j])
         return E
