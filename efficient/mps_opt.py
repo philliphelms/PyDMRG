@@ -255,7 +255,6 @@ class MPS_OPT:
         for i in range(self.N):
             for j in range(nops):
                 if Op[j][i] is None:
-                    print('Not working for None Operator')
                     if self.leftMPS:
                         contraction[j] = self.einsum('jlo,ijk,iop->klp',contraction[j],np.conj(self.Ml[i]),self.Mr[i])
                     else:
@@ -268,6 +267,32 @@ class MPS_OPT:
         result = 0
         for j in range(nops):
             result += contraction[j][0,0,0]
+        return result
+
+    def squaredOperatorContrat(self,Op):
+        nops = len(Op)
+        contraction = [np.array([[[[1]]]])]*nops
+        for i in range(self.N):
+            for j in range(nops):
+                if Op[j][i] is None:
+                    if self.leftMPS:
+                        contraction[j] = self.einsum('jlor,ijk,irs->klos',
+                                                     contraction[j],np.conj(self.Ml[i]),self.Mr[i])
+                    else:
+                        contraction[j] = self.einsum('jlor,ijk,irs->klos',
+                                                     contraction[j],np.conj(self.Mr[i]),self.Mr[i])
+                else:
+                    if self.leftMPS:
+                        contraction[j] = self.einsum('jlor,ijk,lmin,opnq,qrs->kmps',
+                                                     contraction[j],np.conj(self.Ml[i]),
+                                                     Op[j][i],Op[j][i],self.Mr[i])
+                    else:
+                        contraction[j] = self.einsum('jlor,ijk,lmin,opnq,qrs->kmps',
+                                                     contraction[j],np.conj(self.Mr[i]),
+                                                     Op[j][i],Op[j][i],self.Mr[i])
+        result = 0
+        for i in range(nops):
+            result += contraction[i][0,0,0,0]
         return result
 
     def calc_initial_f(self):
@@ -380,7 +405,7 @@ class MPS_OPT:
         init_rguess = np.reshape(self.Mr[j],-1)
         Er,vr = self.eig(opt_fun,init_rguess,precond,
                         max_cycle = self.max_eig_iter,
-                        pick = pick_eigs,
+                        #pick = pick_eigs,
                         follow_state = True,
                         callback = callback,
                         nroots = min(self.target_state+1,n1*n2*n3-1))
@@ -414,7 +439,7 @@ class MPS_OPT:
             init_lguess = np.reshape(self.Ml[j],-1)
             El,vl = self.eig(opt_fun_H,init_lguess,precond,
                             max_cycle = self.max_eig_iter,
-                            pick = pick_eigs,
+                            #pick = pick_eigs,
                             follow_state = True,
                             callback = callback,
                             nroots = min(self.target_state+1,n1*n2*n3-1))
@@ -737,7 +762,7 @@ class MPS_OPT:
                     self.time_total = time.time() - self.time_total
                     converged = True
                     self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
-                    #self.current = self.operatorContract(self.mpo.suscOp(self.hamType))
+                    self.suscept = self.squaredOperatorContract(self.mpo.currentOp(self.hamType)) - self.current**2
                     self.final_convergence = True
                     if self.verbose > 0:
                         print('\n'+'#'*75)
@@ -758,6 +783,7 @@ class MPS_OPT:
                 # Converged, move to next Max Bond Dim -----------------------------------------------------------------------
                 else:
                     self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
+                    self.suscept = self.squaredOperatorContract(self.mpo.currentOp(self.hamType)) - self.current**2
                     if self.verbose > 1:
                         print('\n'+'-'*45)
                         print('Converged at E = {}'.format(self.E_conv))
@@ -791,7 +817,7 @@ class MPS_OPT:
                     self.finalEnergy = self.E_conv
                     converged = True
                     self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
-                    #self.current = self.operatorContract(self.mpo.suscOp(self.hamType))
+                    self.suscept = self.squaredOperatorContract(self.mpo.currentOp(self.hamType)) - self.current**2
                     self.final_convergence = False
                     self.time_total = time.time() - self.time_total
                     if self.verbose > 0:
@@ -813,6 +839,7 @@ class MPS_OPT:
                 # MaxIter Reached, Not Converged, move to next Max Bond Dim -----------------------------------------------------------------------
                 else:
                     self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
+                    self.suscept = self.squaredOperatorContract(self.mpo.currentOp(self.hamType)) - self.current**2
                     if self.verbose > 1:
                         print('\n'+'-'*45)
                         print('Not Converged at E = {}'.format(self.E_conv))
@@ -926,8 +953,7 @@ class MPS_OPT:
 
 def pick_eigs(w,v,nroots,x0):
     abs_imag = abs(w.imag)
-    max_imag_tol = 1e-5#max(1e-5,min(abs_imag)*1.1)
+    max_imag_tol = max(1e-5,min(abs_imag)*1.1)
     realidx = np.where((abs_imag < max_imag_tol))[0]
-    #print(realidx)
     idx = realidx[w[realidx].real.argsort()]
     return w[idx], v[:,idx], idx

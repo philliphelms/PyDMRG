@@ -18,21 +18,22 @@ np.set_printoptions(precision=3)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
 # Create MPS object
+N = 8
 a = 0.35
 b = 2/3
 s = -10
-x = mps_opt.MPS_OPT(N = 8,
+ds = 0.01
+x = mps_opt.MPS_OPT(N = N,
                     hamType = 'tasep',
                     hamParams = (a,s,b))
 # Run optimization
 x.kernel()
 # Calculate current
 print('Calculated Current: {}'.format(x.current))
-print('Calculated Current/site: {}'.format(x.current/len(x.calc_occ)))
-if s == 0:
-    if b < 0.5 and a > b:
-        print('Analytic Current (TDL): {}'.format(b*(1-b)))
-    elif a < 0.5 and b > a:
-        print('Analytic Current (TDL): {}'.format(a*(1-a)))
-    else:
-        print('Analytic Current (TDL): {}'.format(0.25))
+
+# Use derivative of CGF
+x = mps_opt.MPS_OPT(N=N,hamType='tasep',hamParams=(a,s+ds,b))
+E1 = x.kernel()
+x = mps_opt.MPS_OPT(N=N,hamType='tasep',hamParams=(a,s-ds,b))
+E2 = x.kernel()
+print('Derivative of CGF : {}'.format((E1-E2)/(2*ds)))
