@@ -10,7 +10,7 @@ class MPS_OPT:
 
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-8, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
-                 plotExpVals=False, plotConv=False,leftMPS=False,calc_psi=True,\
+                 plotExpVals=False, plotConv=False,leftMPS=True,calc_psi=True,\
                  usePyscf=True,initialGuess="rand",ed_limit=12,max_eig_iter=1000,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
                  saveResults=True,dataFolder='data/',verbose=3,imagTol=1e-8):

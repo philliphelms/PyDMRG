@@ -583,74 +583,75 @@ class MPO:
                                       [-self.exp_q[i]*self.Sp,  self.z,  self.z, self.z],
                                       [self.z,                  self.Sp, self.Sm,self.I]])
                 # Include destruction and annihilation at given site
-                w_arr[-1,0,:,:] += (self.exp_alpha[i]-self.exp_beta[i])*self.Sm +\
+                genericOp[-1,0,:,:] += (self.exp_alpha[i]-self.exp_beta[i])*self.Sm +\
                                    (self.exp_delta[i]-self.exp_gamma[i])*self.Sp
                 # Add operator to list of ops (compress if on left or right edge)
                 if (i is 0):
-                    tmp_op.insert(len(tmp_op),np.expand_dims(w_arr[-1,:],0))
+                    tmp_op.insert(len(tmp_op),np.expand_dims(genericOp[-1,:],0))
                 elif (i is self.N-1):
-                    tmp_op.insert(len(tmp_op),np.expand_dims(w_arr[:,0],1))
+                    tmp_op.insert(len(tmp_op),np.expand_dims(genericOp[:,0],1))
                 else:
-                    tmp_op.insert(len(tmp_op),w_arr)
-            self.ops.insert(len(self.ops),tmp_op)
+                    tmp_op.insert(len(tmp_op),genericOp)
+            opList.insert(len(opList),tmp_op)
             # Include periodic terms
             if self.periodic_x:
                 if self.p[-1] != 0:
                     tmp_op1 = [None]*self.N
                     tmp_op1[-1] = np.array([[self.exp_p[-1]*self.Sp]])
                     tmp_op1[0] = np.array([[self.Sm]])
-                    self.ops.insert(len(self.ops),tmp_op1)
+                    opList.insert(len(opList),tmp_op1)
                 if self.q[0] != 0:
                     tmp_op1 = [None]*self.N
                     tmp_op1[-1] = np.array([[-self.exp_q[0]*self.Sm]])
                     tmp_op1[0] = np.array([[self.Sp]])
-                    self.ops.insert(len(self.ops),tmp_op1)
+                    opList.insert(len(opList),tmp_op1)
+            return opList
         if hamType == 'sep_2d':
             # Allocate general operator container
-            self.ops = []
+            opList = []
             ham_dim = 2+2*self.Ny
             # Now build actual operator
             tmp_op = []
             for i in range(self.Nx):
                 for j in range(self.Ny):
                     # Build generic mpo
-                    w_arr = np.zeros((ham_dim,ham_dim,2,2))
-                    w_arr[0,0,:,:] = self.I
-                    w_arr[1,0,:,:] = self.exp_jr[j,i-1]*self.Sm
-                    w_arr[self.Ny,0,:,:] = -self.exp_jd[j-1,i]*self.Sm
-                    w_arr[self.Ny+1,0,:,:] = -self.exp_jl[j,i]*self.Sp
-                    w_arr[2*self.Ny,0,:,:] = self.exp_ju[j,i]*self.Sp
+                    genericOp = np.zeros((ham_dim,ham_dim,2,2))
+                    genericOp[0,0,:,:] = self.I
+                    genericOp[1,0,:,:] = self.exp_jr[j,i-1]*self.Sm
+                    genericOp[self.Ny,0,:,:] = -self.exp_jd[j-1,i]*self.Sm
+                    genericOp[self.Ny+1,0,:,:] = -self.exp_jl[j,i]*self.Sp
+                    genericOp[2*self.Ny,0,:,:] = self.exp_ju[j,i]*self.Sp
                     # Build generic interior
                     col_ind = 1
                     row_ind = 2
                     for k in range(2): # Because we have four operators?
                         for l in range(self.Ny-1):
-                            w_arr[row_ind,col_ind,:,:] = self.I
+                            genericOp[row_ind,col_ind,:,:] = self.I
                             col_ind += 1
                             row_ind += 1
                         col_ind += 1
                         row_ind += 1
                     # Build bottom row
-                    w_arr[-1,self.Ny,:,:] = self.Sp
-                    w_arr[-1,2*self.Ny,:,:] = self.Sm
-                    w_arr[-1,2*self.Ny+1,:,:] = self.I
+                    genericOp[-1,self.Ny,:,:] = self.Sp
+                    genericOp[-1,2*self.Ny,:,:] = self.Sm
+                    genericOp[-1,2*self.Ny+1,:,:] = self.I
                     # Creation & Annihilation of Particles
-                    w_arr[-1,0,:,:] += (self.exp_cr_r[j,i]-self.exp_cr_l[j,i]-self.exp_cr_d[j,i]+self.exp_cr_u[j,i])*self.Sm +\
+                    genericOp[-1,0,:,:] += (self.exp_cr_r[j,i]-self.exp_cr_l[j,i]-self.exp_cr_d[j,i]+self.exp_cr_u[j,i])*self.Sm +\
                                        (self.exp_de_r[j,i]-self.exp_de_l[j,i]-self.exp_de_d[j,i]+self.exp_de_u[j,i])*self.Sp
                     # Prevents interaction between ends
                     if (j is 0) and (i is not 0): 
-                        w_arr[self.Ny,0,:,:] = self.z
-                        w_arr[2*self.Ny,0,:,:] = self.z
-                        w_arr[3*self.Ny,0,:,:] = self.z
-                        w_arr[4*self.Ny,0,:,:] = self.z
+                        genericOp[self.Ny,0,:,:] = self.z
+                        genericOp[2*self.Ny,0,:,:] = self.z
+                        genericOp[3*self.Ny,0,:,:] = self.z
+                        genericOp[4*self.Ny,0,:,:] = self.z
                     # Add operator to list of ops (compress if on left or right edge)
                     if (i is 0) and (j is 0):
-                        tmp_op.insert(len(tmp_op),np.expand_dims(w_arr[-1,:],0))
+                        tmp_op.insert(len(tmp_op),np.expand_dims(genericOp[-1,:],0))
                     elif (i is self.Nx-1) and (j is self.Ny-1):
-                        tmp_op.insert(len(tmp_op),np.expand_dims(w_arr[:,0],1))
+                        tmp_op.insert(len(tmp_op),np.expand_dims(genericOp[:,0],1))
                     else:
-                        tmp_op.insert(len(tmp_op),w_arr)
-            self.ops.insert(len(self.ops),tmp_op)
+                        tmp_op.insert(len(tmp_op),genericOp)
+            opList.insert(len(opList),tmp_op)
             # Build Two site terms
             coupled_sites = []
             # Determine periodic coupling along x-axis
@@ -679,13 +680,13 @@ class MPO:
                         tmp_op1 = [None]*self.N_mpo
                         tmp_op1[inds[1]] = np.array([[self.exp_jr[y_ind2,x_ind2]*self.Sp]])
                         tmp_op1[inds[0]] = np.array([[self.Sm]])
-                        self.ops.insert(len(self.ops),tmp_op1)
+                        opList.insert(len(opList),tmp_op1)
                     # Left Jumping Periodic Coupling
                     if self.jl[y_ind1,x_ind1] != 0:
                         tmp_op3 = [None]*self.N_mpo
                         tmp_op3[inds[1]] = np.array([[-self.exp_jl[y_ind1,x_ind1]*self.Sm]])
                         tmp_op3[inds[0]] = np.array([[self.Sp]])
-                        self.ops.insert(len(self.ops),tmp_op3)
+                        opList.insert(len(opList),tmp_op3)
                 else:
                     # Convert to x,y coords
                     x_ind1 = int(inds[1]/self.Ny)
@@ -697,13 +698,14 @@ class MPO:
                         tmp_op1 = [None]*self.N_mpo
                         tmp_op1[inds[1]] = np.array([[-self.exp_jd[y_ind2,x_ind2]*self.Sm]])
                         tmp_op1[inds[0]] = np.array([[self.Sp]])
-                        self.ops.insert(len(self.ops),tmp_op1)
+                        opList.insert(len(opList),tmp_op1)
                     # Down Jumping Periodic Coupling
                     if self.ju[y_ind1,x_ind1] != 0:
                         tmp_op3 = [None]*self.N_mpo
                         tmp_op3[inds[1]] = np.array([[self.exp_ju[y_ind1,x_ind1]*self.Sp]])
                         tmp_op3[inds[0]] = np.array([[self.Sm]])
-                        self.ops.insert(len(self.ops),tmp_op3)
+                        opList.insert(len(opList),tmp_op3)
+            return opList
         else:
             print('Hamiltonian type not supported for current calculation')
             return None
