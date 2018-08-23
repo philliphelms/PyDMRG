@@ -206,7 +206,7 @@ class MPS_OPT:
         self.calculate_entanglement(i,s)
 
     def increaseBondDim(self):
-        if True:
+        if False:
             self.return_psi()
             old_psi = self.rpsi.copy()
         if self.verbose > 3:
@@ -229,7 +229,7 @@ class MPS_OPT:
             if self.leftMPS: 
                 Mlnew[i][:,:ny,:nz] = self.Ml[i]
                 self.Ml[i] = Mlnew[i]
-        if True:
+        if False:
             self.return_psi()
             print('\t\t\tDid increased BD change WF? {}'.format(np.sum(np.abs(old_psi-self.rpsi))))
 
@@ -684,7 +684,7 @@ class MPS_OPT:
 
     def return_psi(self):
         if True: #self.calc_psi:
-            if self.N < 21:
+            if self.N < self.ed_limit:
                 rpsi = np.zeros(2**self.N,dtype=np.complex128)
                 if self.leftMPS: lpsi = np.zeros(2**self.N,dtype=np.complex128)
                 occ = np.zeros((2**self.N,self.N),dtype=int)
@@ -973,7 +973,7 @@ class MPS_OPT:
 
 def pick_eigs(w,v,nroots,x0):
     abs_imag = abs(w.imag)
-    max_imag_tol = max(1e-5,min(abs_imag)*1.1)
+    max_imag_tol = max(1e-10,min(abs_imag)*1.1)
     realidx = np.where((abs_imag < max_imag_tol))[0]
     idx = realidx[w[realidx].real.argsort()]
     return w[idx], v[:,idx], idx
