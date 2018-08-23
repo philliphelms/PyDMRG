@@ -10,10 +10,10 @@ class MPS_OPT:
 
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-8, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
-                 plotExpVals=False, plotConv=False,leftMPS=True,calc_psi=True,\
+                 plotExpVals=False, plotConv=False,leftMPS=False,calc_psi=True,\
                  usePyscf=True,initialGuess="rand",ed_limit=12,max_eig_iter=1000,\
                  periodic_x=False,periodic_y=False,add_noise=False,\
-                 saveResults=True,dataFolder='data/',verbose=3):
+                 saveResults=True,dataFolder='data/',verbose=3,imagTol=1e-8):
         # Import parameters
         self.N = N
         self.N_mpo = N
@@ -57,6 +57,7 @@ class MPS_OPT:
         self.add_noise = add_noise
         self.leftMPS = leftMPS
         self.calc_psi = calc_psi
+        self.imagTol = 1e-8
 
     def initialize_containers(self):
         if type(self.N) is not int:
@@ -973,7 +974,7 @@ class MPS_OPT:
 
 def pick_eigs(w,v,nroots,x0):
     abs_imag = abs(w.imag)
-    max_imag_tol = max(1e-10,min(abs_imag)*1.1)
+    max_imag_tol = max(1e-8,min(abs_imag)*1.1)
     realidx = np.where((abs_imag < max_imag_tol))[0]
     idx = realidx[w[realidx].real.argsort()]
     return w[idx], v[:,idx], idx
