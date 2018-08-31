@@ -5,14 +5,16 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d
+import lib.logger
+import sys
 
 class MPS_OPT:
 
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-8, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
-                 plotExpVals=False, plotConv=False,leftMPS=True,calc_psi=True,\
+                 plotExpVals=False, plotConv=False,leftMPS=False,calc_psi=False,\
                  usePyscf=True,initialGuess="rand",ed_limit=12,max_eig_iter=1000,\
-                 periodic_x=False,periodic_y=False,add_noise=False,\
+                 periodic_x=False,periodic_y=False,add_noise=False,outputFile='default',\
                  saveResults=True,dataFolder='data/',verbose=3,imagTol=1e-8):
         # Import parameters
         self.N = N
@@ -58,6 +60,11 @@ class MPS_OPT:
         self.leftMPS = leftMPS
         self.calc_psi = calc_psi
         self.imagTol = 1e-8
+        if outputFile == 'default':
+            self.outputFile = 'dmrg_output_'+str(time.time())+'.log'
+        else:
+            self.outputFile = outputFile
+
 
     def initialize_containers(self):
         if type(self.N) is not int:
@@ -75,10 +82,12 @@ class MPS_OPT:
         self.calc_empty = [0]*self.N
         self.calc_occ = [0]*self.N
         self.bondDimEnergies = np.zeros(len(self.maxBondDim),dtype=np.complex_)
+        self.bondDimEntanglement = np.zeros(len(self.maxBondDim),dtype=np.complex_)
         self.entanglement_spectrum = [0]*self.N
         self.entanglement_entropy = [0]*self.N
         self.final_convergence = None
         self.current = None
+        sys.stdout = lib.logger.Logger(self.outputFile)
 
     def generate_mps(self):
         if self.verbose > 4:
@@ -781,6 +790,7 @@ class MPS_OPT:
                 if self.maxBondDimInd is (len(self.maxBondDim)-1):
                     self.finalEnergy = self.E_conv
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
+                    self.bondDimEntanglement[self.maxBondDimInd] = self.entanglement_entropy[int(self.N/2)]
                     self.time_total = time.time() - self.time_total
                     converged = True
                     self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
@@ -824,6 +834,7 @@ class MPS_OPT:
                                     print('    Density = {}'.format(self.calc_occ))
                         print('-'*45+'\n')
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
+                    self.bondDimEntanglement[self.maxBondDimInd] = self.entanglement_entropy[int(self.N/2)]
                     self.maxBondDimInd += 1
                     self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
                     self.increaseBondDim()
@@ -836,6 +847,7 @@ class MPS_OPT:
                 # MaxIter Reached, Not Converged at final Bond Dim --------------------------------------------------------------------------------
                 if self.maxBondDimInd is (len(self.maxBondDim)-1):
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
+                    self.bondDimEntanglement[self.maxBondDimInd] = self.entanglement_entropy[int(self.N/2)]
                     self.finalEnergy = self.E_conv
                     converged = True
                     self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
@@ -880,6 +892,8 @@ class MPS_OPT:
                                     print('    Density = {}'.format(self.calc_occ))
                         print('-'*45+'\n')
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
+                    print(self.entanglement_entropy[int(self.N/2)])
+                    self.bondDimEntanglement[self.maxBondDimInd] = self.entanglement_entropy[int(self.N/2)]
                     self.maxBondDimInd += 1
                     self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
                     self.increaseBondDim()
