@@ -18,7 +18,7 @@ np.set_printoptions(precision=3)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
 # Create MPS object
-N = 8
+N = 20
 a = 0.35
 b = 2/3
 s = -1
@@ -26,6 +26,7 @@ ds = 0.01
 x = mps_opt.MPS_OPT(N = N,
                     hamType = 'tasep',
                     verbose = 4,
+                    leftMPS = False,
                     hamParams = (a,s,b))
 # Run optimization
 x.kernel()

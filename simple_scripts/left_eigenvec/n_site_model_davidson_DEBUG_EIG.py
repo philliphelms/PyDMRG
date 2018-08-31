@@ -4,7 +4,7 @@ import scipy.linalg as la
 from pyscf.lib import einsum
 from pydmrg.efficient.lib.linalg_helper import eig
 import time
-np.set_printoptions(precision=1,linewidth=250)
+np.set_printoptions(precision=3,linewidth=250)
 
 ######## Inputs ############################################################################
 # SEP Model
@@ -134,7 +134,7 @@ print('Difference Between Right ED & MPS WFs: {}'.format(np.sum(np.abs(rwf_dmrg-
 ##############################################
 
 # Randomize M if desired  ####################
-if False:
+if True:
     for i in range(len(Mr)):
         n1,n2,n3 = Mr[i].shape
         Mr[i] = np.random.rand(n1,n2,n3)
@@ -200,25 +200,47 @@ while not converged:
     print('Right Sweep {}'.format(iterCnt))
     for i in range(N-1):
         (n1,n2,n3) = Mr[i].shape
-        # Set up Eigen problem
+        H = np.einsum('jlp,lmin,kmq->ijknpq',F[i],W[i],F[i+1])
+        (n1,n2,n3,n4,n5,n6) = H.shape
+        H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
         def opt_fun(x):
-            x_reshape = np.reshape(x,(n1,n2,n3))
-            Hx = einsum('ijk,lmk->ijlm',F[i+1],x_reshape)
-            Hx = einsum('njol,ijlm->noim',W[i],Hx)
-            Hx = einsum('pnm,noim->opi',F[i],Hx)
-            return np.reshape(Hx,-1)
+            return np.dot(H,x)
         def opt_fun_H(x):
-            x_reshape = np.reshape(x,(n1,n2,n3))
-            Hx = np.einsum('pnm,opi->nmoi',F[i].conj(),x_reshape)
-            Hx = np.einsum('njol,nmoi->jlmi',W[i].conj(),Hx)
-            Hx = np.einsum('ijk,jlmi->lmk',F[i+1].conj(),Hx)
-            return np.reshape(Hx,-1)
+            return np.dot(H.T.conj(),x)
+        # Set up Eigen problem
+        #def opt_fun(x):
+        #    x_reshape = np.reshape(x,(n1,n2,n3))
+        #    Hx = einsum('ijk,lmk->ijlm',F[i+1],x_reshape)
+        #    Hx = einsum('njol,ijlm->noim',W[i],Hx)
+        #    Hx = einsum('pnm,noim->opi',F[i],Hx)
+        #    return np.reshape(Hx,-1)
+        #def opt_fun_H(x):
+        #    x_reshape = np.reshape(x,(n1,n2,n3))
+        #    Hx = np.einsum('pnm,opi->nmoi',F[i].conj(),x_reshape)
+        #    Hx = np.einsum('njol,nmoi->jlmi',W[i].conj(),Hx)
+        #    Hx = np.einsum('ijk,jlmi->lmk',F[i+1].conj(),Hx)
+        #    return np.reshape(Hx,-1)
         def precond(dx,e,x0):
             return dx
         init_rguess = np.reshape(Mr[i],-1)
         init_lguess = np.reshape(Ml[i],-1)
         # Solve Eigenproblem
         E,vl,vr = eig(opt_fun,opt_fun_H,init_rguess,init_lguess,precond)#,pick=pick_eigs)
+        if True:
+            _E,_vl,_vr = la.eig(H,left=True)
+            ind = np.argsort(_E)[-1]
+            _E,_vl,_vr = _E[ind],_vl[:,ind],_vr[:,ind]
+            vr = vr/np.sum(vr)
+            _vr = _vr/np.sum(_vr)
+            vl = vl/np.sum(vl)
+            _vl = _vl/np.sum(_vl)
+            print('Compare Energy {},{}'.format(E,_E))
+            print('Lib Right Eigenvector: {}'.format(vr))
+            print('SLA Right Eigenvector: {}'.format(_vr))
+            print('Lib Left  Eigenvector: {}'.format(vl))
+            print('SLA Left  Eigenvector: {}'.format(_vl))
+            import sys
+            sys.exit()
         print('\tEnergy at site {}= {}'.format(i,E))
         Mr[i] = np.reshape(vr,(n1,n2,n3))
         Ml[i] = np.reshape(vl,(n1,n2,n3))
@@ -246,19 +268,26 @@ while not converged:
     print('Left Sweep {}'.format(iterCnt))
     for i in range(N-1,0,-1):
         (n1,n2,n3) = Mr[i].shape
-        # Set up Eigenproblem
+        H = np.einsum('jlp,lmin,kmq->ijknpq',F[i],W[i],F[i+1])
+        (n1,n2,n3,n4,n5,n6) = H.shape
+        H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
         def opt_fun(x):
-            x_reshape = np.reshape(x,(n1,n2,n3))
-            Hx = einsum('ijk,lmk->ijlm',F[i+1],x_reshape)
-            Hx = einsum('njol,ijlm->noim',W[i],Hx)
-            Hx = einsum('pnm,noim->opi',F[i],Hx)
-            return np.reshape(Hx,-1)
+            return np.dot(H,x)
         def opt_fun_H(x):
-            x_reshape = np.reshape(x,(n1,n2,n3))
-            Hx = np.einsum('pnm,opi->nmoi',F[i].conj(),x_reshape)
-            Hx = np.einsum('njol,nmoi->jlmi',W[i].conj(),Hx)
-            Hx = np.einsum('ijk,jlmi->lmk',F[i+1].conj(),Hx)
-            return np.reshape(Hx,-1)
+            return np.dot(H.T.conj(),x)
+        # Set up Eigenproblem
+        #def opt_fun(x):
+        #    x_reshape = np.reshape(x,(n1,n2,n3))
+        #    Hx = einsum('ijk,lmk->ijlm',F[i+1],x_reshape)
+        #    Hx = einsum('njol,ijlm->noim',W[i],Hx)
+        #    Hx = einsum('pnm,noim->opi',F[i],Hx)
+        #    return np.reshape(Hx,-1)
+        #def opt_fun_H(x):
+        #    x_reshape = np.reshape(x,(n1,n2,n3))
+        #    Hx = np.einsum('pnm,opi->nmoi',F[i].conj(),x_reshape)
+        #    Hx = np.einsum('njol,nmoi->jlmi',W[i].conj(),Hx)
+        #    Hx = np.einsum('ijk,jlmi->lmk',F[i+1].conj(),Hx)
+        #    return np.reshape(Hx,-1)
         def precond(dx,e,x0):
             return dx
         init_rguess = np.reshape(Mr[i],-1)

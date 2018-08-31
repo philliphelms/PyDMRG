@@ -17,21 +17,22 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=10,linewidth=1000)
 plt.style.use('ggplot') #'fivethirtyeight') #'ggplot'
 
-N = 8
+N = 20
 a = 0.35
 b = 2/3
 s = -1
 ds = .001
 # Create MPS object
 x = mps_opt.MPS_OPT(N = N,
-                    maxBondDim = [1,2,3,4,5,6,7,8,9,10,20,100],#[1,10,20,30,40,50,60,70,80,90,100],
+                    maxBondDim = 20,#[1,2,3,4,5,6,7,8,9,10,20,100],#[1,10,20,30,40,50,60,70,80,90,100],
                     hamType = 'tasep',
                     verbose = 4,
-                    maxIter = 1,
+                    maxIter = 10,
+                    leftMPS = False,
                     hamParams = (a,s,b))
 x.kernel()
 Current = x.current
-"""
+
 # Compare to actual current
 x1  = mps_opt.MPS_OPT(N = N,
                       maxBondDim = 100,
@@ -56,4 +57,3 @@ if False:
     print('-'*100)
     for i in range(len(x.rpsi)):
         print('{}\t\t\t{},\t{}'.format(occ[i,:],x.rpsi[i],x.lpsi[i]))
-"""

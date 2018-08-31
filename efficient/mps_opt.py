@@ -74,7 +74,7 @@ class MPS_OPT:
         self.calc_spin_z = [0]*self.N
         self.calc_empty = [0]*self.N
         self.calc_occ = [0]*self.N
-        self.bondDimEnergies = np.zeros(len(self.maxBondDim),dtype=np.complex128)
+        self.bondDimEnergies = np.zeros(len(self.maxBondDim),dtype=np.complex_)
         self.entanglement_spectrum = [0]*self.N
         self.entanglement_entropy = [0]*self.N
         self.final_convergence = None
@@ -215,14 +215,14 @@ class MPS_OPT:
         Mrnew = []
         if self.leftMPS: Mlnew = []
         for i in range(int(self.N/2)):
-            Mrnew.insert(len(Mrnew),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex128))
-            if self.leftMPS: Mlnew.insert(len(Mlnew),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex128))
+            Mrnew.insert(len(Mrnew),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex_))
+            if self.leftMPS: Mlnew.insert(len(Mlnew),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex_))
         if self.N%2 is 1:
-            Mrnew.insert(len(Mrnew),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex128))
-            if self.leftMPS: Mlnew.insert(len(Mlnew),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex128))
+            Mrnew.insert(len(Mrnew),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex_))
+            if self.leftMPS: Mlnew.insert(len(Mlnew),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex_))
         for i in range(int(self.N/2))[::-1]:
-            Mrnew.insert(len(Mrnew),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr)),dtype=np.complex128))
-            if self.leftMPS: Mlnew.insert(len(Mlnew),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr)),dtype=np.complex128))
+            Mrnew.insert(len(Mrnew),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr)),dtype=np.complex_))
+            if self.leftMPS: Mlnew.insert(len(Mlnew),np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr)),dtype=np.complex_))
         for i in range(len(Mrnew)):
             nx,ny,nz = self.Mr[i].shape
             Mrnew[i][:,:ny,:nz] = self.Mr[i]
@@ -290,15 +290,16 @@ class MPS_OPT:
                                                      contraction[j],np.conj(self.Mr[i]),self.Mr[i])
                 else:
                     if self.leftMPS:
-                        contraction[j] = self.einsum('jlor,ijk,lmin,opnq,qrs->kmps',
+                        contraction[j] = self.einsum('jlor,ijk,lmni,opnq,qrs->kmps',
                                                      contraction[j],np.conj(self.Ml[i]),
                                                      Op[j][i],Op[j][i],self.Mr[i])
                     else:
-                        contraction[j] = self.einsum('jlor,ijk,lmin,opnq,qrs->kmps',
+                        contraction[j] = self.einsum('jlor,ijk,lmni,opnq,qrs->kmps',
                                                      contraction[j],np.conj(self.Mr[i]),
                                                      Op[j][i],Op[j][i],self.Mr[i])
         result = 0
         for i in range(nops):
+            print(contraction[i])
             result += contraction[i][0,0,0,0]
         return result
 
@@ -394,7 +395,7 @@ class MPS_OPT:
             if self.verbose > 6:
                 print('\t'*5+'Right Eigen Iteration')
             x_reshape = np.reshape(x,(n1,n2,n3))
-            fin_sum = np.zeros(x_reshape.shape,dtype=np.complex128)
+            fin_sum = np.zeros(x_reshape.shape,dtype=np.complex_)
             for i in range(self.mpo.nops):
                 if self.mpo.ops[i][j] is None:
                     in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
@@ -428,7 +429,7 @@ class MPS_OPT:
                 if self.verbose > 6:
                     print('\t'*5+'Right Eigen Iteration')
                 x_reshape = np.reshape(x,(n1,n2,n3))
-                fin_sum = np.zeros(x_reshape.shape,dtype=np.complex128)
+                fin_sum = np.zeros(x_reshape.shape,dtype=np.complex_)
                 for i in range(self.mpo.nops):
                     if self.mpo.ops[i][j] is None:
                         # PH - Identity operator might not be correct here
@@ -443,7 +444,7 @@ class MPS_OPT:
                 self.num_opt_fun_calls += 1
                 if self.verbose > 6:
                     print('\t'*5+'Right Eigen Iteration')
-                fin_sum = np.zeros(x.shape,dtype=np.complex128)
+                fin_sum = np.zeros(x.shape,dtype=np.complex_)
                 for i in range(self.mpo.nops):
                     if self.mpo.ops[i][j] is None:
                         print('PROBLEM IN IDENTITY?')
@@ -686,8 +687,8 @@ class MPS_OPT:
     def return_psi(self):
         if True: #self.calc_psi:
             if self.N < self.ed_limit:
-                rpsi = np.zeros(2**self.N,dtype=np.complex128)
-                if self.leftMPS: lpsi = np.zeros(2**self.N,dtype=np.complex128)
+                rpsi = np.zeros(2**self.N,dtype=np.complex_)
+                if self.leftMPS: lpsi = np.zeros(2**self.N,dtype=np.complex_)
                 occ = np.zeros((2**self.N,self.N),dtype=int)
                 sum_occ = np.zeros(2**self.N)
                 for i in range(2**self.N):
@@ -783,7 +784,7 @@ class MPS_OPT:
                     self.time_total = time.time() - self.time_total
                     converged = True
                     self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
-                    self.suscept = self.squaredOperatorContract(self.mpo.currentOp(self.hamType)) - self.current**2
+                    self.susc = self.squaredOperatorContract(self.mpo.currentOp(self.hamType)) - self.current**2
                     self.final_convergence = True
                     if self.verbose > 0:
                         print('\n'+'#'*75)
@@ -804,7 +805,7 @@ class MPS_OPT:
                 # Converged, move to next Max Bond Dim -----------------------------------------------------------------------
                 else:
                     self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
-                    self.suscept = self.squaredOperatorContract(self.mpo.currentOp(self.hamType)) - self.current**2
+                    self.susc = self.squaredOperatorContract(self.mpo.currentOp(self.hamType)) - self.current**2
                     if self.verbose > 1:
                         print('\n'+'-'*45)
                         print('Converged at E = {}'.format(self.E_conv))
@@ -838,7 +839,7 @@ class MPS_OPT:
                     self.finalEnergy = self.E_conv
                     converged = True
                     self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
-                    self.suscept = self.squaredOperatorContract(self.mpo.currentOp(self.hamType)) - self.current**2
+                    self.susc = self.squaredOperatorContract(self.mpo.currentOp(self.hamType)) - self.current**2
                     self.final_convergence = False
                     self.time_total = time.time() - self.time_total
                     if self.verbose > 0:
@@ -860,7 +861,7 @@ class MPS_OPT:
                 # MaxIter Reached, Not Converged, move to next Max Bond Dim -----------------------------------------------------------------------
                 else:
                     self.current = self.operatorContract(self.mpo.currentOp(self.hamType))
-                    self.suscept = self.squaredOperatorContract(self.mpo.currentOp(self.hamType)) - self.current**2
+                    self.susc = self.squaredOperatorContract(self.mpo.currentOp(self.hamType)) - self.current**2
                     if self.verbose > 1:
                         print('\n'+'-'*45)
                         print('Not Converged at E = {}'.format(self.E_conv))
