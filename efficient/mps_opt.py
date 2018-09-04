@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import axes3d
 import lib.logger
 import sys
+from lib.storage import _Xlist
 
 class MPS_OPT:
 
@@ -15,7 +16,7 @@ class MPS_OPT:
                  plotExpVals=False, plotConv=False,leftMPS=False,calc_psi=False,\
                  usePyscf=True,initialGuess="rand",ed_limit=12,max_eig_iter=1000,\
                  periodic_x=False,periodic_y=False,add_noise=False,outputFile='default',\
-                 saveResults=True,dataFolder='data/',verbose=3,imagTol=1e-8):
+                 saveResults=True,dataFolder='data/',verbose=3,imagTol=1e-8,incore=True):
         # Import parameters
         self.N = N
         self.N_mpo = N
@@ -64,7 +65,7 @@ class MPS_OPT:
             self.outputFile = 'dmrg_output_'+str(time.time())+'.log'
         else:
             self.outputFile = outputFile
-
+        self.incore = incore
 
     def initialize_containers(self):
         if type(self.N) is not int:
@@ -92,8 +93,15 @@ class MPS_OPT:
     def generate_mps(self):
         if self.verbose > 4:
             print('\t'*2+'Generating MPS')
-        self.Mr = []
-        if self.leftMPS: self.Ml = []
+        if self.incore:
+            self.Mr = []
+        else:
+            self.Mr = _Xlist()
+        if self.leftMPS: 
+            if self.incore:
+                self.Ml = []
+            else:
+                self.Ml = _Xlist()
         for i in range(int(self.N/2)):
             self.Mr.insert(len(self.Mr),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
             if self.leftMPS: self.Ml.insert(len(self.Ml),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
@@ -221,8 +229,15 @@ class MPS_OPT:
             old_psi = self.rpsi.copy()
         if self.verbose > 3:
             print('\t'*2+'Increasing Bond Dimensions from {} to {}'.format(self.maxBondDim[self.maxBondDimInd-1],self.maxBondDimCurr))
-        Mrnew = []
-        if self.leftMPS: Mlnew = []
+        if self.incore:
+            Mrnew = []
+        else:
+            Mrnew = _Xlist()
+        if self.leftMPS: 
+            if self.incore:
+                Mlnew = []
+            else:
+                Mlnew = _Xlist()
         for i in range(int(self.N/2)):
             Mrnew.insert(len(Mrnew),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex_))
             if self.leftMPS: Mlnew.insert(len(Mlnew),np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex_))
@@ -252,9 +267,15 @@ class MPS_OPT:
     def generate_f(self):
         if self.verbose > 4:
             print('\t'*2+'Generating initial F arrays')
-        self.F = []
+        if self.incore:
+            self.F = []
+        else:
+            self.F = _Xlist()
         for i in range(self.mpo.nops):
-            F_tmp = []
+            if self.incore:
+                F_tmp = []
+            else:
+                F_tmp = _Xlist()
             F_tmp.insert(len(F_tmp),np.array([[[1]]]))
             for j in range(int(self.N/2)):
                 F_tmp.insert(len(F_tmp),np.zeros((min(self.d**(j+1),self.maxBondDimCurr),2,min(self.d**(j+1),self.maxBondDimCurr))))
@@ -422,7 +443,7 @@ class MPS_OPT:
         init_rguess = np.reshape(self.Mr[j],-1)
         Er,vr = self.eig(opt_fun,init_rguess,precond,
                         max_cycle = self.max_eig_iter,
-                        pick = pick_eigs,
+                        #pick = pick_eigs,
                         follow_state = True,
                         callback = callback,
                         nroots = min(self.target_state+1,n1*n2*n3-1))
@@ -469,7 +490,7 @@ class MPS_OPT:
             init_lguess = np.reshape(self.Ml[j],-1)
             El,vl = self.eig(opt_fun_H,init_lguess,precond,
                             max_cycle = self.max_eig_iter,
-                            pick = pick_eigs,
+                            #pick = pick_eigs,
                             follow_state = True,
                             callback = callback,
                             nroots = min(self.target_state+1,n1*n2*n3-1))
