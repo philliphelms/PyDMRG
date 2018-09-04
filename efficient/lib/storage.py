@@ -33,10 +33,20 @@ class _Xlist(list):
         self.scr_h5[key] = x
         self.scr_h5.flush()
 
-    def __setitime__(self, n, x):
-        key = self.index[n]
-        self.scr_h5[key][:] = x
+    def insert(self, n, x):
+        key = str(n+1)
+        self.index.insert(n,key)
+        self.scr_h5[key] = x
         self.scr_h5.flush()
+
+    def __setitem__(self, n, x):
+        key = self.index[n]
+        if (x.shape == self.scr_h5[key].shape):
+            self.scr_h5[key][:] = x
+            self.scr_h5.flush()
+        else:
+            self.pop(n)
+            self.insert(n,x)
 
     def __len__(self):
         return len(self.index)
