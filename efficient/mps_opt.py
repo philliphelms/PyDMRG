@@ -675,11 +675,10 @@ class MPS_OPT:
             filename = 'results_'+self.hamType+'_N'+str(self.N)+'_M'+str(self.maxBondDim[-1])+'_time_'+str(int(time.time()*10))
             if calcType is 'dmrg':
                 # Make a dict to save MPS
-                Mrdict = {}
-                Mldict = {}
+                Mdict = {}
                 for i in range(len(self.Mr)):
-                    Mrdict['Mr'+str(i)] = self.Mr[i]
-                    if self.leftMPS: Mldict['Ml'+str(i)] = self.Ml[i]
+                    Mdict['Mr'+str(i)] = self.Mr[i]
+                    if self.leftMPS: Mdict['Ml'+str(i)] = self.Ml[i]
                 if self.hamType is "sep_2d":
                     np.savez(self.dataFolder+'dmrg/'+filename,
                              N = self.N,
@@ -693,7 +692,7 @@ class MPS_OPT:
                              calc_empty = self.calc_empty,
                              calc_occ = self.calc_occ,
                              current = self.current,
-                             **Mrdict, **Mldict)
+                             **Mdict)
                 else:
                     np.savez(self.dataFolder+'dmrg/'+filename,
                              N=self.N,
@@ -709,7 +708,7 @@ class MPS_OPT:
                              calc_spin_y = self.calc_spin_y,
                              calc_spin_z = self.calc_spin_z,
                              current = self.current,
-                             **Mrdict, **Mldict)
+                             **Mdict)
             elif calcType is 'mf':
                 np.savez(self.dataFolder+'mf/'+filename,
                          E_mf = self.E_mf)
