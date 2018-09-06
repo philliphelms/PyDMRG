@@ -13,10 +13,10 @@ class MPS_OPT:
 
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-8, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
-                 plotExpVals=False, plotConv=False,leftMPS=True,calc_psi=False,\
+                 plotExpVals=False, plotConv=False,leftMPS=False,calc_psi=False,\
                  usePyscf=True,initialGuess="rand",ed_limit=12,max_eig_iter=1000,\
                  periodic_x=False,periodic_y=False,add_noise=False,outputFile='default',\
-                 saveResults=True,dataFolder='data/',verbose=3,imagTol=1e-8,incore=True):
+                 saveResults=True,dataFolder='data/',verbose=3,imagTol=1e-8,incore=False):
         # Import parameters
         self.N = N
         self.N_mpo = N
@@ -62,7 +62,7 @@ class MPS_OPT:
         self.calc_psi = calc_psi
         self.imagTol = 1e-8
         if outputFile == 'default':
-            self.outputFile = 'dmrg_output_'+str(time.time())+'.log'
+            self.outputFile = 'logs/dmrg_output_'+str(time.time())+'.log'
         else:
             self.outputFile = outputFile
         self.incore = incore
@@ -103,14 +103,14 @@ class MPS_OPT:
             else:
                 self.Ml = _Xlist()
         for i in range(int(self.N/2)):
-            self.Mr.append(np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
-            if self.leftMPS: self.Ml.append(np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+            self.Mr.append(np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex_))
+            if self.leftMPS: self.Ml.append(np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex_))
         if self.N%2 is 1:
-            self.Mr.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
-            if self.leftMPS: self.Ml.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+            self.Mr.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex_))
+            if self.leftMPS: self.Ml.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex_))
         for i in range(int(self.N/2))[::-1]:
-            self.Mr.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i),self.maxBondDimCurr))))
-            if self.leftMPS: self.Ml.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i),self.maxBondDimCurr))))
+            self.Mr.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i),self.maxBondDimCurr)),dtype=np.complex_))
+            if self.leftMPS: self.Ml.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i),self.maxBondDimCurr)),dtype=np.complex_))
 
     def generate_mpo(self):
         if self.verbose > 4:
@@ -119,21 +119,21 @@ class MPS_OPT:
 
     def set_initial_MPS(self,i):
         if self.initialGuess == "zeros":
-            self.Mr[i] = np.zeros(self.Mr[i].shape)
-            if self.leftMPS: self.Ml[i] = np.zeros(self.Ml[i].shape)
+            self.Mr[i] = np.zeros(self.Mr[i].shape,dtype=np.complex_)
+            if self.leftMPS: self.Ml[i] = np.zeros(self.Ml[i].shape,dtype=np.complex_)
         elif self.initialGuess == "ones":
-            self.Mr[i] = np.ones(self.Mr[i].shape)
-            if self.leftMPS: self.Ml[i] = np.ones(self.Ml[i].shape)
+            self.Mr[i] = np.ones(self.Mr[i].shape,dtype=np.complex_)
+            if self.leftMPS: self.Ml[i] = np.ones(self.Ml[i].shape,dtype=np.complex_)
         elif self.initialGuess == "rand":
             nx,ny,nz = self.Mr[i].shape
             self.Mr[i][0,0,0] = 100.
-            tmpArr = np.random.rand(nx,ny,nz)
+            tmpArr = np.random.rand(nx,ny,nz)+np.zeros((nx,ny,nz))*1j
             self.Mr[i] = tmpArr#np.random.rand(nx,ny,nz)
-            if self.leftMPS: self.Ml[i] = np.random.rand(nx,ny,nz)
+            if self.leftMPS: self.Ml[i] = np.random.rand(nx,ny,nz,dtype=np.complex_)
         else:
             if self.initialGuess != 'prev':
-                self.Mr[i] = self.initialGuess*np.ones(self.Mr[i].shape)
-                if self.leftMPS: self.Ml[i] = self.initialGuess*np.ones(self.Ml[i].shape)
+                self.Mr[i] = self.initialGuess*np.ones(self.Mr[i].shape,dtype=np.complex_)
+                if self.leftMPS: self.Ml[i] = self.initialGuess*np.ones(self.Ml[i].shape,dtype=np.complex_)
 
     def right_canonicalize_mps(self,initialSweep=False):
         if self.verbose > 4:
@@ -241,14 +241,14 @@ class MPS_OPT:
             else:
                 Mlnew = _Xlist()
         for i in range(int(self.N/2)):
-            Mrnew.append(np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
-            if self.leftMPS: Mlnew.append(np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+            Mrnew.append(np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex_))
+            if self.leftMPS: Mlnew.append(np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex_))
         if self.N%2 is 1:
-            Mrnew.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
-            if self.leftMPS: Mlnew.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr))))
+            Mrnew.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex_))
+            if self.leftMPS: Mlnew.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex_))
         for i in range(int(self.N/2))[::-1]:
-            Mrnew.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
-            if self.leftMPS: Mlnew.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr))))
+            Mrnew.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr)),dtype=np.complex_))
+            if self.leftMPS: Mlnew.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr)),dtype=np.complex_))
         for i in range(len(Mrnew)):
             nx,ny,nz = self.Mr[i].shape
             Mrnew[i][:,:ny,:nz] = self.Mr[i]
@@ -279,11 +279,11 @@ class MPS_OPT:
                 self.F.append(_Xlist())
             self.F[-1].append(np.array([[[1]]]))
             for j in range(int(self.N/2)):
-                self.F[-1].append(np.zeros((min(self.d**(j+1),self.maxBondDimCurr),2,min(self.d**(j+1),self.maxBondDimCurr))))
+                self.F[-1].append(np.zeros((min(self.d**(j+1),self.maxBondDimCurr),2,min(self.d**(j+1),self.maxBondDimCurr)),dtype=np.complex_))
             if self.N%2 is 1:
-                self.F[-1].append(np.zeros((min(self.d**(j+2),self.maxBondDimCurr),2,min(self.d**(j+2),self.maxBondDimCurr))))
+                self.F[-1].append(np.zeros((min(self.d**(j+2),self.maxBondDimCurr),2,min(self.d**(j+2),self.maxBondDimCurr)),dtype=np.complex_))
             for j in range(int(self.N/2)-1,0,-1):
-                self.F[-1].append(np.zeros((min(self.d**(j),self.maxBondDimCurr),2,min(self.d**j,self.maxBondDimCurr))))
+                self.F[-1].append(np.zeros((min(self.d**(j),self.maxBondDimCurr),2,min(self.d**j,self.maxBondDimCurr)),dtype=np.complex_))
             self.F[-1].append(np.array([[[1]]]))
             #self.F.append(F_tmp)
 
@@ -356,7 +356,6 @@ class MPS_OPT:
                     if self.leftMPS:
                         self.F[i][j] = self.einsum('bxc,abcy->xya',np.conj(self.Ml[j]),tmp_sum2)
                     else:
-                        print(self.F[i][j].shape)
                         self.F[i][j] = self.einsum('bxc,abcy->xya',np.conj(self.Mr[j]),tmp_sum2)
         self.calc_initial_fs()
 
@@ -427,7 +426,7 @@ class MPS_OPT:
             if self.verbose > 6:
                 print('\t'*5+'Right Eigen Iteration')
             x_reshape = np.reshape(x,(n1,n2,n3))
-            fin_sum = np.zeros(x_reshape.shape)
+            fin_sum = np.zeros(x_reshape.shape,dtype=np.complex_)
             for i in range(self.mpo.nops):
                 if self.mpo.ops[i][j] is None:
                     in_sum1 =  self.einsum('ijk,lmk->ijlm',self.F[i][j+1],x_reshape)
@@ -448,6 +447,7 @@ class MPS_OPT:
                         #pick = pick_eigs,
                         follow_state = True,
                         callback = callback,
+                        #tol = self.tol*1.e-2,
                         nroots = min(self.target_state+1,n1*n2*n3-1))
         try:
             sort_rinds = np.argsort(np.real(E))
@@ -461,7 +461,7 @@ class MPS_OPT:
                 if self.verbose > 6:
                     print('\t'*5+'Right Eigen Iteration')
                 x_reshape = np.reshape(x,(n1,n2,n3))
-                fin_sum = np.zeros(x_reshape.shape)
+                fin_sum = np.zeros(x_reshape.shape,dtype=np.complex_)
                 for i in range(self.mpo.nops):
                     if self.mpo.ops[i][j] is None:
                         # PH - Identity operator might not be correct here
@@ -476,7 +476,7 @@ class MPS_OPT:
                 self.num_opt_fun_calls += 1
                 if self.verbose > 6:
                     print('\t'*5+'Right Eigen Iteration')
-                fin_sum = np.zeros(x.shape)
+                fin_sum = np.zeros(x.shape,dtype=np.complex_)
                 for i in range(self.mpo.nops):
                     if self.mpo.ops[i][j] is None:
                         print('PROBLEM IN IDENTITY?')
@@ -495,6 +495,7 @@ class MPS_OPT:
                             #pick = pick_eigs,
                             follow_state = True,
                             callback = callback,
+                            #tol = self.tol*1.e-2,
                             nroots = min(self.target_state+1,n1*n2*n3-1))
             try:
                 sort_linds = np.argsort(np.real(El))
@@ -915,7 +916,6 @@ class MPS_OPT:
                                     print('    Density = {}'.format(self.calc_occ))
                         print('-'*45+'\n')
                     self.bondDimEnergies[self.maxBondDimInd] = self.E_conv
-                    print(self.entanglement_entropy[int(self.N/2)])
                     self.bondDimEntanglement[self.maxBondDimInd] = self.entanglement_entropy[int(self.N/2)]
                     self.maxBondDimInd += 1
                     self.maxBondDimCurr = self.maxBondDim[self.maxBondDimInd]
