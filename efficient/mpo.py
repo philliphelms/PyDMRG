@@ -27,26 +27,26 @@ class MPO:
         self.periodic_y = periodic_y
         self.verbose = verbose
         # Define various operators
-        self.Sp = np.array([[0,1],
-                            [0,0]])
-        self.Sm = np.array([[0,0],
-                            [1,0]])
-        self.Sz = np.array([[0.5,0],
-                            [0,-0.5]])
-        self.Sx = np.array([[0,0.5],
-                            [0.5,0]])
-        self.Sy = 1/(2j)*np.array([[0,1],
-                                   [-1,0]])
-        self.n = np.array([[0,0],
-                           [0,1]])
-        self.v = np.array([[1,0],
-                           [0,0]])
-        self.I = np.eye(2)
-        self.z = np.zeros([2,2])
+        self.Sp = np.array([[0.,1.],
+                            [0.,0.]])
+        self.Sm = np.array([[0.,0.],
+                            [1.,0.]])
+        self.Sz = np.array([[0.5,0.],
+                            [0.,-0.5]])
+        self.Sx = np.array([[0.,0.5],
+                            [0.5,0.]])
+        self.Sy = 1./(2.j)*np.array([[0.,1.],
+                                     [-1.,0.]])
+        self.n = np.array([[0.,0.],
+                           [0.,1.]])
+        self.v = np.array([[1.,0.],
+                           [0.,0.]])
+        self.I = np.eye(2,dtype=np.float_)
+        self.z = np.zeros([2,2],dtype=np.float_)
         # Create hamiltonian based on operator type
         if hamType is "heis":
-            self.J = param[0]
-            self.h = param[1]
+            self.J = float(param[0])
+            self.h = float(param[1])
             self.N_mpo = self.N
             w_arr = np.array([[self.I, self.z, self.z, self.z, self.z],
                               [self.Sp, self.z, self.z, self.z, self.z],
@@ -66,8 +66,8 @@ class MPO:
                 tmp_op1 = [None]*self.N
                 tmp_op2 = [None]*self.N
                 tmp_op3 = [None]*self.N
-                tmp_op1[-1] = np.array([[self.J/2*self.Sm]])
-                tmp_op2[-1] = np.array([[self.J/2*self.Sp]])
+                tmp_op1[-1] = np.array([[self.J/2.*self.Sm]])
+                tmp_op2[-1] = np.array([[self.J/2.*self.Sp]])
                 tmp_op3[-1] = np.array([[self.J*self.Sz]])
                 tmp_op1[0] = np.array([[self.Sp]])
                 tmp_op2[0] = np.array([[self.Sm]])
@@ -79,11 +79,11 @@ class MPO:
             self.Nx = self.N[0]
             self.Ny = self.N[1]
             self.N_mpo = self.Nx*self.Ny
-            self.J = param[0]
-            self.h = param[1]
+            self.J = float(param[0])
+            self.h = float(param[1])
             # Build Two site terms
             self.ops = []
-            if self.J != 0:
+            if not np.isclose(self.J,0.):
                 coupled_sites = []
                 # Determine all coupled sites along x-axis
                 for i in range(self.Ny):
@@ -107,8 +107,8 @@ class MPO:
                     tmp_op1 = [None]*self.N_mpo
                     tmp_op2 = [None]*self.N_mpo
                     tmp_op3 = [None]*self.N_mpo
-                    tmp_op1[inds[0]] = np.array([[self.J/2*self.Sm]])
-                    tmp_op2[inds[0]] = np.array([[self.J/2*self.Sp]])
+                    tmp_op1[inds[0]] = np.array([[self.J/2.*self.Sm]])
+                    tmp_op2[inds[0]] = np.array([[self.J/2.*self.Sp]])
                     tmp_op3[inds[0]] = np.array([[self.J*self.Sz]])
                     tmp_op1[inds[1]] = np.array([[self.Sp]])
                     tmp_op2[inds[1]] = np.array([[self.Sm]])
@@ -128,9 +128,9 @@ class MPO:
                     self.ops.insert(len(self.ops),tmp_op1)
         elif hamType is "tasep":
             self.N_mpo = self.N
-            self.alpha = param[0]
-            self.s = param[1]
-            self.beta = param[2]
+            self.alpha = float(param[0])
+            self.s = float(param[1])
+            self.beta = float(param[2])
             w_arr = np.array([[self.I,  self.z,                  self.z, self.z],
                               [self.Sm, self.z,                  self.z, self.z],
                               [self.v,  self.z,                  self.z, self.z],
@@ -161,32 +161,32 @@ class MPO:
             self.N_mpo = self.N
             # Collect Inputs
             if not isinstance(param[0],(collections.Sequence,np.ndarray)):
-                self.a = param[0]
-                self.g = param[1]
-                self.p = param[2]
-                self.q = param[3]
-                self.b = param[4]
-                self.d = param[5]
-                self.s = param[6]
+                self.a = float(param[0])
+                self.g = float(param[1])
+                self.p = float(param[2])
+                self.q = float(param[3])
+                self.b = float(param[4])
+                self.d = float(param[5])
+                self.s = float(param[6])
                 # Convert these to matrices
-                self.alpha = np.zeros(self.N)
+                self.alpha = np.zeros(self.N,dtype=np.float_)
                 self.alpha[0] = self.a
-                self.gamma = np.zeros(self.N)
+                self.gamma = np.zeros(self.N,dtype=np.float_)
                 self.gamma[0] = self.g
-                self.p = self.p*np.ones(self.N)
-                self.q = self.q*np.ones(self.N)
-                self.beta = np.zeros(self.N)
+                self.p = self.p*np.ones(self.N,dtype=np.float_)
+                self.q = self.q*np.ones(self.N,dtype=np.float_)
+                self.beta = np.zeros(self.N,dtype=np.float_)
                 self.beta[-1] = self.b
-                self.delta = np.zeros(self.N)
+                self.delta = np.zeros(self.N,dtype=np.float_)
                 self.delta[-1] = self.d
             else:
-                self.alpha = param[0]
-                self.gamma = param[1]
-                self.p = param[2]
-                self.q = param[3]
-                self.beta = param[4]
-                self.delta = param[5]
-                self.s = param[6]
+                self.alpha = param[0].astype(dtype=np.float_)
+                self.gamma = param[1].astype(dtype=np.float_)
+                self.p = param[2].astype(dtype=np.float_)
+                self.q = param[3].astype(dtype=np.float_)
+                self.beta = param[4].astype(dtype=np.float_)
+                self.delta = param[5].astype(dtype=np.float_)
+                self.s = param[6].astype(dtype=np.float_)
             # multiply these by exponential weighting
             self.exp_alpha = self.alpha*np.exp(-self.s)
             self.exp_gamma = self.gamma*np.exp(self.s)
@@ -245,18 +245,18 @@ class MPO:
             self.Ny = self.N[1]
             self.N_mpo = self.Nx*self.Ny
             if not isinstance(param[0],(collections.Sequence,np.ndarray)):
-                self.jl = param[0]*np.ones((self.Ny,self.Nx))
-                self.jr = param[1]*np.ones((self.Ny,self.Nx))
-                self.jd = param[2]*np.ones((self.Ny,self.Nx))
-                self.ju = param[3]*np.ones((self.Ny,self.Nx))
-                self.cr_r = np.zeros((self.Nx,self.Ny))
-                self.cr_l = np.zeros((self.Nx,self.Ny))
-                self.cr_d = np.zeros((self.Nx,self.Ny))
-                self.cr_u = np.zeros((self.Nx,self.Ny))
-                self.de_r = np.zeros((self.Nx,self.Ny))
-                self.de_l = np.zeros((self.Nx,self.Ny))
-                self.de_d = np.zeros((self.Nx,self.Ny))
-                self.de_u = np.zeros((self.Nx,self.Ny))
+                self.jl = param[0]*np.ones((self.Ny,self.Nx),dtype=np.float_)
+                self.jr = param[1]*np.ones((self.Ny,self.Nx),dtype=np.float_)
+                self.jd = param[2]*np.ones((self.Ny,self.Nx),dtype=np.float_)
+                self.ju = param[3]*np.ones((self.Ny,self.Nx),dtype=np.float_)
+                self.cr_r = np.zeros((self.Nx,self.Ny),dtype=np.float_)
+                self.cr_l = np.zeros((self.Nx,self.Ny),dtype=np.float_)
+                self.cr_d = np.zeros((self.Nx,self.Ny),dtype=np.float_)
+                self.cr_u = np.zeros((self.Nx,self.Ny),dtype=np.float_)
+                self.de_r = np.zeros((self.Nx,self.Ny),dtype=np.float_)
+                self.de_l = np.zeros((self.Nx,self.Ny),dtype=np.float_)
+                self.de_d = np.zeros((self.Nx,self.Ny),dtype=np.float_)
+                self.de_u = np.zeros((self.Nx,self.Ny),dtype=np.float_)
                 self.cr_r[0,:] = param[4]
                 self.cr_l[-1,:] = param[5]
                 self.cr_u[:,-1] = param[7]
@@ -272,18 +272,18 @@ class MPO:
                     self.sx = param[12]
                     self.sy = param[12]
             else:
-                self.jl = param[0]
-                self.jr = param[1]
-                self.jd = param[2]
-                self.ju = param[3]
-                self.cr_r = param[4]
-                self.cr_l = param[5]
-                self.cr_d = param[6]
-                self.cr_u = param[7]
-                self.de_r = param[8]
-                self.de_l = param[9]
-                self.de_d = param[10]
-                self.de_u = param[11]
+                self.jl = param[0].astype(dtype=np.float_)
+                self.jr = param[1].astype(dtype=np.float_)
+                self.jd = param[2].astype(dtype=np.float_)
+                self.ju = param[3].astype(dtype=np.float_)
+                self.cr_r = param[4].astype(dtype=np.float_)
+                self.cr_l = param[5].astype(dtype=np.float_)
+                self.cr_d = param[6].astype(dtype=np.float_)
+                self.cr_u = param[7].astype(dtype=np.float_)
+                self.de_r = param[8].astype(dtype=np.float_)
+                self.de_l = param[9].astype(dtype=np.float_)
+                self.de_d = param[10].astype(dtype=np.float_)
+                self.de_u = param[11].astype(dtype=np.float_)
                 try: 
                     self.sx = param[12][0]
                     self.sy = param[12][1]
@@ -438,8 +438,8 @@ class MPO:
                         self.ops.insert(len(self.ops),tmp_op3)
                         self.ops.insert(len(self.ops),tmp_op4)
         elif hamType is "ising":
-            self.J = param[0]
-            self.h = param[1]
+            self.J = float(param[0])
+            self.h = float(param[1])
             self.N_mpo = self.N
             w_arr = np.array([[self.I,          self.z,         self.z],
                               [self.Sz,         self.z,         self.z],
