@@ -8,6 +8,7 @@ from mpl_toolkits.mplot3d import axes3d
 import lib.logger
 import sys
 from lib.storage import _Xlist
+import copy
 
 class MPS_OPT:
 
@@ -16,7 +17,7 @@ class MPS_OPT:
                  plotExpVals=False, plotConv=False,leftMPS=False,calc_psi=False,\
                  usePyscf=True,initialGuess='rand',ed_limit=12,max_eig_iter=1000,\
                  periodic_x=False,periodic_y=False,add_noise=False,outputFile='default',\
-                 saveResults=True,dataFolder='data/',verbose=3,imagTol=1e-8,incore=False,useNotConv=True):
+                 saveResults=True,dataFolder='data/',verbose=3,imagTol=1e-8,incore=False,useNotConv=False):
         # Import parameters
         self.N = N
         self.N_mpo = N
@@ -225,39 +226,33 @@ class MPS_OPT:
         else: 
             raise NameError('Direction must be left or right')
         self.calculate_entanglement(i,s)
-
     def increaseBondDim(self):
-        if False:
+        if True:
             self.return_psi()
             old_psi = self.rpsi.copy()
         if self.verbose > 3:
             print('\t'*2+'Increasing Bond Dimensions from {} to {}'.format(self.maxBondDim[self.maxBondDimInd-1],self.maxBondDimCurr))
-        if self.incore:
-            Mrnew = []
-        else:
-            Mrnew = _Xlist()
-        if self.leftMPS: 
-            if self.incore:
-                Mlnew = []
-            else:
-                Mlnew = _Xlist()
         for i in range(int(self.N/2)):
-            Mrnew.append(np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex_))
-            if self.leftMPS: Mlnew.append(np.zeros((self.d,min(self.d**(i),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex_))
-        if self.N%2 is 1:
-            Mrnew.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex_))
-            if self.leftMPS: Mlnew.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**(i+1),self.maxBondDimCurr)),dtype=np.complex_))
-        for i in range(int(self.N/2))[::-1]:
-            Mrnew.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr)),dtype=np.complex_))
-            if self.leftMPS: Mlnew.append(np.zeros((self.d,min(self.d**(i+1),self.maxBondDimCurr),min(self.d**i,self.maxBondDimCurr)),dtype=np.complex_))
-        for i in range(len(Mrnew)):
             nx,ny,nz = self.Mr[i].shape
-            Mrnew[i][:,:ny,:nz] = self.Mr[i]
-            self.Mr[i] = Mrnew[i]
-            if self.leftMPS: 
-                Mlnew[i][:,:ny,:nz] = self.Ml[i]
-                self.Ml[i] = Mlnew[i]
-        if False:
+            sz1 = min(self.d**(i),self.maxBondDimCurr)
+            sz2 = min(self.d**(i+1),self.maxBondDimCurr)
+            self.Mr[i] = np.pad(self.Mr[i],((0,0),(0,sz1-ny),(0,sz2-nz)),'constant',constant_values=0j)
+            if self.leftMPS: self.Ml[i] = np.pad(self.Ml[i],((0,0),(0,sz1-ny),(0,sz2-nz)),'constant',constant_values=0j)
+        if self.N%2 is 1:
+            i += 1
+            nx,ny,nz = self.Mr[i].shape
+            sz1 = min(self.d**(i),self.maxBondDimCurr)
+            sz2 = min(self.d**(i),self.maxBondDimCurr)
+            self.Mr[i] = np.pad(self.Mr[i],((0,0),(0,sz1-ny),(0,sz2-nz)),'constant',constant_values=0j)
+            if self.leftMPS: self.Ml[i] = np.pad(self.Ml[i],((0,0),(0,sz1-ny),(0,sz2-nz)),'constant',constant_values=0j)
+        for i in range(int(self.N/2))[::-1]:
+            site = self.N-i-1
+            nx,ny,nz = self.Mr[site].shape
+            sz1 = min(self.d**(i+1),self.maxBondDimCurr)
+            sz2 = min(self.d**(i),self.maxBondDimCurr)
+            self.Mr[site] = np.pad(self.Mr[site],((0,0),(0,sz1-ny),(0,sz2-nz)),'constant',constant_values=0j)
+            if self.leftMPS: self.Ml[site] = np.pad(self.Ml[site],((0,0),(0,sz1-ny),(0,sz2-nz)),'constant',constant_values=0j)
+        if True:
             self.return_psi()
             print('\t\t\tDid increased BD change WF? {}'.format(np.sum(np.abs(old_psi-self.rpsi))))
 

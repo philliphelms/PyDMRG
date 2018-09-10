@@ -530,7 +530,6 @@ class MPO:
         sum_occ = sum_occ[:ind+1]
         H = np.zeros((len(sum_occ),len(sum_occ)))
         for i in range(len(sum_occ)):
-            print(i/len(sum_occ))
             i_occ = occ[i,:]
             for j in range(len(sum_occ)):
                 j_occ = occ[j,:]
