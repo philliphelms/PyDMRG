@@ -641,8 +641,6 @@ class MPO:
                     if (j is 0) and (i is not 0): 
                         genericOp[self.Ny,0,:,:] = self.z
                         genericOp[2*self.Ny,0,:,:] = self.z
-                        genericOp[3*self.Ny,0,:,:] = self.z
-                        genericOp[4*self.Ny,0,:,:] = self.z
                     # Add operator to list of ops (compress if on left or right edge)
                     if (i is 0) and (j is 0):
                         tmp_op.insert(len(tmp_op),np.expand_dims(genericOp[-1,:],0))
