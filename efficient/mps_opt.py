@@ -14,9 +14,9 @@ class MPS_OPT:
     def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-8, maxIter=10,\
                  hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
                  plotExpVals=False, plotConv=False,leftMPS=False,calc_psi=False,\
-                 usePyscf=True,initialGuess="rand",ed_limit=12,max_eig_iter=1000,\
+                 usePyscf=True,initialGuess='rand',ed_limit=12,max_eig_iter=1000,\
                  periodic_x=False,periodic_y=False,add_noise=False,outputFile='default',\
-                 saveResults=True,dataFolder='data/',verbose=3,imagTol=1e-8,incore=False):
+                 saveResults=True,dataFolder='data/',verbose=3,imagTol=1e-8,incore=False,useNotConv=True):
         # Import parameters
         self.N = N
         self.N_mpo = N
@@ -66,6 +66,7 @@ class MPS_OPT:
         else:
             self.outputFile = outputFile
         self.incore = incore
+        self.useNotConv = useNotConv
 
     def initialize_containers(self):
         if type(self.N) is not int:
@@ -127,9 +128,9 @@ class MPS_OPT:
         elif self.initialGuess == "rand":
             nx,ny,nz = self.Mr[i].shape
             self.Mr[i][0,0,0] = 100.
-            tmpArr = np.random.rand(nx,ny,nz)+np.zeros((nx,ny,nz))*1j
+            tmpArr = np.random.rand(nx,ny,nz)+0j
             self.Mr[i] = tmpArr#np.random.rand(nx,ny,nz)
-            if self.leftMPS: self.Ml[i] = np.random.rand(nx,ny,nz,dtype=np.complex_)
+            if self.leftMPS: self.Ml[i] = np.random.rand(nx,ny,nz)+0j
         else:
             if self.initialGuess != 'prev':
                 self.Mr[i] = self.initialGuess*np.ones(self.Mr[i].shape,dtype=np.complex_)
@@ -330,7 +331,6 @@ class MPS_OPT:
                                                      Op[j][i],Op[j][i],self.Mr[i])
         result = 0
         for i in range(nops):
-            print(contraction[i])
             result += contraction[i][0,0,0,0]
         return result
 
@@ -503,7 +503,12 @@ class MPS_OPT:
                 vl = vl[sort_linds[min(self.target_state,len(sort_inds)-1)]]
             except: El = El #vl = np.real(vl) #PH Will this work?
         # Use new eigenvectors, if converged
-        if self.davidson_rconv:
+        if self.useNotConv:
+            self.Mr[j] = np.reshape(vr,(n1,n2,n3))
+            if self.leftMPS:
+                if self.davidson_lconv:
+                    self.Ml[j] = np.reshape(vl,(n1,n2,n3))
+        elif self.davidson_rconv:
             self.Mr[j] = np.reshape(vr,(n1,n2,n3))
             if self.leftMPS:
                 if self.davidson_lconv:
@@ -520,14 +525,20 @@ class MPS_OPT:
             if self.davidson_rconv:
                 print('\t'+'Converged at {}\tEnergy = {}'.format(j,sgn*Er))
             else:
-                print('\t'+'Not Conv  at {}\tEnergy = {}'.format(j,self.E_curr))
+                if self.useNotConv:
+                    print('\t'+'Converged at {}\tEnergy = {}'.format(j,sgn*Er))
+                else:
+                    print('\t'+'Not Conv  at {}\tEnergy = {}'.format(j,self.E_curr))
             if self.verbose > 4:
                 print('\t\t\t'+'Number of optimization function calls = {}'.format(self.num_opt_fun_calls))
         # Return Energy, if converged
         if self.davidson_rconv:
             return sgn*Er
         else:
-            return self.E_curr
+            if self.useNotConv:
+                return sgn*Er
+            else:
+                return self.E_curr
 
     def calc_observables(self,site):
         if self.verbose > 5:
