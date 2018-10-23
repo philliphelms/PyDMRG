@@ -189,6 +189,7 @@ class exactDiag:
                 self.lpsi = np.kron(isproj[clump,:],isproj[clump+1,:])
                 self.rpsi = np.kron(sproj[clump,:],sproj[clump+1,:]).transpose()
                 E += np.dot(self.lpsi,np.dot(mi_x,self.rpsi))
+        print(E)
         return E
 
 

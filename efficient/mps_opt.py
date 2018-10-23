@@ -12,12 +12,13 @@ import copy
 
 class MPS_OPT:
 
-    def __init__(self, N=10, d=2, maxBondDim=100, tol=1e-8, maxIter=10,\
-                 hamType='tasep', hamParams=(0.35,-1,2/3),target_state=0,\
-                 plotExpVals=False, plotConv=False,leftMPS=False,calc_psi=False,\
-                 usePyscf=True,initialGuess='rand',ed_limit=12,max_eig_iter=1000,\
-                 periodic_x=False,periodic_y=False,add_noise=False,outputFile='default',\
-                 saveResults=True,dataFolder='data/',verbose=3,imagTol=1e-8,incore=False,useNotConv=False):
+    def __init__(self, N=10, d=2, maxBondDim=20, tol=1e-6, maxIter=10,\
+                 hamType='tasep', hamParams=(0.35,-1,2/3), target_state=0,\
+                 plotExpVals=False, plotConv=False, leftMPS=False, calc_psi=False,\
+                 usePyscf=True, initialGuess='rand', ed_limit=12, max_eig_iter=1000,\
+                 periodic_x=False, periodic_y=False, add_noise=False, outputFile='default',\
+                 saveResults=True, dataFolder='data/', verbose=3, imagTol=1e-8, 
+                 incore=True, useNotConv=False):
         # Import parameters
         self.N = N
         self.N_mpo = N
@@ -51,7 +52,7 @@ class MPS_OPT:
             self.eig = eig
         else:
             self.einsum = np.einsum
-            self.eig = np.eig
+            self.eig = np.linalg.eig
         self.usePyscf = usePyscf
         self.initialGuess = initialGuess
         self.ed_limit = ed_limit
@@ -84,8 +85,8 @@ class MPS_OPT:
         self.calc_spin_z = [0]*self.N
         self.calc_empty = [0]*self.N
         self.calc_occ = [0]*self.N
-        self.bondDimEnergies = np.zeros(len(self.maxBondDim))
-        self.bondDimEntanglement = np.zeros(len(self.maxBondDim))
+        self.bondDimEnergies = np.zeros(len(self.maxBondDim),dtype=np.complex128)
+        self.bondDimEntanglement = np.zeros(len(self.maxBondDim),dtype=np.complex128)
         self.entanglement_spectrum = [0]*self.N
         self.entanglement_entropy = [0]*self.N
         self.final_convergence = None
@@ -160,7 +161,7 @@ class MPS_OPT:
             print('\t\tEntanglement Entropy = {}'.format(self.entanglement_entropy[i-1]))
             if self.verbose > 5:
                 print('\t\t\tEntanglement Spectrum:\n')
-                for j in range(len(self.entanglement_spectrum[i-1])):
+                for j in range(self.N):
                     print('\t\t\t\t{}'.format(self.entanglement_spectrum[i-1]))
 
     def canonicalize(self,i,direction):
@@ -226,9 +227,10 @@ class MPS_OPT:
         else: 
             raise NameError('Direction must be left or right')
         self.calculate_entanglement(i,s)
+
     def increaseBondDim(self):
-        if True:
-            self.return_psi()
+        self.return_psi()
+        if self.rpsi is not None:
             old_psi = self.rpsi.copy()
         if self.verbose > 3:
             print('\t'*2+'Increasing Bond Dimensions from {} to {}'.format(self.maxBondDim[self.maxBondDimInd-1],self.maxBondDimCurr))
@@ -252,9 +254,10 @@ class MPS_OPT:
             sz2 = min(self.d**(i),self.maxBondDimCurr)
             self.Mr[site] = np.pad(self.Mr[site],((0,0),(0,sz1-ny),(0,sz2-nz)),'constant',constant_values=0j)
             if self.leftMPS: self.Ml[site] = np.pad(self.Ml[site],((0,0),(0,sz1-ny),(0,sz2-nz)),'constant',constant_values=0j)
-        if True:
-            self.return_psi()
-            print('\t\t\tDid increased BD change WF? {}'.format(np.sum(np.abs(old_psi-self.rpsi))))
+        self.return_psi()
+        if self.rpsi is not None:
+            if self.verbose > 4:
+                print('\t\t\tDid increased BD change WF? {}'.format(np.sum(np.abs(old_psi-self.rpsi))))
 
     def calc_initial_fs(self):
         self.Fs = [None]*(self.N+1)
@@ -284,49 +287,53 @@ class MPS_OPT:
             #self.F.append(F_tmp)
 
     def operatorContract(self,Op):
-        nops = len(Op)
-        contraction = [np.array([[[1]]])]*nops
-        for i in range(self.N):
+        if Op is not None:
+            nops = len(Op)
+            contraction = [np.array([[[1]]])]*nops
+            for i in range(self.N):
+                for j in range(nops):
+                    if Op[j][i] is None:
+                        if self.leftMPS:
+                            contraction[j] = self.einsum('jlo,ijk,iop->klp',contraction[j],np.conj(self.Ml[i]),self.Mr[i])
+                        else:
+                            contraction[j] = self.einsum('jlo,ijk,iop->klp',contraction[j],np.conj(self.Mr[i]),self.Mr[i])
+                    else:
+                        if self.leftMPS:
+                            contraction[j] = self.einsum('jlo,ijk,lmin,nop->kmp',contraction[j],np.conj(self.Ml[i]),Op[j][i],self.Mr[i])
+                        else:
+                            contraction[j] = self.einsum('jlo,ijk,lmin,nop->kmp',contraction[j],np.conj(self.Mr[i]),Op[j][i],self.Mr[i])
+            result = 0
             for j in range(nops):
-                if Op[j][i] is None:
-                    if self.leftMPS:
-                        contraction[j] = self.einsum('jlo,ijk,iop->klp',contraction[j],np.conj(self.Ml[i]),self.Mr[i])
-                    else:
-                        contraction[j] = self.einsum('jlo,ijk,iop->klp',contraction[j],np.conj(self.Mr[i]),self.Mr[i])
-                else:
-                    if self.leftMPS:
-                        contraction[j] = self.einsum('jlo,ijk,lmin,nop->kmp',contraction[j],np.conj(self.Ml[i]),Op[j][i],self.Mr[i])
-                    else:
-                        contraction[j] = self.einsum('jlo,ijk,lmin,nop->kmp',contraction[j],np.conj(self.Mr[i]),Op[j][i],self.Mr[i])
-        result = 0
-        for j in range(nops):
-            result += contraction[j][0,0,0]
+                result += contraction[j][0,0,0]
+        else: result = 0
         return result
 
     def squaredOperatorContract(self,Op):
-        nops = len(Op)
-        contraction = [np.array([[[[1]]]])]*nops
-        for i in range(self.N):
-            for j in range(nops):
-                if Op[j][i] is None:
-                    if self.leftMPS:
-                        contraction[j] = self.einsum('jlor,ijk,irs->klos',
-                                                     contraction[j],np.conj(self.Ml[i]),self.Mr[i])
+        if Op is not None:
+            nops = len(Op)
+            contraction = [np.array([[[[1]]]])]*nops
+            for i in range(self.N):
+                for j in range(nops):
+                    if Op[j][i] is None:
+                        if self.leftMPS:
+                            contraction[j] = self.einsum('jlor,ijk,irs->klos',
+                                                         contraction[j],np.conj(self.Ml[i]),self.Mr[i])
+                        else:
+                            contraction[j] = self.einsum('jlor,ijk,irs->klos',
+                                                         contraction[j],np.conj(self.Mr[i]),self.Mr[i])
                     else:
-                        contraction[j] = self.einsum('jlor,ijk,irs->klos',
-                                                     contraction[j],np.conj(self.Mr[i]),self.Mr[i])
-                else:
-                    if self.leftMPS:
-                        contraction[j] = self.einsum('jlor,ijk,lmni,opnq,qrs->kmps',
-                                                     contraction[j],np.conj(self.Ml[i]),
-                                                     Op[j][i],Op[j][i],self.Mr[i])
-                    else:
-                        contraction[j] = self.einsum('jlor,ijk,lmni,opnq,qrs->kmps',
-                                                     contraction[j],np.conj(self.Mr[i]),
-                                                     Op[j][i],Op[j][i],self.Mr[i])
-        result = 0
-        for i in range(nops):
-            result += contraction[i][0,0,0,0]
+                        if self.leftMPS:
+                            contraction[j] = self.einsum('jlor,ijk,lmni,opnq,qrs->kmps',
+                                                         contraction[j],np.conj(self.Ml[i]),
+                                                         Op[j][i],Op[j][i],self.Mr[i])
+                        else:
+                            contraction[j] = self.einsum('jlor,ijk,lmni,opnq,qrs->kmps',
+                                                         contraction[j],np.conj(self.Mr[i]),
+                                                         Op[j][i],Op[j][i],self.Mr[i])
+            result = 0
+            for i in range(nops):
+                result += contraction[i][0,0,0,0]
+        else: result = 0
         return result
 
     def calc_initial_f(self):
@@ -439,16 +446,16 @@ class MPS_OPT:
         init_rguess = np.reshape(self.Mr[j],-1)
         Er,vr = self.eig(opt_fun,init_rguess,precond,
                         max_cycle = self.max_eig_iter,
-                        #pick = pick_eigs,
+                        pick = pick_eigs,
                         follow_state = True,
                         callback = callback,
-                        #tol = self.tol*1.e-2,
+                        tol = self.tol[self.maxBondDimInd]*1.e-2,
                         nroots = min(self.target_state+1,n1*n2*n3-1))
         try:
             sort_rinds = np.argsort(np.real(E))
             Er = Er[sort_rinds[min(self.target_state,len(sort_inds)-1)]]
             vr = vr[sort_rinds[min(self.target_state,len(sort_inds)-1)]]
-        except: Er = Er #vr = np.real(vr) # PH - Will this work?
+        except: Er = Er #vr = np.real(vr) 
         if self.leftMPS:
             self.num_opt_fun_calls = 0
             def opt_fun_H(x):
@@ -459,7 +466,6 @@ class MPS_OPT:
                 fin_sum = np.zeros(x_reshape.shape,dtype=np.complex_)
                 for i in range(self.mpo.nops):
                     if self.mpo.ops[i][j] is None:
-                        # PH - Identity operator might not be correct here
                         in_sum1 = self.einsum('pnm,opi->nmoi',self.F[i][j].conj(),x_reshape)
                         fin_sum += sgn*self.einsum('ijk,mjli->lmk',self.F[i][j+1].conj(),in_sum1)
                     else:
@@ -467,30 +473,16 @@ class MPS_OPT:
                         in_sum2 = self.einsum('njol,nmoi->jlmi',self.mpo.ops[i][j].conj(),in_sum1)
                         fin_sum += sgn*self.einsum('ijk,jlmi->lmk',self.F[i][j+1].conj(),in_sum2)
                 return np.reshape(fin_sum,-1)
-            def opt_fun_H_slow(x):
-                self.num_opt_fun_calls += 1
-                if self.verbose > 6:
-                    print('\t'*5+'Right Eigen Iteration')
-                fin_sum = np.zeros(x.shape,dtype=np.complex_)
-                for i in range(self.mpo.nops):
-                    if self.mpo.ops[i][j] is None:
-                        print('PROBLEM IN IDENTITY?')
-                    else:
-                        H = self.einsum('jlp,lmin,kmq->ijknpq',self.F[i][j],self.mpo.ops[i][j],self.F[i][j+1])
-                        (na,nb,nc,nd,ne,nf) = H.shape
-                        H = np.reshape(H,(na*nb*nc,nd*ne*nf)).T.conj()
-                        fin_sum += sgn*np.dot(H,x)
-                return fin_sum 
             self.davidson_lconv = True
             def callback(envs_dict):
                 self.davidson_lconv = envs_dict['icyc']+2 < self.max_eig_iter
             init_lguess = np.reshape(self.Ml[j],-1)
             El,vl = self.eig(opt_fun_H,init_lguess,precond,
                             max_cycle = self.max_eig_iter,
-                            #pick = pick_eigs,
+                            pick = pick_eigs,
                             follow_state = True,
                             callback = callback,
-                            #tol = self.tol*1.e-2,
+                            tol = self.tol[self.maxBondDimInd]*1.e-2,
                             nroots = min(self.target_state+1,n1*n2*n3-1))
             try:
                 sort_linds = np.argsort(np.real(El))
@@ -723,42 +715,41 @@ class MPS_OPT:
                          E_ed = self.E_ed)
 
     def return_psi(self):
-        if True: #self.calc_psi:
-            if self.N < self.ed_limit:
-                rpsi = np.zeros(2**self.N)
-                if self.leftMPS: lpsi = np.zeros(2**self.N)
-                occ = np.zeros((2**self.N,self.N),dtype=int)
-                sum_occ = np.zeros(2**self.N)
-                for i in range(2**self.N):
-                    occ[i,:] = np.asarray(list(map(lambda x: int(x),'0'*(self.N-len(bin(i)[2:]))+bin(i)[2:])))
-                    sum_occ[i] = np.sum(occ[i,:])
-                # PH - Sort Inds by blocks, optional
-                #inds = np.argsort(sum_occ)
-                #sum_occ = sum_occ[inds]
-                #occ = occ[inds,:]
-                for i in range(2**self.N):
-                    for j in range(self.N):
-                        if j is 0:
-                            tmp_mat = self.Mr[j][occ[i,j],:,:]
-                            if self.leftMPS: tmp_mat_l = self.Ml[j][occ[i,j],:,:]
-                        else:
-                            tmp_mat = np.einsum('ij,jk->ik',tmp_mat,self.Mr[j][occ[i,j],:,:])
-                            if self.leftMPS: tmp_mat_l = np.einsum('ij,jk->ik',tmp_mat_l,self.Ml[j][occ[i,j],:,:])
-                    rpsi[i] = tmp_mat[[0]][0][0]
-                    if self.leftMPS: lpsi[i] = tmp_mat_l[[0]][0][0]
-                self.rpsi = rpsi
-                if self.leftMPS: 
-                    self.lpsi = lpsi
-                else:
-                    self.lpsi = None
+        if self.N < self.ed_limit and self.calc_psi:
+            rpsi = np.zeros(2**self.N,dtype=np.complex128)
+            if self.leftMPS: lpsi = np.zeros(2**self.N,dtype=np.complex128)
+            occ = np.zeros((2**self.N,self.N),dtype=int)
+            sum_occ = np.zeros(2**self.N)
+            for i in range(2**self.N):
+                occ[i,:] = np.asarray(list(map(lambda x: int(x),'0'*(self.N-len(bin(i)[2:]))+bin(i)[2:])))
+                sum_occ[i] = np.sum(occ[i,:])
+            # PH - Sort Inds by blocks, optional
+            #inds = np.argsort(sum_occ)
+            #sum_occ = sum_occ[inds]
+            #occ = occ[inds,:]
+            for i in range(2**self.N):
+                for j in range(self.N):
+                    if j is 0:
+                        tmp_mat = self.Mr[j][occ[i,j],:,:]
+                        if self.leftMPS: tmp_mat_l = self.Ml[j][occ[i,j],:,:]
+                    else:
+                        tmp_mat = np.einsum('ij,jk->ik',tmp_mat,self.Mr[j][occ[i,j],:,:])
+                        if self.leftMPS: tmp_mat_l = np.einsum('ij,jk->ik',tmp_mat_l,self.Ml[j][occ[i,j],:,:])
+                rpsi[i] = tmp_mat[[0]][0][0]
+                if self.leftMPS: lpsi[i] = tmp_mat_l[[0]][0][0]
+            self.rpsi = rpsi
+            if self.leftMPS: 
+                self.lpsi = lpsi
             else:
-                self.rpsi = None
                 self.lpsi = None
-            if False:
-                print('\nOccupation\t\t\tred\t\t\tled')
-                print('-'*100)
-                for i in range(len(self.rpsi)):
-                    print('{}\t\t\t{},\t{}'.format(occ[i,:],np.real(self.rpsi[i]),np.real(self.lpsi[i])))
+        else:
+            self.rpsi = None
+            self.lpsi = None
+        if False:
+            print('\nOccupation\t\t\tred\t\t\tled')
+            print('-'*100)
+            for i in range(len(self.rpsi)):
+                print('{}\t\t\t{},\t{}'.format(occ[i,:],np.real(self.rpsi[i]),np.real(self.lpsi[i])))
 
     def kernel(self):
         if self.verbose > 1:
@@ -953,10 +944,10 @@ class MPS_OPT:
         if self.hamType is 'tasep':
             self.ed = exactDiag_meanField.exactDiag(L=self.N,
                                               clumpSize=self.N,
-                                              alpha=self.mpo.a,
+                                              alpha=self.mpo.alpha,
                                               gamma=0,
                                               beta=0,
-                                              delta=self.mpo.b,
+                                              delta=self.mpo.beta,
                                               s=self.mpo.s,
                                               p=1,
                                               q=0,
@@ -965,13 +956,13 @@ class MPS_OPT:
         elif self.hamType is 'sep':
             self.ed = exactDiag_meanField.exactDiag(L=self.N,
                                               clumpSize=self.N,
-                                              alpha=self.mpo.a,
-                                              gamma=self.mpo.g,
-                                              beta=self.mpo.b,
-                                              delta=self.mpo.d,
+                                              alpha=self.mpo.alpha[0],
+                                              gamma=self.mpo.gamma[0],
+                                              beta=self.mpo.beta[-1],
+                                              delta=self.mpo.delta[-1],
                                               s=self.mpo.s,
-                                              p=self.mpo.p[1],
-                                              q=self.mpo.q[1],
+                                              p=self.mpo.p[0],
+                                              q=self.mpo.q[0],
                                               maxIter=maxIter,
                                               tol=tol)
         else:
@@ -1000,13 +991,13 @@ class MPS_OPT:
         elif self.hamType is 'sep':
             self.mf = exactDiag_meanField.exactDiag(L=self.N,
                                               clumpSize=clumpSize,
-                                              alpha=self.mpo.alpha,
-                                              gamma=self.mpo.gamma,
-                                              beta=self.mpo.beta,
-                                              delta=self.mpo.delta,
+                                              alpha=self.mpo.alpha[0],
+                                              gamma=self.mpo.gamma[0],
+                                              beta=self.mpo.beta[-1],
+                                              delta=self.mpo.delta[-1],
                                               s=self.mpo.s,
-                                              p=self.mpo.p,
-                                              q=self.mpo.q,
+                                              p=self.mpo.p[0],
+                                              q=self.mpo.q[0],
                                               maxIter=maxIter,
                                               tol=tol)
         else:
