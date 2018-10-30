@@ -132,6 +132,7 @@ class exactDiag:
                 # Select largest eigenvalue
                 v = v[:,np.argsort(u)]
                 u = np.sort(u)
+                self.eigenSpec = u
                 # Check to see which one has a low imaginary value
                 ind = -1
                 curEig = -1e3
