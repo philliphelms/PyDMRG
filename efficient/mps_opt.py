@@ -153,7 +153,7 @@ class MPS_OPT:
         self.initialGuess is 'prev'
 
     def calculate_entanglement(self,i,singVals):
-        self.entanglement_spectrum[i] = -singVals**2*np.log(singVals**2)
+        self.entanglement_spectrum[i] = -singVals**2*np.log2(singVals**2)
         if np.isnan(np.sum(self.entanglement_spectrum[i])):
             self.entanglement_spectrum[i][np.isnan(self.entanglement_spectrum[i])] = 0
         self.entanglement_entropy[i] = np.sum(self.entanglement_spectrum[i])
@@ -504,9 +504,10 @@ class MPS_OPT:
         # Normalize accordingly
         if not ((self.hamType is "heis") or (self.hamType is "heis_2d") or (self.hamType is "ising")):
             norm_factor = np.einsum('j,ijk,k->',self.Fs[j-1],self.Mr[j],self.Fs[j+1])
-            self.Mr[j] /= norm_factor
+            #self.Mr[j] /= norm_factor
             if self.leftMPS:
-                self.Ml[j] /= np.einsum('ijk,ijk->',self.Mr[j],np.conj(self.Ml[j]))
+                norm_factorl = np.einsum('ijk,ijk->',self.Mr[j],np.conj(self.Ml[j]))
+                #self.Ml[j] /= np.einsum('ijk,ijk->',self.Mr[j],np.conj(self.Ml[j]))
         # Print Results
         if self.verbose > 3:
             if self.davidson_rconv:
