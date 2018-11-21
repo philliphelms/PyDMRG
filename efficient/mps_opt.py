@@ -91,7 +91,7 @@ class MPS_OPT:
         self.entanglement_entropy = [0]*self.N
         self.final_convergence = None
         self.current = None
-        sys.stdout = lib.logger.Logger(self.outputFile)
+        #sys.stdout = lib.logger.Logger(self.outputFile)
 
     def generate_mps(self):
         if self.verbose > 4:
@@ -750,7 +750,7 @@ class MPS_OPT:
             print('\nOccupation\t\t\tred\t\t\tled')
             print('-'*100)
             for i in range(len(self.rpsi)):
-                print('{}\t\t\t{},\t{}'.format(occ[i,:],np.real(self.rpsi[i]),np.real(self.lpsi[i])))
+                print('{}\t\t\t{}'.format(occ[i,:],np.real(self.rpsi[i])))#,np.real(self.lpsi[i])))
 
     def kernel(self):
         if self.verbose > 1:

@@ -128,12 +128,14 @@ class exactDiag:
                 # Create Main Matrix
                 M = mc+leftSide+rightSide
                 # Diagonalize Main Matrix
-                u,v = fullEig(M)
+                u,vl,v = fullEig(M,left=True)
                 # Select largest eigenvalue
                 v = v[:,np.argsort(u)]
+                vl=vl[:,np.argsort(u)]
                 u = np.sort(u)
                 self.eigSpec = u
                 self.eigVecs = v
+                self.eigVecsL= vl
                 # Check to see which one has a low imaginary value
                 ind = -1
                 curEig = -1e3
