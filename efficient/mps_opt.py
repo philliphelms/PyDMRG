@@ -17,7 +17,7 @@ class MPS_OPT:
                  plotExpVals=False, plotConv=False, leftMPS=False, calc_psi=False,\
                  usePyscf=True, initialGuess='rand', ed_limit=12, max_eig_iter=1000,\
                  periodic_x=False, periodic_y=False, add_noise=False, outputFile='default',\
-                 saveResults=True, dataFolder='data/', verbose=3, imagTol=1e-8, 
+                 saveResults=True, mpsFilename='savedMPS', dataFolder='data/', verbose=3, imagTol=1e-8, 
                  incore=True, useNotConv=False):
         # Import parameters
         self.N = N
@@ -44,6 +44,7 @@ class MPS_OPT:
         self.plotExpVals = plotExpVals
         self.plotConv = plotConv
         self.saveResults = saveResults
+        self.mpsFilename = mpsFilename
         self.dataFolder = dataFolder
         self.verbose = verbose
         if usePyscf:
@@ -138,18 +139,26 @@ class MPS_OPT:
                 self.Mr[i] = self.initialGuess*np.ones(self.Mr[i].shape,dtype=np.complex_)
                 if self.leftMPS: self.Ml[i] = self.initialGuess*np.ones(self.Ml[i].shape,dtype=np.complex_)
 
+    def load_MPS(self):
+        npzfile = np.load(self.initialGuess)
+        for i in range(self.N):
+            self.Mr[i] = npzfile['Mr'+str(i)]
+
     def right_canonicalize_mps(self,initialSweep=False):
         if self.verbose > 4:
             print('\t'*2+'Performing Right Canonicalization')
         if initialSweep:
-            for i in range(0,len(self.Mr))[::-1]:
-                self.set_initial_MPS(i)
+            if isinstance(self.initialGuess,str) and (self.initialGuess != "zeros") and (self.initialGuess != "ones") and (self.initialGuess != "rand"):
+                self.load_MPS()
+            else:
+                for i in range(0,len(self.Mr))[::-1]:
+                    self.set_initial_MPS(i)
         for i in range(1,len(self.Mr))[::-1]:
             #if initialSweep:
             #    self.set_initial_MPS(i)
             self.canonicalize(i,'left')
             self.calc_observables(i)
-        self.set_initial_MPS(0)
+        #self.set_initial_MPS(0)
         self.initialGuess is 'prev'
 
     def calculate_entanglement(self,i,singVals):
@@ -667,6 +676,12 @@ class MPS_OPT:
         self.create_data_dir()
         if self.verbose > 5:
             print('\t'*2+'Writing final results to output file')
+        if self.mpsFilename is not None:
+            Mdict = {}
+            for i in range(len(self.Mr)):
+                Mdict['Mr'+str(i)] = self.Mr[i]
+                if self.leftMPS: Mdict['Ml'+str(i)] = self.Ml[i]
+            np.savez(self.dataFolder+'dmrg/'+self.mpsFilename,**Mdict)
         if self.saveResults:
             # Create Filename:
             #    filename += ('_'+str(self.hamParams[i]))
