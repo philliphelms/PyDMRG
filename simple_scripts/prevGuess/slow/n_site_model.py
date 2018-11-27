@@ -22,16 +22,17 @@ def create_sep_mpo(N,hamParams):
     v = np.array([[1,0],[0,0]])
     I = np.array([[1,0],[0,1]])
     z = np.array([[0,0],[0,0]])
+    const = 1.
     W = []
-    W.append(np.array([[exp_a*Sm-a*v+exp_g*Sp-g*n, Sp, -n, Sm, -v, I]]))
+    W.append(const*np.array([[exp_a*Sm-a*v+exp_g*Sp-g*n, Sp, -n, Sm, -v, I]]))
     for i in range(N-2):
-        W.append(np.array([[I       ,  z,  z,  z,  z,  z],
+        W.append(const*np.array([[I       ,  z,  z,  z,  z,  z],
                            [exp_p*Sm,  z,  z,  z,  z,  z],
                            [p*v     ,  z,  z,  z,  z,  z],
                            [exp_q*Sp,  z,  z,  z,  z,  z],
                            [q*n     ,  z,  z,  z,  z,  z],
                            [z       , Sp, -n, Sm, -v,  I]]))
-    W.append(np.array([[I],[exp_p*Sm],[p*v],[exp_q*Sp],[q*n],[exp_d*Sm-d*v+exp_b*Sp-b*n]]))
+    W.append(const*np.array([[I],[exp_p*Sm],[p*v],[exp_q*Sp],[q*n],[exp_d*Sm-d*v+exp_b*Sp-b*n]]))
     return W
 
 def create_rand_mps(N,mbd):
@@ -86,7 +87,7 @@ def calc_diag(M,W,F,site):
     l_diag = np.einsum('lal->la',F[site])
     r_diag = np.einsum('rbr->rb',F[site+1])
     tmp = np.einsum('la,anb->lnb',l_diag,mpo_diag)
-    diag = np.einsum('lnb,rb->lnr',tmp,r_diag)
+    diag = np.einsum('lnb,rb->nlr',tmp,r_diag)
     return(diag.ravel())
 
 def calc_ham(M,W,F,site):
@@ -98,6 +99,7 @@ def calc_ham(M,W,F,site):
 
 def calc_eigs(H,M,site):
     vals,vecs = np.linalg.eig(H)
+    #print(np.sort(vals)[:5])
     max_ind = np.argsort(vals)[-1]
     E = vals[max_ind]
     vec = vecs[:,max_ind]
@@ -108,6 +110,7 @@ def calc_eigs(H,M,site):
 def calc_entanglement(S):
     EEspec = -S**2.*np.log2(S**2.)
     EE = np.sum(EEspec)
+    print(EE)
     return EE,EEspec
 
 def renormalizeR(M,site):
@@ -213,9 +216,9 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     N = 10
     p = 0.1
-    mbd = 20
-    sVec = np.linspace(-1,1,100)
-    sVec = np.linspace(-5,5,100)
+    mbd = 4
+    sVec = np.linspace(-1,1,200)[::-1]
+    #sVec = np.array([-1])
     E = np.zeros(sVec.shape)
     EE = np.zeros((len(sVec)))
     EEs = np.zeros((len(sVec),mbd))
