@@ -9,6 +9,7 @@ import lib.logger
 import sys
 from lib.storage import _Xlist
 import copy
+import scipy.linalg as la
 
 class MPS_OPT:
 
@@ -18,7 +19,7 @@ class MPS_OPT:
                  usePyscf=True, initialGuess=0.001, ed_limit=12, max_eig_iter=100,\
                  periodic_x=False, periodic_y=False, add_noise=False, outputFile='default',\
                  saveResults=True, mpsFilename='savedMPS', dataFolder='data/', verbose=3, imagTol=1e-8, 
-                 incore=True, useNotConv=False):
+                 incore=True, useNotConv=False, eigensolver='exact'):
         # Import parameters
         self.N = N
         self.N_mpo = N
@@ -70,6 +71,7 @@ class MPS_OPT:
             self.outputFile = outputFile
         self.incore = incore
         self.useNotConv = useNotConv
+        self.eigensolver = eigensolver
 
     def initialize_containers(self):
         if type(self.N) is not int:
@@ -437,8 +439,46 @@ class MPS_OPT:
                 self.Ml[j] += noisel
 
     def local_optimization(self,j):
+        if self.eigensolver == 'davidson':
+            return self.davidson_optimization(j)
+        elif self.eigensolver == 'arnoldi':
+            return self.arnoldi_optimization(j) 
+        elif self.eigensolver == 'exact':
+            return self.exact_optimization(j)
+
+    def exact_optimization(self,site):
         if self.verbose > 5:
-            print('\t'*3+'Using Pyscf optimization routine')
+            print('\t'*3+'Using exact optimization routine')
+        sgn = -1.0
+        if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): sgn = 1.0
+        for j in range(self.mpo.nops):
+            if j is 0:
+                if self.mpo.ops[j][site] is None:
+                    H = sgn*self.einsum('jlp,kmq->ljkmpq',self.F[j][site],self.F[j][site+1])
+                else:
+                    H = sgn*self.einsum('jlp,lmin,kmq->ijknpq',self.F[j][site],self.mpo.ops[j][site],self.F[j][site+1])
+            else:
+                if self.mpo.ops[j][site] is None:
+                    H += sgn*self.einsum('jlp,kmq->ljkmpq',self.F[j][site],self.F[j][site+1])
+                else:
+                    H += sgn*self.einsum('jlp,lmin,kmq->ijknpq',self.F[j][site],self.mpo.ops[j][site],self.F[j][site+1])
+        (n1,n2,n3,n4,n5,n6) = H.shape
+        H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
+        if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): H = -H
+        u,v = la.eig(H)
+        u_sort = u[np.argsort(u)]
+        v = v[:,np.argsort(u)]
+        ind = 0
+        E = -u_sort[ind]
+        v = v[:,ind]
+        self.Mr[site] = np.reshape(v,(n1,n2,n3))
+        if self.verbose > 3:
+            print('\t'+'Optimization Complete at {}\n\t\tEnergy = {}'.format(site,E))
+        return E
+
+    def davidson_optimization(self,j):
+        if self.verbose > 5:
+            print('\t'*3+'Using davidson optimization routine')
         sgn = 1.0
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): sgn = -1.0
         (n1,n2,n3) = self.Mr[j].shape
