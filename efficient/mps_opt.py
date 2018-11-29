@@ -479,7 +479,11 @@ class MPS_OPT:
         H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
         if (self.hamType is "tasep") or (self.hamType is "sep") or (self.hamType is "sep_2d"): H = -H
         u,v = la.eig(H)
+        if self.target_state == 0:
+            u = np.real(u)
+            v = np.real(v)
         u_sort = u[np.argsort(u)]
+        print(u_sort)
         v = v[:,np.argsort(u)]
         ind = 0
         E = -u_sort[ind]
