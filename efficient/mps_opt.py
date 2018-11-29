@@ -438,6 +438,19 @@ class MPS_OPT:
                 noisel = np.random.rand(n1,n2,n3)*max_noise
                 self.Ml[j] += noisel
 
+    def calc_diag(self,site):
+        for opind in range(self.mpo.nops):
+            mpo_diag = np.einsum('abnn->anb',self.mpo.ops[opind][site])
+            l_diag = np.einsum('lal->la',self.F[opind][site])
+            r_diag = np.einsum('rbr->rb',self.F[opind][site+1])
+            tmpdiag = np.einsum('la,anb->lnb',l_diag,mpo_diag)
+            tmpdiag = np.einsum('lnb,rb->nlr',tmpdiag,r_diag).ravel()
+            if opind == 0:
+                diag = tmpdiag
+            else:
+                diag += tmpdiag
+        return diag
+
     def local_optimization(self,j):
         if self.eigensolver == 'davidson':
             return self.davidson_optimization(j)
@@ -503,8 +516,9 @@ class MPS_OPT:
                     fin_sum += sgn*self.einsum('pnm,noim->opi',self.F[i][j],in_sum2)
                     print('finsum',fin_sum.dtype)
             return np.reshape(fin_sum,-1)
+        diag = self.calc_diag(j)
         def precond(dx,e,x0):
-            return dx
+            return dx/(diag-e)
         self.davidson_rconv = True
         def callback(envs_dict):
             self.davidson_rconv = envs_dict['icyc']+2 < self.max_eig_iter
