@@ -97,17 +97,23 @@ def calc_ham(M,W,F,site):
     H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
     return H
 
-def calcRDM(M):
-    (n1,n2,n3) = M.shape
-    M = np.swapaxes(M,0,1)
-    M = np.reshape(M,(n2*n1,n3))
-    return np.einsum('ij,kj->ik',M,np.conj(M))
+def calcRDM(M,swpDir):
+    if swpDir == 'right':
+        (n1,n2,n3) = M.shape
+        M = np.swapaxes(M,0,1)
+        M = np.reshape(M,(n2*n1,n3))
+        return np.einsum('ij,kj->ik',M,np.conj(M))
+    elif swpDir == 'left':
+        (n1,n2,n3) = M.shape
+        M = np.swapaxes(M,0,1)
+        M = np.reshape(M,(n2,n1*n3))
+        return np.einsum('ij,ik->jk',M,np.conj(M))
 
 def renormalizeR(M,v,site):
     (n1,n2,n3) = M[site].shape
     # Calculate the reduced density matrix
     vReshape = np.reshape(v,(n1,n2,n3))
-    rdm = calcRDM(vReshape)
+    rdm = calcRDM(vReshape,'right')
     # Take eigenvalues of the rdm
     vals,vecs = np.linalg.eig(rdm)
     # Sort Inds
@@ -128,27 +134,27 @@ def renormalizeL(M,v,site):
     (n1,n2,n3) = M[site].shape
     # Calculate the reduced density matrix
     vReshape = np.reshape(v,(n1,n2,n3))
-    vReshape = np.swapaxes(vReshape,1,2)
-    rdm = calcRDM(vReshape) 
+    rdm = calcRDM(vReshape,'left') 
     # Take eigenvalues of the rdm
-    vals,vecs = np.linalg.eig(rdm)
+    vals,vecs = np.linalg.eig(rdm) # Transpose here is useless...
     # Sort inds
     inds = np.argsort(vals)[::-1]
     # Keep only maxBondDim eigenstates
-    inds = inds[:n3]
+    inds = inds[:n2]
     vals = vals[inds]
-    vecs = vecs[:,inds]
+    vecs = vecs[:,inds].T
     # Put resulting vectors into MPS
-    M[site] = np.reshape(vecs,())
+    M[site] = np.reshape(vecs,(n2,n1,n3))
     M[site] = np.swapaxes(M[site],0,1)
+    #assert(np.all(np.isclose(np.einsum('ijk,ilk->jl',M[site],np.conj(M[site])),np.eye(n2),atol=1e-6)))
     # Calculate next site's guess
+    #M[site-1] = np.einsum('',
     return M
 
 def calc_eigs(H,M,site):
     Mprev = M[site].ravel()
     vals,vecs = np.linalg.eig(H)
     inds = np.argsort(vals)[::-1]
-    print(vals[inds[:3]])
     E = vals[inds[0]]
     vecs = vecs[:,inds[0]]
     return E,vecs
@@ -189,8 +195,7 @@ def leftSweep(M,W,F,iterCnt):
         #diag = calc_diag(M,W,F,site)
         H = calc_ham(M,W,F,site)
         E,v = calc_eigs(H,M,site)
-        M,EEt,EEst = renormalizeL(M,v,site)
-        if site == int(N/2): EE,EEspec = EEt,EEst
+        M = renormalizeL(M,v,site)
         F = update_envL(M,W,F,site)
         print('\tEnergy {}'.format(E))
     return E,M,F
@@ -239,7 +244,7 @@ if __name__ == "__main__":
     N = 10
     p = 0.1
     mbd = 10
-    sVec = np.linspace(-1.5,0,100)[::-1]
+    sVec = np.linspace(-5,0,100)
     #sVec = np.array([-1])
     E = np.zeros(sVec.shape)
     EE = np.zeros((len(sVec)))
@@ -253,10 +258,10 @@ if __name__ == "__main__":
     for sind,s in enumerate(sVec):
         if sind == 0:
             print(s)
-            E[sind],EE[sind],EEs[sind,:min(mbd,2**int(N/2))] = run_dmrg(N,(0.5,0.5,p,1-p,0.5,0.5,s),mbd=mbd,fname='myMPS.npz')
+            E[sind] = run_dmrg(N,(0.5,0.5,p,1-p,0.5,0.5,s),mbd=mbd,fname='myMPS.npz')
         else:
             print(s)
-            E[sind],EE[sind],EEs[sind,:min(mbd,2**int(N/2))] = run_dmrg(N,(0.5,0.5,p,1-p,0.5,0.5,s),mbd=mbd,initGuess='myMPS.npz',fname='myMPS.npz')
+            E[sind] = run_dmrg(N,(0.5,0.5,p,1-p,0.5,0.5,s),mbd=mbd,initGuess='myMPS.npz',fname='myMPS.npz')
         ax1.clear()
         ax1.plot(sVec[:sind],E[:sind])
         curr = (E[0:-1]-E[1:])/(sVec[0]-sVec[1])
@@ -267,9 +272,4 @@ if __name__ == "__main__":
         splt = sVec[1:-1]
         ax3.clear()
         ax3.plot(splt[:sind-1],susc[:sind-1])
-        ax4.clear()
-        ax4.plot(sVec[:sind],EE[:sind])
-        ax5.clear()
-        for i in range(mbd):
-            ax5.semilogy(sVec[:sind],EEs[:sind,i])
         plt.pause(0.01)
