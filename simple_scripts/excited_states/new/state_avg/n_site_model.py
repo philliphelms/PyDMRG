@@ -276,7 +276,7 @@ def run_dmrg(N,hamParams,initGuess=None,mbd=100,tol=1e-5,maxIter=10,fname = None
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    N = 20
+    N = 300
     p = 0.1
     mbd = 10
     sVec = np.linspace(-1,0.5,100)[::-1]
@@ -307,3 +307,4 @@ if __name__ == "__main__":
         ax3.clear()
         ax3.plot(splt[:sind-1],susc[:sind-1])
         plt.pause(0.01)
+    plt.show()
