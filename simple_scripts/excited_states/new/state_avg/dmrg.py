@@ -1,9 +1,11 @@
 import numpy as np
-import scipy.linalg as la
+import scipy.linalg as sla
+from pyscf.lib import einsum,davidson
+from pyscf.lib import eig as davidson
+from scipy.sparse.linalg import eigs as arnoldi
+from scipy.sparse.linalg import LinearOperator
 
 # To Do :
-# - Calculate observables (EE) after each state has converged
-# - Return Gap
 # - Left Eigenvectors
 # - constant_mbd=True does not work
 
@@ -16,12 +18,12 @@ def create_sep_mpo(N,hamParams):
     b = hamParams[4]
     d = hamParams[5]
     s = hamParams[6]
-    exp_a = a*np.exp(-s)
-    exp_g = g*np.exp(s)
-    exp_p = p*np.exp(-s)
-    exp_q = q*np.exp(s)
-    exp_b = b*np.exp(-s)
-    exp_d = d*np.exp(s)
+    exp_a = a*np.exp(s)
+    exp_g = g*np.exp(-s)
+    exp_p = p*np.exp(s)
+    exp_q = q*np.exp(-s)
+    exp_b = b*np.exp(s)
+    exp_d = d*np.exp(-s)
     # Create MPO #######################################
     Sp = np.array([[0,1],[0,0]])
     Sm = np.array([[0,0],[1,0]])
@@ -50,7 +52,7 @@ def increase_mbd(M,mbd,periodic=False,constant=False,d=2):
                 nx,ny,nz = M[site].shape
                 sz1 = min(d**site,mbd)
                 sz2 = min(d**(site+1),mbd)
-                M[site] = np.pad(M[site], ((0,0), (0,sz1-ny), (0,sz2-ny)), 'constant', constant_values=0j)
+                M[site] = np.pad(M[site], ((0,0), (0,sz1-ny), (0,sz2-nz)), 'constant', constant_values=0j)
             if N%2 is 1:
                 site += 1
                 nx,ny,nz = M[site].shape
@@ -60,8 +62,8 @@ def increase_mbd(M,mbd,periodic=False,constant=False,d=2):
             for i in range(int(N/2))[::-1]:
                 site = N - i - 1
                 nx,ny,nz = M[site].shape
-                sz1 = min(d**(site+1),mbd)
-                sz2 = min(d**(site),mbd)
+                sz1 = min(d**(N-(site)),mbd)
+                sz2 = min(d**(N-(site+1)),mbd)
                 M[site] = np.pad(M[site], ((0,0), (0,sz1-ny), (0,sz2-nz)), 'constant', constant_values=0j)
         else:
             for site in range(N):
@@ -110,7 +112,7 @@ def make_mps_right(M):
         (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
         M_reshape = np.reshape(V,(n1,n2,n3))
         M[i] = np.swapaxes(M_reshape,0,1)
-        M[i-1] = np.einsum('klj,ji,i->kli',M[i-1],U,s)
+        M[i-1] = einsum('klj,ji,i->kli',M[i-1],U,s)
     return M
 
 def calc_env(M,W,mbd):
@@ -126,23 +128,22 @@ def calc_env(M,W,mbd):
     F.insert(len(F),np.array([[[1]]]))
     # Calculate Initial F (PH - Should speed up)
     for i in range(int(N)-1,0,-1):
-        tmp1 = np.einsum('eaf,cdf->eacd',M[i],F[i+1])
-        tmp2 = np.einsum('eacd,ydbe->acyb',tmp1,W[i])
-        F[i] = np.einsum('acyb,bxc->xya',tmp2,np.conj(M[i]))
+        tmp1 = einsum('eaf,cdf->eacd',M[i],F[i+1])
+        tmp2 = einsum('eacd,ydbe->acyb',tmp1,W[i])
+        F[i] = einsum('acyb,bxc->xya',tmp2,np.conj(M[i]))
     return F
 
 def calc_diag(M,W,F,site):
-    # PH - Not Working!
-    mpo_diag = np.einsum('abnn->anb',W[site])
-    l_diag = np.einsum('lal->la',F[site])
-    r_diag = np.einsum('rbr->rb',F[site+1])
-    tmp = np.einsum('la,anb->lnb',l_diag,mpo_diag)
-    diag = np.einsum('lnb,rb->nlr',tmp,r_diag)
+    mpo_diag = einsum('abnn->anb',W[site])
+    l_diag = einsum('lal->la',F[site])
+    r_diag = einsum('rbr->rb',F[site+1])
+    tmp = einsum('la,anb->lnb',l_diag,mpo_diag)
+    diag = einsum('lnb,rb->nlr',tmp,r_diag)
     return(diag.ravel())
 
 def calc_ham(M,W,F,site):
-    tmp1 = np.einsum('lmin,kmq->linkq',W[site],F[site+1])
-    H = np.einsum('jlp,linkq->ijknpq',F[site],tmp1)
+    tmp1 = einsum('lmin,kmq->linkq',W[site],F[site+1])
+    H = einsum('jlp,linkq->ijknpq',F[site],tmp1)
     (n1,n2,n3,n4,n5,n6) = H.shape
     H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
     return H
@@ -152,12 +153,12 @@ def calcRDM(M,swpDir):
         (n1,n2,n3) = M.shape
         M = np.swapaxes(M,0,1)
         M = np.reshape(M,(n2*n1,n3))
-        return np.einsum('ij,kj->ik',M,np.conj(M))
+        return einsum('ij,kj->ik',M,np.conj(M))
     elif swpDir == 'left':
         (n1,n2,n3) = M.shape
         M = np.swapaxes(M,0,1)
         M = np.reshape(M,(n2,n1*n3))
-        return np.einsum('ij,ik->jk',M,np.conj(M))
+        return einsum('ij,ik->jk',M,np.conj(M))
 
 def renormalizeR(M,v,site,nStates=1,targetState=0):
     (n1,n2,n3) = M[site].shape
@@ -179,15 +180,18 @@ def renormalizeR(M,v,site,nStates=1,targetState=0):
     vals = vals[inds]
     vecs = vecs[:,inds]
     # Make sure vecs are orthonormal
-    vecs = la.orth(vecs)
+    vecs = sla.orth(vecs)
     # Put resulting vectors into MPS
     M[site] = np.reshape(vecs,(n2,n1,n3))
     M[site] = np.swapaxes(M[site],0,1)
-    if not np.all(np.isclose(np.einsum('ijk,ijl->kl',M[site],np.conj(M[site])),np.eye(n3),atol=1e-6)):
+    if not np.all(np.isclose(einsum('ijk,ijl->kl',M[site],np.conj(M[site])),np.eye(n3),atol=1e-6)):
         print('\t\tNormalization Problem')
     # Calculate next site for guess
-    vReshape = np.reshape(v[:,targetState],(n1,n2,n3))
-    M[site+1] = np.einsum('ijk,ijl,mkn->mln',np.conj(M[site]),vReshape,M[site+1])
+    if nStates != 1:
+        vReshape = np.reshape(v[:,targetState],(n1,n2,n3))
+    else:
+        vReshape = np.reshape(v,(n1,n2,n3))
+    M[site+1] = einsum('ijk,ijl,mkn->mln',np.conj(M[site]),vReshape,M[site+1])
     return M
 
 def renormalizeL(M,v,site,nStates=1,targetState=0):
@@ -210,24 +214,81 @@ def renormalizeL(M,v,site,nStates=1,targetState=0):
     vals = vals[inds]
     vecs = vecs[:,inds]
     # Make sure vecs are orthonormal
-    vecs = la.orth(vecs)
+    vecs = sla.orth(vecs)
     vecs = vecs.T
     # Put resulting vectors into MPS
     M[site] = np.reshape(vecs,(n2,n1,n3))
     M[site] = np.swapaxes(M[site],0,1)
-    if not np.all(np.isclose(np.einsum('ijk,ilk->jl',M[site],np.conj(M[site])),np.eye(n2),atol=1e-6)):
+    if not np.all(np.isclose(einsum('ijk,ilk->jl',M[site],np.conj(M[site])),np.eye(n2),atol=1e-6)):
         print('\t\tNormalization Problem')
     # PH - Calculate next site's guess
-    M[site-1] = np.einsum('',
+    if nStates != 1:
+        vReshape = np.reshape(v[:,targetState],(n1,n2,n3))
+    else:
+        vReshape = np.reshape(v,(n1,n2,n3))
+    M[site-1] = einsum('ijk,lkm,lnm->ijn',M[site-1],vReshape,np.conj(M[site]))
     return M
 
-def calc_eigs(H,M,site,nStates):
+def calc_eigs_exact(M,W,F,site,nStates):
+    H = calc_ham(M,W,F,site)
     Mprev = M[site].ravel()
-    vals,vecs = np.linalg.eig(H)
+    vals,vecs = sla.eig(H)
     inds = np.argsort(vals)[::-1]
     E = vals[inds[:nStates]]
     vecs = vecs[:,inds[:nStates]]
     return E,vecs
+
+def make_ham_func(M,W,F,site):
+    #H = calc_ham(M,W,F,site)
+    def Hfun(x):
+        x_reshape = np.reshape(x,M[site].shape)
+        in_sum1 = einsum('ijk,lmk->ijlm',F[site+1],x_reshape)
+        in_sum2 = einsum('njol,ijlm->noim',W[site],in_sum1)
+        fin_sum = einsum('pnm,noim->opi',F[site],in_sum2)
+        #assert(np.isclose(np.sum(np.abs(np.reshape(fin_sum,-1)-np.dot(H,x))),0))
+        return -np.reshape(fin_sum,-1)
+    diag = calc_diag(M,W,F,site)
+    #assert(np.isclose(np.sum(np.abs(diag-np.diag(H))),0))
+    def precond(dx,e,x0):
+        return dx/diag-e
+    return Hfun,precond
+
+def pick_eigs(w,v,nroots,x0):
+    idx = w.real.argsort()
+    return w[idx], v[:,idx], idx
+
+def calc_eigs_davidson(M,W,F,site,nStates):
+    H,precond = make_ham_func(M,W,F,site)
+    guess = np.reshape(M[site],-1)
+    vals,vecso = davidson(H,guess,precond,nroots=nStates,pick=pick_eigs,follow_state=True,tol=1e-15)
+    sort_inds = np.argsort(np.real(vals))
+    try:
+        vecs = np.zeros((len(vecso[0]),nStates),dtype=np.complex_)
+        vals = -vals[sort_inds[:nStates]]
+        for i in range(nStates):
+            vecs[:,i] = vecso[sort_inds[i]]
+    except:
+        pass
+    return vals,vecs
+
+def calc_eigs_arnoldi(M,W,F,site,nStates):
+    guess = np.reshape(M[site],-1)
+    Hfun,_ = make_ham_func(M,W,F,site)
+    (n1,n2,n3) = M[site].shape
+    H = LinearOperator((n1*n2*n3,n1*n2*n3),matvec=Hfun)
+    vals,vecs = arnoldi(H,k=nStates,which='SR',v0=guess,tol=1e-5)
+    inds = np.argsort(vals)
+    E = -vals[inds[:nStates]]
+    vecs = vecs[:,inds[:nStates]]
+    return E,vecs
+
+def calc_eigs(M,W,F,site,nStates,alg='arnoldi'):
+    if alg == 'davidson':
+        return calc_eigs_davidson(M,W,F,site,nStates)
+    elif alg == 'exact':
+        return calc_eigs_exact(M,W,F,site,nStates)
+    elif alg == 'arnoldi':
+        return calc_eigs_arnoldi(M,W,F,site,nStates)
 
 def calc_entanglement(S):
     EEspec = -S**2.*np.log2(S**2.)
@@ -235,15 +296,15 @@ def calc_entanglement(S):
     return EE,EEspec
 
 def update_envL(M,W,F,site):
-    tmp1 = np.einsum('eaf,cdf->eacd',M[site],F[site+1])
-    tmp2 = np.einsum('eacd,ydbe->acyb',tmp1,W[site])
-    F[site] = np.einsum('acyb,bxc->xya',tmp2,np.conj(M[site]))
+    tmp1 = einsum('eaf,cdf->eacd',M[site],F[site+1])
+    tmp2 = einsum('eacd,ydbe->acyb',tmp1,W[site])
+    F[site] = einsum('acyb,bxc->xya',tmp2,np.conj(M[site]))
     return F
 
 def update_envR(M,W,F,site):
-    tmp1 = np.einsum('jlp,ijk->lpik',F[site],np.conj(M[site]))
-    tmp2 = np.einsum('lmin,lpik->mpnk',W[site],tmp1)
-    F[site+1] = np.einsum('npq,mpnk->kmq',M[site],tmp2)
+    tmp1 = einsum('jlp,ijk->lpik',F[site],np.conj(M[site]))
+    tmp2 = einsum('lmin,lpik->mpnk',W[site],tmp1)
+    F[site+1] = einsum('npq,mpnk->kmq',M[site],tmp2)
     return F
 
 def rightSweep(M,W,F,iterCnt,nStates=1):
@@ -251,8 +312,7 @@ def rightSweep(M,W,F,iterCnt,nStates=1):
     print('Right Sweep {}'.format(iterCnt))
     for site in range(N-1):
         #diag = calc_diag(M,W,F,site)
-        H = calc_ham(M,W,F,site)
-        E,v = calc_eigs(H,M,site,nStates)
+        E,v = calc_eigs(M,W,F,site,nStates)
         M = renormalizeR(M,v,site,nStates=nStates)
         F = update_envR(M,W,F,site)
         print('\tEnergy at Site {}: {}'.format(site,E))
@@ -265,8 +325,7 @@ def leftSweep(M,W,F,iterCnt,nStates=1):
     print('Left Sweep {}'.format(iterCnt))
     for site in range(N-1,0,-1):
         #diag = calc_diag(M,W,F,site)
-        H = calc_ham(M,W,F,site)
-        E,v = calc_eigs(H,M,site,nStates)
+        E,v = calc_eigs(M,W,F,site,nStates)
         M = renormalizeL(M,v,site,nStates=nStates)
         F = update_envL(M,W,F,site)
         print('\tEnergy at Site {}: {}'.format(site,E))
@@ -304,7 +363,7 @@ def observable_sweep(M,F):
         M_reshape = np.reshape(M[site],(n1*n2,n3))
         (U,S,V) = np.linalg.svd(M_reshape,full_matrices=False)
         M[site] = np.reshape(U,(n1,n2,n3))
-        M[site+1] = np.einsum('i,ij,kjl->kil',S,V,M[site+1])
+        M[site+1] = einsum('i,ij,kjl->kil',S,V,M[site+1])
         if site == int(N/2):
             EE,EEs = calc_entanglement(S)
     return EE,EEs
@@ -319,8 +378,10 @@ def run_sweeps(M,W,F,initGuess=None,maxIter=10,tol=1e-5,fname = None,nStates=1,t
         converged,E_prev,iterCnt = checkConv(E_prev,E,tol,iterCnt,maxIter,nStates=nStates,targetState=targetState)
     save_mps(M,fname)
     EE,EEs = observable_sweep(M,F)
-    if nStates != 1: E = E[targetState]
-    return E,EE
+    if nStates != 1: 
+        gap = E[0]-E[1]
+        E = E[targetState]
+    return E,EE,gap
 
 def run_dmrg(N,hamParams,initGuess=None,mbd=[2,4,8,16],tol=1e-5,maxIter=3,fname=None,nStates=1,targetState=0,constant_mbd=False):
     # Determine Hamiltonian MPO
@@ -336,47 +397,56 @@ def run_dmrg(N,hamParams,initGuess=None,mbd=[2,4,8,16],tol=1e-5,maxIter=3,fname=
     else:
         assert(len(maxIter) == len(mbd))
     # Vector to store results
-    Evec = np.zeros(len(mbd))
-    EEvec= np.zeros(len(mbd))
+    Evec  = np.zeros(len(mbd))
+    EEvec = np.zeros(len(mbd))
+    gapvec= np.zeros(len(mbd))
     for mbdInd,mbdi in enumerate(mbd):
+        print('Starting Calc for MBD = {}'.format(mbdi))
         if initGuess is None:
             M = create_rand_mps(N,mbdi)
             M = make_mps_right(M)
             if constant_mbd: M = increase_mbd(M,mbdi,constant=True)
         else:
-            M = load_mps(N,initGuess+'_mbd'+str(mbdInd))
+            if mbdInd == 0:
+                M = load_mps(N,initGuess+'_mbd'+str(mbdInd))
+            else:
+                M = load_mps(N,initGuess+'_mbd'+str(mbdInd-1))
+                M = increase_mbd(M,mbdi)
         F = calc_env(M,W,mbdi)
-        E,EE = run_sweeps(M,W,F,
+        E,EE,gap = run_sweeps(M,W,F,
                          maxIter=maxIter[mbdInd],
                          tol=tol[mbdInd],
                          fname=fname+'_mbd'+str(mbdInd),
                          nStates=nStates,
                          targetState=targetState)
-        Evec[mbdInd] = E
-        EEvec[mbdInd]= EE
-    return Evec,EEvec
+        Evec[mbdInd]  = E
+        EEvec[mbdInd] = EE
+        gapvec[mbdInd]=gap
+    return Evec,EEvec,gapvec
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     N = 10
     p = 0.1
     mbd = [2,4,6]
-    sVec = np.linspace(-1,0.5,100)[::-1]
-    E = np.zeros((len(sVec),len(mbd)))
-    EE = np.zeros((len(sVec),len(mbd)))
+    sVec = np.linspace(-0.5,0.5,100)
+    E   = np.zeros((len(sVec),len(mbd)))
+    EE  = np.zeros((len(sVec),len(mbd)))
+    gap = np.zeros((len(sVec),len(mbd)))
     f = plt.figure()
-    ax1 = f.add_subplot(151)
-    ax2 = f.add_subplot(152)
-    ax3 = f.add_subplot(153)
-    ax4 = f.add_subplot(154)
-    ax5 = f.add_subplot(155)
+    ax1 = f.add_subplot(161)
+    ax2 = f.add_subplot(162)
+    ax3 = f.add_subplot(163)
+    ax4 = f.add_subplot(164)
+    ax5 = f.add_subplot(165)
+    ax6 = f.add_subplot(166)
     for sind,s in enumerate(sVec):
         if sind == 0:
             print(s)
-            E[sind,:],EE[sind,:] = run_dmrg(N,(0.5,0.5,p,1-p,0.5,0.5,s),mbd=mbd,fname='mps/myMPS_N'+str(N),nStates=2)
+            E[sind,:],EE[sind,:],gap[sind,:] = run_dmrg(N,(0.5,0.5,p,1-p,0.5,0.5,s),mbd=mbd,fname='mps/myMPS_N'+str(N),nStates=2)
         else:
             print(s)
-            E[sind,:],EE[sind,:] = run_dmrg(N,(0.5,0.5,p,1-p,0.5,0.5,s),mbd=mbd,initGuess='mps/myMPS_N'+str(N),fname='mps/myMPS_N'+str(N),nStates=2)
+            E[sind,:],EE[sind,:],gap[sind,:] = run_dmrg(N,(0.5,0.5,p,1-p,0.5,0.5,s),mbd=mbd,initGuess='mps/myMPS_N'+str(N),fname='mps/myMPS_N'+str(N),nStates=2)
         # Print Results
         ax1.clear()
         for i in range(len(mbd)):
@@ -397,7 +467,11 @@ if __name__ == "__main__":
         ax5.clear()
         for i in range(len(mbd)):
             ax5.plot(sVec[:sind],EE[:sind,i])
+        ax6.clear()
+        for i in range(len(mbd)):
+            ax6.semilogy(sVec[:sind],gap[:sind,i])
+            print(gap[:sind,i])
         plt.pause(0.01)
         # Save Results
-        np.savez('results/asep_psweep_N'+str(N)+'_Np1_Ns'+str(len(sVec)),N=N,p=p,mbd=mbd,s=sVec,E=E,EE=EE)
+        np.savez('results/asep_psweep_N'+str(N)+'_Np1_Ns'+str(len(sVec)),N=N,p=p,mbd=mbd,s=sVec,E=E,EE=EE,gap=gap)
     plt.show()
