@@ -1,6 +1,7 @@
 from dmrg import *
 import matplotlib.pyplot as plt
 from matplotlib import cm
+from mpo.asep import return_mpo
 
 # Plotting parameters
 plt.rc('text', usetex=True)
@@ -13,7 +14,7 @@ colormap = cm.plasma #coolwarm, inferno, viridis
 # Set Calculation Parameters
 N = 10
 p = 0.1 
-mbd = np.array([2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32])
+mbd = np.array([2,4,6,8,10])
 sVec = np.linspace(-0.5,0.5,100)
 
 # Allocate Memory for results
@@ -34,10 +35,12 @@ ax6 = f.add_subplot(166)
 for sind,s in enumerate(sVec):
     if sind == 0:
         print(s)
-        E[sind,:],EE[sind,:],gap[sind,:] = run_dmrg(N,(0.5,0.5,p,1-p,0.5,0.5,s),mbd=mbd,fname='mps/myMPS_N'+str(N),nStates=2)
+        mpo = return_mpo(N,(0.5,0.5,p,1-p,0.5,0.5,s))
+        E[sind,:],EE[sind,:],gap[sind,:] = run_dmrg(mpo,mbd=mbd,fname='mps/myMPS_N'+str(N),nStates=2)
     else:
         print(s)
-        E[sind,:],EE[sind,:],gap[sind,:] = run_dmrg(N,(0.5,0.5,p,1-p,0.5,0.5,s),mbd=mbd,initGuess='mps/myMPS_N'+str(N),fname='mps/myMPS_N'+str(N),nStates=2)
+        mpo = return_mpo(N,(0.5,0.5,p,1-p,0.5,0.5,s))
+        E[sind,:],EE[sind,:],gap[sind,:] = run_dmrg(mpo,mbd=mbd,initGuess='mps/myMPS_N'+str(N),fname='mps/myMPS_N'+str(N),nStates=2)
     # Plot Results
     ax1.clear()
     for i in range(len(mbd)):

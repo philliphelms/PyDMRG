@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.linalg as sla
-from pyscf.lib import einsum,davidson
+from pyscf.lib import einsum
 from pyscf.lib import eig as davidson
 from scipy.sparse.linalg import eigs as arnoldi
 from scipy.sparse.linalg import LinearOperator
@@ -8,41 +8,6 @@ from scipy.sparse.linalg import LinearOperator
 # To Do :
 # - Left Eigenvectors
 # - constant_mbd=True does not work
-
-def create_sep_mpo(N,hamParams):
-    # Unpack Ham Params ################################
-    a = hamParams[0]
-    g = hamParams[1]
-    p = hamParams[2]
-    q = hamParams[3]
-    b = hamParams[4]
-    d = hamParams[5]
-    s = hamParams[6]
-    exp_a = a*np.exp(s)
-    exp_g = g*np.exp(-s)
-    exp_p = p*np.exp(s)
-    exp_q = q*np.exp(-s)
-    exp_b = b*np.exp(s)
-    exp_d = d*np.exp(-s)
-    # Create MPO #######################################
-    Sp = np.array([[0,1],[0,0]])
-    Sm = np.array([[0,0],[1,0]])
-    n = np.array([[0,0],[0,1]])
-    v = np.array([[1,0],[0,0]])
-    I = np.array([[1,0],[0,1]])
-    z = np.array([[0,0],[0,0]])
-    const = 1.
-    W = []
-    W.append(const*np.array([[exp_a*Sm-a*v+exp_g*Sp-g*n, Sp, -n, Sm, -v, I]]))
-    for i in range(N-2):
-        W.append(const*np.array([[I       ,  z,  z,  z,  z,  z],
-                           [exp_p*Sm,  z,  z,  z,  z,  z],
-                           [p*v     ,  z,  z,  z,  z,  z],
-                           [exp_q*Sp,  z,  z,  z,  z,  z],
-                           [q*n     ,  z,  z,  z,  z,  z],
-                           [z       , Sp, -n, Sm, -v,  I]]))
-    W.append(const*np.array([[I],[exp_p*Sm],[p*v],[exp_q*Sp],[q*n],[exp_d*Sm-d*v+exp_b*Sp-b*n]]))
-    return W
 
 def increase_mbd(M,mbd,periodic=False,constant=False,d=2):
     N = len(M)
@@ -221,7 +186,7 @@ def renormalizeL(M,v,site,nStates=1,targetState=0):
     M[site] = np.swapaxes(M[site],0,1)
     if not np.all(np.isclose(einsum('ijk,ilk->jl',M[site],np.conj(M[site])),np.eye(n2),atol=1e-6)):
         print('\t\tNormalization Problem')
-    # PH - Calculate next site's guess
+    # Calculate next site's guess
     if nStates != 1:
         vReshape = np.reshape(v[:,targetState],(n1,n2,n3))
     else:
@@ -239,28 +204,28 @@ def calc_eigs_exact(M,W,F,site,nStates):
     return E,vecs
 
 def make_ham_func(M,W,F,site):
-    #H = calc_ham(M,W,F,site)
+    H = calc_ham(M,W,F,site)
     def Hfun(x):
         x_reshape = np.reshape(x,M[site].shape)
         in_sum1 = einsum('ijk,lmk->ijlm',F[site+1],x_reshape)
         in_sum2 = einsum('njol,ijlm->noim',W[site],in_sum1)
         fin_sum = einsum('pnm,noim->opi',F[site],in_sum2)
-        #assert(np.isclose(np.sum(np.abs(np.reshape(fin_sum,-1)-np.dot(H,x))),0))
+        assert(np.isclose(np.sum(np.abs(np.reshape(fin_sum,-1)-np.dot(H,x))),0))
         return -np.reshape(fin_sum,-1)
     diag = calc_diag(M,W,F,site)
-    #assert(np.isclose(np.sum(np.abs(diag-np.diag(H))),0))
+    assert(np.isclose(np.sum(np.abs(diag-np.diag(H))),0))
     def precond(dx,e,x0):
         return dx/diag-e
     return Hfun,precond
 
 def pick_eigs(w,v,nroots,x0):
     idx = w.real.argsort()
-    return w[idx], v[:,idx], idx
+    return w[idx], v[:,idx],idx
 
 def calc_eigs_davidson(M,W,F,site,nStates):
     H,precond = make_ham_func(M,W,F,site)
     guess = np.reshape(M[site],-1)
-    vals,vecso = davidson(H,guess,precond,nroots=nStates,pick=pick_eigs,follow_state=True,tol=1e-15)
+    vals,vecso = davidson(H,guess,precond,nroots=nStates,pick=pick_eigs,follow_state=True,tol=1e-8)
     sort_inds = np.argsort(np.real(vals))
     try:
         vecs = np.zeros((len(vecso[0]),nStates),dtype=np.complex_)
@@ -282,13 +247,14 @@ def calc_eigs_arnoldi(M,W,F,site,nStates):
     vecs = vecs[:,inds[:nStates]]
     return E,vecs
 
-def calc_eigs(M,W,F,site,nStates,alg='arnoldi'):
+def calc_eigs(M,W,F,site,nStates,alg='exact'):
     if alg == 'davidson':
-        return calc_eigs_davidson(M,W,F,site,nStates)
+        E,vecs = calc_eigs_davidson(M,W,F,site,nStates)
     elif alg == 'exact':
-        return calc_eigs_exact(M,W,F,site,nStates)
+        E,vecs = calc_eigs_exact(M,W,F,site,nStates)
     elif alg == 'arnoldi':
-        return calc_eigs_arnoldi(M,W,F,site,nStates)
+        E,vecs = calc_eigs_arnoldi(M,W,F,site,nStates)
+    return E,vecs
 
 def calc_entanglement(S):
     EEspec = -S**2.*np.log2(S**2.)
@@ -383,9 +349,8 @@ def run_sweeps(M,W,F,initGuess=None,maxIter=10,tol=1e-5,fname = None,nStates=1,t
         E = E[targetState]
     return E,EE,gap
 
-def run_dmrg(N,hamParams,initGuess=None,mbd=[2,4,8,16],tol=1e-5,maxIter=3,fname=None,nStates=1,targetState=0,constant_mbd=False):
-    # Determine Hamiltonian MPO
-    W = create_sep_mpo(N,hamParams)
+def run_dmrg(mpo,initGuess=None,mbd=[2,4,8,16],tol=1e-5,maxIter=3,fname=None,nStates=1,targetState=0,constant_mbd=False):
+    N = len(mpo)
     # Make sure everything is a vector
     if not hasattr(mbd,'__len__'): mbd = np.array([mbd])
     if not hasattr(tol,'__len__'):
@@ -403,75 +368,23 @@ def run_dmrg(N,hamParams,initGuess=None,mbd=[2,4,8,16],tol=1e-5,maxIter=3,fname=
     for mbdInd,mbdi in enumerate(mbd):
         print('Starting Calc for MBD = {}'.format(mbdi))
         if initGuess is None:
-            M = create_rand_mps(N,mbdi)
-            M = make_mps_right(M)
-            if constant_mbd: M = increase_mbd(M,mbdi,constant=True)
+            mps = create_rand_mps(N,mbdi)
+            mps = make_mps_right(mps)
+            if constant_mbd: mps = increase_mbd(mps,mbdi,constant=True)
         else:
             if mbdInd == 0:
-                M = load_mps(N,initGuess+'_mbd'+str(mbdInd))
+                mps = load_mps(N,initGuess+'_mbd'+str(mbdInd))
             else:
-                M = load_mps(N,initGuess+'_mbd'+str(mbdInd-1))
-                M = increase_mbd(M,mbdi)
-        F = calc_env(M,W,mbdi)
-        E,EE,gap = run_sweeps(M,W,F,
-                         maxIter=maxIter[mbdInd],
-                         tol=tol[mbdInd],
-                         fname=fname+'_mbd'+str(mbdInd),
-                         nStates=nStates,
-                         targetState=targetState)
+                mps = load_mps(N,initGuess+'_mbd'+str(mbdInd-1))
+                mps = increase_mbd(mps,mbdi)
+        env = calc_env(mps,mpo,mbdi)
+        E,EE,gap = run_sweeps(mps,mpo,env,
+                             maxIter=maxIter[mbdInd],
+                             tol=tol[mbdInd],
+                             fname=fname+'_mbd'+str(mbdInd),
+                             nStates=nStates,
+                             targetState=targetState)
         Evec[mbdInd]  = E
         EEvec[mbdInd] = EE
         gapvec[mbdInd]=gap
     return Evec,EEvec,gapvec
-
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    N = 10
-    p = 0.1
-    mbd = [2,4,6]
-    sVec = np.linspace(-0.5,0.5,100)
-    E   = np.zeros((len(sVec),len(mbd)))
-    EE  = np.zeros((len(sVec),len(mbd)))
-    gap = np.zeros((len(sVec),len(mbd)))
-    f = plt.figure()
-    ax1 = f.add_subplot(161)
-    ax2 = f.add_subplot(162)
-    ax3 = f.add_subplot(163)
-    ax4 = f.add_subplot(164)
-    ax5 = f.add_subplot(165)
-    ax6 = f.add_subplot(166)
-    for sind,s in enumerate(sVec):
-        if sind == 0:
-            print(s)
-            E[sind,:],EE[sind,:],gap[sind,:] = run_dmrg(N,(0.5,0.5,p,1-p,0.5,0.5,s),mbd=mbd,fname='mps/myMPS_N'+str(N),nStates=2)
-        else:
-            print(s)
-            E[sind,:],EE[sind,:],gap[sind,:] = run_dmrg(N,(0.5,0.5,p,1-p,0.5,0.5,s),mbd=mbd,initGuess='mps/myMPS_N'+str(N),fname='mps/myMPS_N'+str(N),nStates=2)
-        # Print Results
-        ax1.clear()
-        for i in range(len(mbd)):
-            ax1.plot(sVec[:sind],E[:sind,i])
-        ax2.clear()
-        for i in range(len(mbd)):
-            ax2.semilogy(sVec[:sind],np.abs(E[:sind,i]-E[:sind,-1]))
-        curr = (E[0:-1,:]-E[1:,:])/(sVec[0]-sVec[1])
-        splt = sVec[1:]
-        ax3.clear()
-        for i in range(len(mbd)):
-            ax3.plot(splt[:sind],curr[:sind,i])
-        susc = (curr[0:-1,:]-curr[1:,:])/(sVec[0]-sVec[1])
-        splt = sVec[1:-1]
-        ax4.clear()
-        for i in range(len(mbd)):
-            ax4.plot(splt[:sind-1],susc[:sind-1,i])
-        ax5.clear()
-        for i in range(len(mbd)):
-            ax5.plot(sVec[:sind],EE[:sind,i])
-        ax6.clear()
-        for i in range(len(mbd)):
-            ax6.semilogy(sVec[:sind],gap[:sind,i])
-            print(gap[:sind,i])
-        plt.pause(0.01)
-        # Save Results
-        np.savez('results/asep_psweep_N'+str(N)+'_Np1_Ns'+str(len(sVec)),N=N,p=p,mbd=mbd,s=sVec,E=E,EE=EE,gap=gap)
-    plt.show()
