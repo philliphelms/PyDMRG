@@ -241,7 +241,11 @@ def calc_eigs_arnoldi(M,W,F,site,nStates):
     Hfun,_ = make_ham_func(M,W,F,site)
     (n1,n2,n3) = M[site].shape
     H = LinearOperator((n1*n2*n3,n1*n2*n3),matvec=Hfun)
-    vals,vecs = arnoldi(H,k=nStates,which='SR',v0=guess,tol=1e-5)
+    try:
+        vals,vecs = arnoldi(H,k=nStates,which='SR',v0=guess,tol=1e-5)
+    except Exception as exc:
+        vals = exc.eigenvalues
+        vecs = exc.eigenvectors
     inds = np.argsort(vals)
     E = -vals[inds[:nStates]]
     vecs = vecs[:,inds[:nStates]]
