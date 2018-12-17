@@ -50,15 +50,14 @@ def create_rand_mps(N,mbd,d=2):
     # Create MPS
     M = []
     for i in range(int(N/2)):
-        np.random.rand(d,d,d)
-        min(d**(i),mbd)
-        min(d**(i+1),mbd)
-        np.random.rand(d,min(d**(i),mbd),min(d**(i+1),mbd))
-        M.insert(len(M),np.random.rand(d,min(d**(i),mbd),min(d**(i+1),mbd)))
+        #M.insert(len(M),np.random.rand(d,min(d**(i),mbd),min(d**(i+1),mbd)))
+        M.insert(len(M),np.ones((d,min(d**(i),mbd),min(d**(i+1),mbd))))
     if N%2 is 1:
-        M.insert(len(M),np.random.rand(d,min(d**(i+1),mbd),min(d**(i+1),mbd)))
+        #M.insert(len(M),np.random.rand(d,min(d**(i+1),mbd),min(d**(i+1),mbd)))
+        M.insert(len(M),np.ones((d,min(d**(i+1),mbd),min(d**(i+1),mbd))))
     for i in range(int(N/2))[::-1]:
-        M.insert(len(M),np.random.rand(d,min(d**(i+1),mbd),min(d**i,mbd)))
+        #M.insert(len(M),np.random.rand(d,min(d**(i+1),mbd),min(d**i,mbd)))
+        M.insert(len(M),np.ones((d,min(d**(i+1),mbd),min(d**i,mbd))))
     return M
 
 def load_mps(N,fname):
@@ -82,35 +81,62 @@ def make_mps_right(M):
 
 def calc_env(M,W,mbd):
     N = len(M)
-    _,mbdW,_,_ = W[0].shape
-    # Initialize Empty F
-    F = []
-    F.insert(len(F),np.array([[[1]]]))
-    for i in range(int(N/2)):
-        F.insert(len(F),np.zeros((min(2**(i+1),mbd),mbdW,min(2**(i+1),mbd))))
-    for i in range(int(N/2)-1,0,-1):
-        F.insert(len(F),np.zeros((min(2**(i),mbd),mbdW,min(2**i,mbd))))
-    F.insert(len(F),np.array([[[1]]]))
-    # Calculate Initial F (PH - Should speed up)
-    for i in range(int(N)-1,0,-1):
-        tmp1 = einsum('eaf,cdf->eacd',M[i],F[i+1])
-        tmp2 = einsum('eacd,ydbe->acyb',tmp1,W[i])
-        F[i] = einsum('acyb,bxc->xya',tmp2,np.conj(M[i]))
-    return F
+    # Initialize Empty FL to hold all F lists
+    env_lst = []
+    for mpoInd in range(len(W)):
+        if W[mpoInd][0] is not None:
+            _,mbdW,_,_ = W[mpoInd][0].shape
+        else: 
+            mbdW = 1
+        F = []
+        F.append(np.array([[[1]]]))
+        for site in range(int(N/2)):
+            F.append(np.zeros((min(2**(site+1),mbd),mbdW,min(2**(site+1),mbd))))
+        if N%2 is 1:
+            F.append(np.zeros((min(2**(site+2),mbd),mbdW,min(2**(site+2),mbd))))
+        for site in range(int(N/2)-1,0,-1):
+            F.append(np.zeros((min(2**(site),mbd),mbdW,min(2**site,mbd))))
+        F.append(np.array([[[1]]]))
+        # Add environment to env list
+        env_lst.append(F)
+    # Calculate Environment
+    for site in range(int(N)-1,0,-1):
+        for mpoInd in range(len(W)):
+            if W[mpoInd][site] is None:
+                tmp1 = einsum('eaf,cdf->eacd',M[site],env_lst[mpoInd][site+1])
+                env_lst[mpoInd][site] = einsum('bacy,bxc->xya',tmp1,np.conj(M[site]))
+            else:
+                tmp1 = einsum('eaf,cdf->eacd',M[site],env_lst[mpoInd][site+1])
+                tmp2 = einsum('eacd,ydbe->acyb',tmp1,W[mpoInd][site])
+                env_lst[mpoInd][site] = einsum('acyb,bxc->xya',tmp2,np.conj(M[site]))
+    return env_lst
 
 def calc_diag(M,W,F,site):
-    mpo_diag = einsum('abnn->anb',W[site])
-    l_diag = einsum('lal->la',F[site])
-    r_diag = einsum('rbr->rb',F[site+1])
-    tmp = einsum('la,anb->lnb',l_diag,mpo_diag)
-    diag = einsum('lnb,rb->nlr',tmp,r_diag)
-    return(diag.ravel())
+    (n1,n2,n3) = M[site].shape
+    diag = np.zeros((n1*n2*n3),dtype=np.complex_)
+    for mpoInd in range(len(W)):
+        if W[mpoInd][site] is None:
+            mpo_diag = einsum('abnn->anb',np.array([[np.eye(2)]]))
+        else:
+            mpo_diag = einsum('abnn->anb',W[mpoInd][site])
+        l_diag = einsum('lal->la',F[mpoInd][site])
+        r_diag = einsum('rbr->rb',F[mpoInd][site+1])
+        tmp = einsum('la,anb->lnb',l_diag,mpo_diag)
+        diag_mis = einsum('lnb,rb->nlr',tmp,r_diag)
+        diag += diag_mis.ravel()
+    return diag
 
 def calc_ham(M,W,F,site):
-    tmp1 = einsum('lmin,kmq->linkq',W[site],F[site+1])
-    H = einsum('jlp,linkq->ijknpq',F[site],tmp1)
-    (n1,n2,n3,n4,n5,n6) = H.shape
-    H = np.reshape(H,(n1*n2*n3,n4*n5*n6))
+    (n1,n2,n3) = M[site].shape
+    dim = n1*n2*n3
+    H = np.zeros((dim,dim),dtype=np.complex_)
+    for mpoInd in range(len(W)):
+        if W[mpoInd][site] is None:
+            tmp1 = einsum('lmin,kmq->linkq',np.array([[np.eye(2)]]),F[mpoInd][site+1])
+        else:
+            tmp1 = einsum('lmin,kmq->linkq',W[mpoInd][site],F[mpoInd][site+1])
+        Htmp = einsum('jlp,linkq->ijknpq',F[mpoInd][site],tmp1)
+        H += np.reshape(Htmp,(dim,dim))
     return H
 
 def calcRDM(M,swpDir):
@@ -207,9 +233,15 @@ def make_ham_func(M,W,F,site):
     H = calc_ham(M,W,F,site)
     def Hfun(x):
         x_reshape = np.reshape(x,M[site].shape)
-        in_sum1 = einsum('ijk,lmk->ijlm',F[site+1],x_reshape)
-        in_sum2 = einsum('njol,ijlm->noim',W[site],in_sum1)
-        fin_sum = einsum('pnm,noim->opi',F[site],in_sum2)
+        fin_sum = np.zeros(x_reshape.shape,dtype=np.complex_)
+        for mpoInd in range(len(W)):
+            if W[mpoInd][site] is None:
+                in_sum1 = einsum('ijk,lmk->ijlm',F[mpoInd][site+1],x_reshape)
+                fin_sum +=einsum('pnm,inom->opi',F[mpoInd][site],in_sum1)
+            else:
+                in_sum1 = einsum('ijk,lmk->ijlm',F[mpoInd][site+1],x_reshape)
+                in_sum2 = einsum('njol,ijlm->noim',W[mpoInd][site],in_sum1)
+                fin_sum +=einsum('pnm,noim->opi',F[mpoInd][site],in_sum2)
         assert(np.isclose(np.sum(np.abs(np.reshape(fin_sum,-1)-np.dot(H,x))),0))
         return -np.reshape(fin_sum,-1)
     diag = calc_diag(M,W,F,site)
@@ -266,15 +298,25 @@ def calc_entanglement(S):
     return EE,EEspec
 
 def update_envL(M,W,F,site):
-    tmp1 = einsum('eaf,cdf->eacd',M[site],F[site+1])
-    tmp2 = einsum('eacd,ydbe->acyb',tmp1,W[site])
-    F[site] = einsum('acyb,bxc->xya',tmp2,np.conj(M[site]))
+    for mpoInd in range(len(W)):
+        if W[mpoInd][site] is None:
+            tmp1 = einsum('eaf,cdf->eacd',M[site],F[mpoInd][site+1])
+            F[mpoInd][site] = einsum('bacy,bxc->xya',tmp1,np.conj(M[site]))
+        else:
+            tmp1 = einsum('eaf,cdf->eacd',M[site],F[mpoInd][site+1])
+            tmp2 = einsum('eacd,ydbe->acyb',tmp1,W[mpoInd][site])
+            F[mpoInd][site] = einsum('acyb,bxc->xya',tmp2,np.conj(M[site]))
     return F
 
 def update_envR(M,W,F,site):
-    tmp1 = einsum('jlp,ijk->lpik',F[site],np.conj(M[site]))
-    tmp2 = einsum('lmin,lpik->mpnk',W[site],tmp1)
-    F[site+1] = einsum('npq,mpnk->kmq',M[site],tmp2)
+    for mpoInd in range(len(W)):
+        if W[mpoInd][site] is None:
+            tmp1 = einsum('jlp,ijk->lpik',F[mpoInd][site],np.conj(M[site]))
+            F[mpoInd][site+1] = einsum('npq,mpnk->kmq',M[site],tmp1)
+        else:
+            tmp1 = einsum('jlp,ijk->lpik',F[mpoInd][site],np.conj(M[site]))
+            tmp2 = einsum('lmin,lpik->mpnk',W[mpoInd][site],tmp1)
+            F[mpoInd][site+1] = einsum('npq,mpnk->kmq',M[site],tmp2)
     return F
 
 def rightSweep(M,W,F,iterCnt,nStates=1):
@@ -354,7 +396,7 @@ def run_sweeps(M,W,F,initGuess=None,maxIter=10,tol=1e-5,fname = None,nStates=1,t
     return E,EE,gap
 
 def run_dmrg(mpo,initGuess=None,mbd=[2,4,8,16],tol=1e-5,maxIter=3,fname=None,nStates=1,targetState=0,constant_mbd=False):
-    N = len(mpo)
+    N = len(mpo[0])
     # Make sure everything is a vector
     if not hasattr(mbd,'__len__'): mbd = np.array([mbd])
     if not hasattr(tol,'__len__'):
