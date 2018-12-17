@@ -155,7 +155,10 @@ def renormalizeR(M,v,site,nStates=1,targetState=0):
     (n1,n2,n3) = M[site].shape
     # Calculate the reduced density matrix
     for i in range(nStates):
-        if nStates != 1: vtmp = v[:,i]
+        if nStates != 1: 
+            vtmp = v[:,i]
+        else:
+            vtmp  = v
         vReshape = np.reshape(vtmp,(n1,n2,n3))
         w = 1./float(nStates)
         if i == 0:
@@ -189,7 +192,10 @@ def renormalizeL(M,v,site,nStates=1,targetState=0):
     (n1,n2,n3) = M[site].shape
     # Calculate the reduced density matrix
     for i in range(nStates):
-        if nStates != 1: vtmp = v[:,i]
+        if nStates != 1: 
+            vtmp = v[:,i]
+        else: 
+            vtmp = v
         vReshape = np.reshape(vtmp,(n1,n2,n3))
         w = 1./float(nStates)
         if i == 0:
@@ -265,6 +271,7 @@ def calc_eigs_davidson(M,W,F,site,nStates):
         for i in range(nStates):
             vecs[:,i] = vecso[sort_inds[i]]
     except:
+        vecs = vecso
         pass
     return vals,vecs
 
@@ -319,12 +326,12 @@ def update_envR(M,W,F,site):
             F[mpoInd][site+1] = einsum('npq,mpnk->kmq',M[site],tmp2)
     return F
 
-def rightSweep(M,W,F,iterCnt,nStates=1):
+def rightSweep(M,W,F,iterCnt,nStates=1,alg='exact'):
     N = len(M)
     print('Right Sweep {}'.format(iterCnt))
     for site in range(N-1):
         #diag = calc_diag(M,W,F,site)
-        E,v = calc_eigs(M,W,F,site,nStates)
+        E,v = calc_eigs(M,W,F,site,nStates,alg=alg)
         M = renormalizeR(M,v,site,nStates=nStates)
         F = update_envR(M,W,F,site)
         print('\tEnergy at Site {}: {}'.format(site,E))
@@ -332,12 +339,12 @@ def rightSweep(M,W,F,iterCnt,nStates=1):
             Ereturn = E
     return Ereturn,M,F
 
-def leftSweep(M,W,F,iterCnt,nStates=1):
+def leftSweep(M,W,F,iterCnt,nStates=1,alg='exact'):
     N = len(M)
     print('Left Sweep {}'.format(iterCnt))
     for site in range(N-1,0,-1):
         #diag = calc_diag(M,W,F,site)
-        E,v = calc_eigs(M,W,F,site,nStates)
+        E,v = calc_eigs(M,W,F,site,nStates,alg=alg)
         M = renormalizeL(M,v,site,nStates=nStates)
         F = update_envL(M,W,F,site)
         print('\tEnergy at Site {}: {}'.format(site,E))
@@ -380,22 +387,24 @@ def observable_sweep(M,F):
             EE,EEs = calc_entanglement(S)
     return EE,EEs
 
-def run_sweeps(M,W,F,initGuess=None,maxIter=10,tol=1e-5,fname = None,nStates=1,targetState=0):
+def run_sweeps(M,W,F,initGuess=None,maxIter=10,tol=1e-5,fname = None,nStates=1,targetState=0,alg='exact'):
     converged = False
     iterCnt = 0
     E_prev = 0
     while not converged:
-        E,M,F = rightSweep(M,W,F,iterCnt,nStates=nStates)
-        E,M,F = leftSweep(M,W,F,iterCnt,nStates=nStates)
+        E,M,F = rightSweep(M,W,F,iterCnt,nStates=nStates,alg=alg)
+        E,M,F = leftSweep(M,W,F,iterCnt,nStates=nStates,alg=alg)
         converged,E_prev,iterCnt = checkConv(E_prev,E,tol,iterCnt,maxIter,nStates=nStates,targetState=targetState)
     save_mps(M,fname)
     EE,EEs = observable_sweep(M,F)
     if nStates != 1: 
         gap = E[0]-E[1]
-        E = E[targetState]
+    else:
+        gap = None
+    if hasattr(E,'__len__'): E = E[targetState]
     return E,EE,gap
 
-def run_dmrg(mpo,initGuess=None,mbd=[2,4,8,16],tol=1e-5,maxIter=3,fname=None,nStates=1,targetState=0,constant_mbd=False):
+def run_dmrg(mpo,initGuess=None,mbd=[2,4,8,16],tol=1e-5,maxIter=3,fname=None,nStates=1,targetState=0,constant_mbd=False,alg='exact'):
     N = len(mpo[0])
     # Make sure everything is a vector
     if not hasattr(mbd,'__len__'): mbd = np.array([mbd])
@@ -408,9 +417,9 @@ def run_dmrg(mpo,initGuess=None,mbd=[2,4,8,16],tol=1e-5,maxIter=3,fname=None,nSt
     else:
         assert(len(maxIter) == len(mbd))
     # Vector to store results
-    Evec  = np.zeros(len(mbd))
-    EEvec = np.zeros(len(mbd))
-    gapvec= np.zeros(len(mbd))
+    Evec  = np.zeros(len(mbd),dtype=np.complex_)
+    EEvec = np.zeros(len(mbd),dtype=np.complex_)
+    gapvec= np.zeros(len(mbd),dtype=np.complex_)
     for mbdInd,mbdi in enumerate(mbd):
         print('Starting Calc for MBD = {}'.format(mbdi))
         if initGuess is None:
@@ -424,11 +433,14 @@ def run_dmrg(mpo,initGuess=None,mbd=[2,4,8,16],tol=1e-5,maxIter=3,fname=None,nSt
                 mps = load_mps(N,initGuess+'_mbd'+str(mbdInd-1))
                 mps = increase_mbd(mps,mbdi)
         env = calc_env(mps,mpo,mbdi)
+        fname_tmp = None
+        if fname is not None: fname_tmp = fname + '_mbd' + str(mbdInd)
         E,EE,gap = run_sweeps(mps,mpo,env,
                              maxIter=maxIter[mbdInd],
                              tol=tol[mbdInd],
-                             fname=fname+'_mbd'+str(mbdInd),
+                             fname=fname_tmp,
                              nStates=nStates,
+                             alg=alg,
                              targetState=targetState)
         Evec[mbdInd]  = E
         EEvec[mbdInd] = EE
