@@ -126,10 +126,10 @@ def val2vecParams(N,hamParams):
 
 def extractParams(N,hamParams):
     a = hamparams[0].astype(dtype=np.float_)
-    g = hamparams[0].astype(dtype=np.float_)
-    p = hamparams[0].astype(dtype=np.float_)
-    q = hamparams[0].astype(dtype=np.float_)
-    b = hamparams[0].astype(dtype=np.float_)
-    d = hamparams[0].astype(dtype=np.float_)
-    s = hamparams[0].astype(dtype=np.float_)
+    g = hamparams[1].astype(dtype=np.float_)
+    p = hamparams[2].astype(dtype=np.float_)
+    q = hamparams[3].astype(dtype=np.float_)
+    b = hamparams[4].astype(dtype=np.float_)
+    d = hamparams[5].astype(dtype=np.float_)
+    s = hamparams[6].astype(dtype=np.float_)
     return (a,g,p,q,b,d,s)
