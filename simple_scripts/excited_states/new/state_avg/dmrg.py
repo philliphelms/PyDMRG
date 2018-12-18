@@ -290,7 +290,7 @@ def calc_eigs_arnoldi(M,W,F,site,nStates):
     vecs = vecs[:,inds[:nStates]]
     return E,vecs
 
-def calc_eigs(M,W,F,site,nStates,alg='exact'):
+def calc_eigs(M,W,F,site,nStates,alg='arnoldi'):
     if alg == 'davidson':
         E,vecs = calc_eigs_davidson(M,W,F,site,nStates)
     elif alg == 'exact':
@@ -326,7 +326,7 @@ def update_envR(M,W,F,site):
             F[mpoInd][site+1] = einsum('npq,mpnk->kmq',M[site],tmp2)
     return F
 
-def rightSweep(M,W,F,iterCnt,nStates=1,alg='exact'):
+def rightSweep(M,W,F,iterCnt,nStates=1,alg='arnoldi'):
     N = len(M)
     print('Right Sweep {}'.format(iterCnt))
     for site in range(N-1):
@@ -339,7 +339,7 @@ def rightSweep(M,W,F,iterCnt,nStates=1,alg='exact'):
             Ereturn = E
     return Ereturn,M,F
 
-def leftSweep(M,W,F,iterCnt,nStates=1,alg='exact'):
+def leftSweep(M,W,F,iterCnt,nStates=1,alg='arnoldi'):
     N = len(M)
     print('Left Sweep {}'.format(iterCnt))
     for site in range(N-1,0,-1):
@@ -387,7 +387,7 @@ def observable_sweep(M,F):
             EE,EEs = calc_entanglement(S)
     return EE,EEs
 
-def run_sweeps(M,W,F,initGuess=None,maxIter=10,tol=1e-5,fname = None,nStates=1,targetState=0,alg='exact'):
+def run_sweeps(M,W,F,initGuess=None,maxIter=10,tol=1e-5,fname = None,nStates=1,targetState=0,alg='arnoldi'):
     converged = False
     iterCnt = 0
     E_prev = 0
@@ -404,7 +404,7 @@ def run_sweeps(M,W,F,initGuess=None,maxIter=10,tol=1e-5,fname = None,nStates=1,t
     if hasattr(E,'__len__'): E = E[targetState]
     return E,EE,gap
 
-def run_dmrg(mpo,initGuess=None,mbd=[2,4,8,16],tol=1e-5,maxIter=3,fname=None,nStates=1,targetState=0,constant_mbd=False,alg='exact'):
+def run_dmrg(mpo,initGuess=None,mbd=[2,4,8,16],tol=1e-5,maxIter=3,fname=None,nStates=1,targetState=0,constant_mbd=False,alg='arnoldi'):
     N = len(mpo[0])
     # Make sure everything is a vector
     if not hasattr(mbd,'__len__'): mbd = np.array([mbd])

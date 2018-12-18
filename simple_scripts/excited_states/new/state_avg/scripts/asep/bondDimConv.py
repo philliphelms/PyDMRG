@@ -6,8 +6,8 @@ from sys import argv
 # Set Calculation Parameters
 N = int(argv[1])
 p = 0.1 
-mbd = np.array([2,4])
-sVec = np.linspace(-0.5,0.5,30)
+mbd = np.array([2,4,8,16,32,48,64])
+sVec = np.linspace(-0.5,0.5,50)
 
 # Allocate Memory for results
 E   = np.zeros((len(sVec),len(mbd)))
