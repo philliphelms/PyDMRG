@@ -4,6 +4,7 @@ from pyscf.lib import einsum
 from pyscf.lib import eig as davidson
 from scipy.sparse.linalg import eigs as arnoldi
 from scipy.sparse.linalg import LinearOperator
+import warnings
 
 # To Do :
 # - Left Eigenvectors
@@ -156,6 +157,7 @@ def renormalizeR(M,v,site,nStates=1,targetState=0):
     # Calculate the reduced density matrix
     for i in range(nStates):
         if nStates != 1: 
+            print(v.dtype)
             vtmp = v[:,i]
         else:
             vtmp  = v
@@ -185,7 +187,8 @@ def renormalizeR(M,v,site,nStates=1,targetState=0):
         vReshape = np.reshape(v[:,targetState],(n1,n2,n3))
     else:
         vReshape = np.reshape(v,(n1,n2,n3))
-    M[site+1] = einsum('ijk,ijl,mkn->mln',np.conj(M[site]),vReshape,M[site+1])
+    # PH - This next line is incorrect!!!
+    M[site+1] = einsum('lmn,lmk,ikj->inj',np.conj(M[site]),vReshape,M[site+1])
     return M
 
 def renormalizeL(M,v,site,nStates=1,targetState=0):
@@ -233,6 +236,12 @@ def calc_eigs_exact(M,W,F,site,nStates):
     inds = np.argsort(vals)[::-1]
     E = vals[inds[:nStates]]
     vecs = vecs[:,inds[:nStates]]
+    #print('#'*70+'\n\n')
+    #print('MPREV\t\tVec[:,0]\t\tVec[:,1]')
+    indices = np.argsort(np.abs(Mprev))[::-1]
+    #for i in range(len(Mprev)):
+    #    print('{}\t{}\t{}'.format(Mprev[indices[i]],vecs[indices[i],0],vecs[indices[i],1]))
+    print('OVERLAP: {}'.format(np.dot(Mprev,np.conj(vecs[:,0]))))
     return E,vecs
 
 def make_ham_func(M,W,F,site):
@@ -257,31 +266,48 @@ def make_ham_func(M,W,F,site):
     return Hfun,precond
 
 def pick_eigs(w,v,nroots,x0):
-    idx = w.real.argsort()
-    return w[idx], v[:,idx],idx
+    abs_imag = abs(w.imag)
+    max_imag_tol = max(1e-3, min(abs_imag)*1.1)
+    real_idx = np.where((abs_imag < max_imag_tol))[0]
+    #if len(real_idx) < nroots and w.size >= nroots:
+    #    warnings.warn('%d eigenvalues with imaginary part > 0.01\n' %
+    #                  np.count_nonzero(abs_imag > 1e-2))
+    idx = real_idx[w[real_idx].real.argsort()]
+    w = w[idx]
+    v = v[:,idx]
+    return w, v, idx
 
-def calc_eigs_davidson(M,W,F,site,nStates):
+def calc_eigs_davidson(M,W,F,site,nStates,nStatesCalc=None):
     H,precond = make_ham_func(M,W,F,site)
+    (n1,n2,n3) = M[site].shape
     guess = np.reshape(M[site],-1)
-    vals,vecso = davidson(H,guess,precond,nroots=nStates,pick=pick_eigs,follow_state=True,tol=1e-8)
+    if nStatesCalc is None: nStatesCalc = nStates+2
+    nStates,nStatesCalc = min(nStates,n1*n2*n3-1), min(nStatesCalc,n1*n2*n3-1)
+    vals,vecso = davidson(H,guess,precond,nroots=nStatesCalc,pick=pick_eigs,follow_state=False,tol=1e-16)
     sort_inds = np.argsort(np.real(vals))
     try:
         vecs = np.zeros((len(vecso[0]),nStates),dtype=np.complex_)
         vals = -vals[sort_inds[:nStates]]
         for i in range(nStates):
+            print('Made it here',i,sort_inds[i],len(vecso))
             vecs[:,i] = vecso[sort_inds[i]]
+        print('Completed Top')
     except:
         vecs = vecso
+        print('did not complet top')
         pass
     return vals,vecs
 
-def calc_eigs_arnoldi(M,W,F,site,nStates):
+def calc_eigs_arnoldi(M,W,F,site,nStates,nStatesCalc=None):
     guess = np.reshape(M[site],-1)
     Hfun,_ = make_ham_func(M,W,F,site)
     (n1,n2,n3) = M[site].shape
     H = LinearOperator((n1*n2*n3,n1*n2*n3),matvec=Hfun)
+    if nStatesCalc is None: nStatesCalc = nStates+2
+    nStates,nStatesCalc = min(nStates,n1*n2*n3-2), min(nStatesCalc,n1*n2*n3-2)
+    vals,vecs = arnoldi(H,k=nStatesCalc,which='SR',v0=guess,tol=1e-5)
     try:
-        vals,vecs = arnoldi(H,k=nStates,which='SR',v0=guess,tol=1e-5)
+        vals,vecs = arnoldi(H,k=nStatesCalc,which='SR',v0=guess,tol=1e-5)
     except Exception as exc:
         vals = exc.eigenvalues
         vecs = exc.eigenvectors
@@ -352,19 +378,20 @@ def leftSweep(M,W,F,iterCnt,nStates=1,alg='arnoldi'):
             Ereturn = E
     return Ereturn,M,F
 
-def checkConv(E_prev,E,tol,iterCnt,maxIter,nStates=1,targetState=0):
+def checkConv(E_prev,E,tol,iterCnt,maxIter,nStates=1,targetState=0,EE=None,EEspec=[None]):
     if nStates != 1: E = E[targetState]
     if np.abs(E-E_prev) < tol:
-        print('#'*75+'\nConverged at E = {}'.format(E)+'\n'+'#'*75)
-        converged = True
+        cont = False
+        conv = True
     elif iterCnt > maxIter:
-        print('Convergence not acheived')
-        converged = True
+        cont = False
+        conv = False
     else:
         iterCnt += 1
         E_prev = E
-        converged = False
-    return converged,E_prev,iterCnt
+        cont = True
+        conv = False
+    return cont,conv,E_prev,iterCnt
 
 def save_mps(M,fname):
     if fname is not None:
@@ -387,14 +414,27 @@ def observable_sweep(M,F):
             EE,EEs = calc_entanglement(S)
     return EE,EEs
 
+def printResults(converged,E,EE,EEspec,gap):
+    print('#'*75)
+    if converged:
+        print('Converged at E = {}'.format(E))
+    else:
+        print('Convergence not acheived, E = {}'.format(E))
+    print('\tGap = {}'.format(gap))
+    print('\tEntanglement Entropy  = {}'.format(EE))
+    print('\tEntanglement Spectrum =')
+    for i in range(len(EEspec)):
+        print('\t\t{}'.format(EEspec[i]))
+    print('#'*75)
+
 def run_sweeps(M,W,F,initGuess=None,maxIter=10,tol=1e-5,fname = None,nStates=1,targetState=0,alg='arnoldi'):
-    converged = False
+    cont = True
     iterCnt = 0
     E_prev = 0
-    while not converged:
+    while cont:
         E,M,F = rightSweep(M,W,F,iterCnt,nStates=nStates,alg=alg)
         E,M,F = leftSweep(M,W,F,iterCnt,nStates=nStates,alg=alg)
-        converged,E_prev,iterCnt = checkConv(E_prev,E,tol,iterCnt,maxIter,nStates=nStates,targetState=targetState)
+        cont,conv,E_prev,iterCnt = checkConv(E_prev,E,tol,iterCnt,maxIter,nStates=nStates,targetState=targetState)
     save_mps(M,fname)
     EE,EEs = observable_sweep(M,F)
     if nStates != 1: 
@@ -402,6 +442,7 @@ def run_sweeps(M,W,F,initGuess=None,maxIter=10,tol=1e-5,fname = None,nStates=1,t
     else:
         gap = None
     if hasattr(E,'__len__'): E = E[targetState]
+    printResults(conv,E,EE,EEs,gap)
     return E,EE,gap
 
 def run_dmrg(mpo,initGuess=None,mbd=[2,4,8,16],tol=1e-5,maxIter=3,fname=None,nStates=1,targetState=0,constant_mbd=False,alg='arnoldi'):
@@ -445,4 +486,7 @@ def run_dmrg(mpo,initGuess=None,mbd=[2,4,8,16],tol=1e-5,maxIter=3,fname=None,nSt
         Evec[mbdInd]  = E
         EEvec[mbdInd] = EE
         gapvec[mbdInd]=gap
-    return Evec,EEvec,gapvec
+    if len(Evec) == 1:
+        return E,EE,gap
+    else:
+        return Evec,EEvec,gapvec
