@@ -4,10 +4,10 @@ import time
 from sys import argv
 
 # Set Calculation Parameters
-N = 30
+N = 20
 p = 0.1 
 mbd = 10#np.array([2,4,8,16,32,48,64])
-sVec = np.linspace(-0.5,0.5,10)
+sVec = np.linspace(0.,0.5,500)
 
 # Allocate Memory for results
 E   = np.zeros((len(sVec)))
@@ -20,7 +20,11 @@ for sind,s in enumerate(sVec):
     if sind == 0:
         print(s)
         mpo = return_mpo(N,(0.5,0.5,p,1.-p,0.5,0.5,s))
-        Etmp,EEtmp,gaptmp = run_dmrg(mpo,mbd=mbd,fname=fname,nStates=2,alg='davidson')
+        Etmp,EEtmp,gaptmp = run_dmrg(mpo,
+                                     mbd=mbd,
+                                     fname=fname,
+                                     nStates=2,
+                                     alg='exact')
         print(Etmp)
         print(EEtmp)
         print(gaptmp)
@@ -30,7 +34,13 @@ for sind,s in enumerate(sVec):
     else:
         print(s)
         mpo = return_mpo(N,(0.5,0.5,p,1.-p,0.5,0.5,s))
-        Etmp,EEtmp,gaptmp = run_dmrg(mpo,mbd=mbd,initGuess=fname,fname=fname,nStates=2,alg='davidson')
+        Etmp,EEtmp,gaptmp = run_dmrg(mpo,
+                                     mbd=mbd,
+                                     initGuess=fname,
+                                     fname=fname,
+                                     nStates=2,
+                                     alg='exact',
+                                     preserveState=True)
         E[sind] = Etmp
         EE[sind] = EEtmp
         gap[sind] = gaptmp
