@@ -64,9 +64,10 @@ def create_rand_mps(N,mbd,d=2):
 def load_mps(N,fname):
     npzfile = np.load(fname+'.npz')
     M = []
+    gaugeSite = npzfile['site']
     for i in range(N):
         M.append(npzfile['M'+str(i)])
-    return M
+    return M,gaugeSite
 
 def make_mps_right(M):
     N = len(M)
@@ -80,7 +81,7 @@ def make_mps_right(M):
         M[i-1] = einsum('klj,ji,i->kli',M[i-1],U,s)
     return M
 
-def calc_env(M,W,mbd):
+def alloc_env(M,W,mbd):
     N = len(M)
     # Initialize Empty FL to hold all F lists
     env_lst = []
@@ -100,16 +101,40 @@ def calc_env(M,W,mbd):
         F.append(np.array([[[1]]]))
         # Add environment to env list
         env_lst.append(F)
-    # Calculate Environment
-    for site in range(int(N)-1,0,-1):
-        for mpoInd in range(len(W)):
-            if W[mpoInd][site] is None:
-                tmp1 = einsum('eaf,cdf->eacd',M[site],env_lst[mpoInd][site+1])
-                env_lst[mpoInd][site] = einsum('bacy,bxc->xya',tmp1,np.conj(M[site]))
-            else:
-                tmp1 = einsum('eaf,cdf->eacd',M[site],env_lst[mpoInd][site+1])
-                tmp2 = einsum('eacd,ydbe->acyb',tmp1,W[mpoInd][site])
-                env_lst[mpoInd][site] = einsum('acyb,bxc->xya',tmp2,np.conj(M[site]))
+    return env_lst
+
+def update_envL(M,W,F,site):
+    for mpoInd in range(len(W)):
+        if W[mpoInd][site] is None:
+            tmp1 = einsum('eaf,cdf->eacd',M[site],F[mpoInd][site+1])
+            F[mpoInd][site] = einsum('bacy,bxc->xya',tmp1,np.conj(M[site]))
+        else:
+            tmp1 = einsum('eaf,cdf->eacd',M[site],F[mpoInd][site+1])
+            tmp2 = einsum('eacd,ydbe->acyb',tmp1,W[mpoInd][site])
+            F[mpoInd][site] = einsum('acyb,bxc->xya',tmp2,np.conj(M[site]))
+    return F
+
+def update_envR(M,W,F,site):
+    for mpoInd in range(len(W)):
+        if W[mpoInd][site] is None:
+            tmp1 = einsum('jlp,ijk->lpik',F[mpoInd][site],np.conj(M[site]))
+            F[mpoInd][site+1] = einsum('npq,mpnk->kmq',M[site],tmp1)
+        else:
+            tmp1 = einsum('jlp,ijk->lpik',F[mpoInd][site],np.conj(M[site]))
+            tmp2 = einsum('lmin,lpik->mpnk',W[mpoInd][site],tmp1)
+            F[mpoInd][site+1] = einsum('npq,mpnk->kmq',M[site],tmp2)
+    return F
+
+def calc_env(M,W,mbd,gaugeSite=0):
+    # PH - What to do with this gauge site stuff
+    N = len(M)
+    env_lst = alloc_env(M,W,mbd)
+    # Calculate Environment From Right
+    for site in range(int(N)-1,gaugeSite,-1):
+        env_lst = update_envL(M,W,env_lst,site)
+    # Calculate Environment from Left
+    for site in range(gaugeSite):
+        env_lst = update_envR(M,W,env_lst,site)
     return env_lst
 
 def calc_diag(M,W,F,site):
@@ -152,12 +177,34 @@ def calcRDM(M,swpDir):
         M = np.reshape(M,(n2,n1*n3))
         return einsum('ij,ik->jk',M,np.conj(M))
 
+def calc_ent_right(M,v,site):
+    (n1,n2,n3) = M[site].shape
+    Mtmp = np.reshape(v,(n1,n2,n3))
+    M_reshape = np.reshape(Mtmp,(n1*n2,n3))
+    (_,S,_) = np.linalg.svd(M_reshape,full_matrices=False)
+    EE,EEs = calc_entanglement(S)
+    print('\t\tEE = {}'.format(EE))
+    return EE, EEs
+
+def calc_ent_left(M,v,site):
+    (n1,n2,n3) = M[site].shape
+    Mtmp = np.reshape(v,(n1,n2,n3))
+    M_reshape = np.swapaxes(Mtmp,0,1)
+    M_reshape = np.reshape(M_reshape,(n2,n1*n3))
+    (_,S,_) = np.linalg.svd(M_reshape,full_matrices=False)
+    EE,EEs = calc_entanglement(S)
+    print('\t\tEE = {}'.format(EE))
+    return EE, EEs
+
 def renormalizeR(M,v,site,nStates=1,targetState=0):
     (n1,n2,n3) = M[site].shape
+    # Try to calculate Entanglement?
+    EE,EEs = calc_ent_right(M,v[:,targetState],site)
     # Calculate the reduced density matrix
+    _,nStatesCalc = v.shape
+    nStates = min(nStates,nStatesCalc)
     for i in range(nStates):
         if nStates != 1: 
-            print(v.dtype)
             vtmp = v[:,i]
         else:
             vtmp  = v
@@ -189,11 +236,15 @@ def renormalizeR(M,v,site,nStates=1,targetState=0):
         vReshape = np.reshape(v,(n1,n2,n3))
     # PH - This next line is incorrect!!!
     M[site+1] = einsum('lmn,lmk,ikj->inj',np.conj(M[site]),vReshape,M[site+1])
-    return M
+    return M,EE,EEs
 
 def renormalizeL(M,v,site,nStates=1,targetState=0):
     (n1,n2,n3) = M[site].shape
+    # Try to calculate Entanglement?
+    EE,EEs = calc_ent_left(M,v[:,targetState],site)
     # Calculate the reduced density matrix
+    _,nStatesCalc = v.shape
+    nStates = min(nStates,nStatesCalc)
     for i in range(nStates):
         if nStates != 1: 
             vtmp = v[:,i]
@@ -227,22 +278,49 @@ def renormalizeL(M,v,site,nStates=1,targetState=0):
     else:
         vReshape = np.reshape(v,(n1,n2,n3))
     M[site-1] = einsum('ijk,lkm,lnm->ijn',M[site-1],vReshape,np.conj(M[site]))
-    return M
+    return M,EE,EEs
 
-def calc_eigs_exact(M,W,F,site,nStates):
+def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False):
+    _,nVecs = vecs.shape
+    # Check to make sure we dont have a small gap
+    reuseOldState = True
+    for j in range(nVecs):
+        ovlp_j = np.abs(np.dot(Mprev,np.conj(vecs[:,j])))
+        print('\t\tChecking Overlap {} = {}'.format(j,ovlp_j))
+        if ovlp_j > 0.95:
+            reuseOldState = False
+            if (j != 0) and preserveState:
+                # Swap eigenstates
+                print('!!! Swapping States {} & {} !!!'.format(0,j))
+                tmpVec = vecs[:,j]
+                vecs[:,j] = vecs[:,0]
+                vecs[:,0] = tmpVec
+                Etmp = E[j]
+                E[j] = E[0]
+                E[0] = Etmp
+    if reuseOldState and preserveState:
+        print('!!! Correct State Not Found !!!')
+        vecs = Mprev
+        # Reformat it so it matches vecs
+        vecs = np.swapaxes(np.array([vecs]),0,1)
+    if printStates:
+        if np.abs(np.dot(Mprev,np.conj(vecs[:,0]))) < 0.9:
+            print('Guess Prev\t\tEig Vec 0\t\tEig Vec 1')
+            indices = np.argsort(np.abs(Mprev))[::-1]
+            for i in range(len(Mprev)):
+                print('{}\t{}\t{}'.format(Mprev[indices[i]],vecs[indices[i],0],vecs[indices[i],1]))
+    return E,vecs,np.abs(np.dot(Mprev,np.conj(vecs[:,0])))
+
+def calc_eigs_exact(M,W,F,site,nStates,preserveState=False):
     H = calc_ham(M,W,F,site)
     Mprev = M[site].ravel()
     vals,vecs = sla.eig(H)
     inds = np.argsort(vals)[::-1]
     E = vals[inds[:nStates]]
+    #print('Some Eigenvalues: {}'.format(vals[inds[:nStates+3]]))
     vecs = vecs[:,inds[:nStates]]
-    #print('#'*70+'\n\n')
-    #print('MPREV\t\tVec[:,0]\t\tVec[:,1]')
-    indices = np.argsort(np.abs(Mprev))[::-1]
-    #for i in range(len(Mprev)):
-    #    print('{}\t{}\t{}'.format(Mprev[indices[i]],vecs[indices[i],0],vecs[indices[i],1]))
-    print('OVERLAP: {}'.format(np.dot(Mprev,np.conj(vecs[:,0]))))
-    return E,vecs
+    E,vecs,ovlp = check_overlap(Mprev,vecs,E,preserveState=preserveState)
+    return E,vecs,ovlp
 
 def make_ham_func(M,W,F,site):
     H = calc_ham(M,W,F,site)
@@ -288,15 +366,12 @@ def calc_eigs_davidson(M,W,F,site,nStates,nStatesCalc=None):
     try:
         vecs = np.zeros((len(vecso[0]),nStates),dtype=np.complex_)
         vals = -vals[sort_inds[:nStates]]
-        for i in range(nStates):
-            print('Made it here',i,sort_inds[i],len(vecso))
+        for i in range(min(nStates,len(sort_inds))):
             vecs[:,i] = vecso[sort_inds[i]]
-        print('Completed Top')
     except:
         vecs = vecso
-        print('did not complet top')
         pass
-    return vals,vecs
+    return vals,vecs,ovlp
 
 def calc_eigs_arnoldi(M,W,F,site,nStates,nStatesCalc=None):
     guess = np.reshape(M[site],-1)
@@ -314,69 +389,71 @@ def calc_eigs_arnoldi(M,W,F,site,nStates,nStatesCalc=None):
     inds = np.argsort(vals)
     E = -vals[inds[:nStates]]
     vecs = vecs[:,inds[:nStates]]
-    return E,vecs
+    print('Overlap Guess & Final = {}'.format(np.dot(guess,vecs[:,0])))
+    return E,vecs,ovlp
 
-def calc_eigs(M,W,F,site,nStates,alg='arnoldi'):
+def calc_eigs(M,W,F,site,nStates,alg='arnoldi',preserveState=False):
     if alg == 'davidson':
-        E,vecs = calc_eigs_davidson(M,W,F,site,nStates)
+        E,vecs,ovlp = calc_eigs_davidson(M,W,F,site,nStates,perserveState=preserveState)
     elif alg == 'exact':
-        E,vecs = calc_eigs_exact(M,W,F,site,nStates)
+        E,vecs,ovlp = calc_eigs_exact(M,W,F,site,nStates,preserveState=preserveState)
     elif alg == 'arnoldi':
-        E,vecs = calc_eigs_arnoldi(M,W,F,site,nStates)
-    return E,vecs
+        E,vecs,ovlp = calc_eigs_arnoldi(M,W,F,site,nStates,preserveState=preserveState)
+    return E,vecs,ovlp
 
 def calc_entanglement(S):
-    EEspec = -S**2.*np.log2(S**2.)
+    # Ensure correct normalization
+    S /= np.sqrt(np.dot(S,np.conj(S)))
+    assert(np.isclose(np.abs(np.sum(S*np.conj(S))),1.))
+    EEspec = -S*np.conj(S)*np.log2(S*np.conj(S))
     EE = np.sum(EEspec)
     return EE,EEspec
 
-def update_envL(M,W,F,site):
-    for mpoInd in range(len(W)):
-        if W[mpoInd][site] is None:
-            tmp1 = einsum('eaf,cdf->eacd',M[site],F[mpoInd][site+1])
-            F[mpoInd][site] = einsum('bacy,bxc->xya',tmp1,np.conj(M[site]))
-        else:
-            tmp1 = einsum('eaf,cdf->eacd',M[site],F[mpoInd][site+1])
-            tmp2 = einsum('eacd,ydbe->acyb',tmp1,W[mpoInd][site])
-            F[mpoInd][site] = einsum('acyb,bxc->xya',tmp2,np.conj(M[site]))
-    return F
+def rightStep(M,W,F,site,nStates=1,alg='arnoldi',preserveState=False):
+    E,v,ovlp = calc_eigs(M,W,F,site,nStates,alg=alg,preserveState=preserveState)
+    M,EE,EEs = renormalizeR(M,v,site,nStates=nStates)
+    F = update_envR(M,W,F,site)
+    return E,M,F,EE,EEs
 
-def update_envR(M,W,F,site):
-    for mpoInd in range(len(W)):
-        if W[mpoInd][site] is None:
-            tmp1 = einsum('jlp,ijk->lpik',F[mpoInd][site],np.conj(M[site]))
-            F[mpoInd][site+1] = einsum('npq,mpnk->kmq',M[site],tmp1)
-        else:
-            tmp1 = einsum('jlp,ijk->lpik',F[mpoInd][site],np.conj(M[site]))
-            tmp2 = einsum('lmin,lpik->mpnk',W[mpoInd][site],tmp1)
-            F[mpoInd][site+1] = einsum('npq,mpnk->kmq',M[site],tmp2)
-    return F
-
-def rightSweep(M,W,F,iterCnt,nStates=1,alg='arnoldi'):
+def rightSweep(M,W,F,iterCnt,nStates=1,alg='arnoldi',preserveState=False,startSite=None,endSite=None):
     N = len(M)
+    if startSite is None: startSite = 0
+    if endSite is None: endSite = N-1
+    Ereturn = None
+    EE = None
+    EEs = None
     print('Right Sweep {}'.format(iterCnt))
-    for site in range(N-1):
-        #diag = calc_diag(M,W,F,site)
-        E,v = calc_eigs(M,W,F,site,nStates,alg=alg)
-        M = renormalizeR(M,v,site,nStates=nStates)
-        F = update_envR(M,W,F,site)
+    for site in range(startSite,endSite):
+        E,M,F,_EE,_EEs = rightStep(M,W,F,site,nStates,alg=alg,preserveState=preserveState)
         print('\tEnergy at Site {}: {}'.format(site,E))
         if site == int(N/2):
             Ereturn = E
-    return Ereturn,M,F
+            EE = _EE
+            EEs= _EEs
+    return Ereturn,M,F,EE,EEs
 
-def leftSweep(M,W,F,iterCnt,nStates=1,alg='arnoldi'):
+def leftStep(M,W,F,site,nStates=1,alg='arnoldi',preserveState=False):
+    E,v,ovlp = calc_eigs(M,W,F,site,nStates,alg=alg,preserveState=preserveState)
+    M,EE,EEs = renormalizeL(M,v,site,nStates=nStates)
+    F = update_envL(M,W,F,site)
+    return E,M,F,EE,EEs
+
+def leftSweep(M,W,F,iterCnt,nStates=1,alg='arnoldi',preserveState=False,startSite=None,endSite=None):
     N = len(M)
+    if startSite is None: startSite = N-1
+    if endSite is None: endSite = 0
+    Ereturn = None
+    EE = None
+    EEs = None
     print('Left Sweep {}'.format(iterCnt))
-    for site in range(N-1,0,-1):
-        #diag = calc_diag(M,W,F,site)
-        E,v = calc_eigs(M,W,F,site,nStates,alg=alg)
-        M = renormalizeL(M,v,site,nStates=nStates)
-        F = update_envL(M,W,F,site)
+    for site in range(startSite,endSite,-1):
+        E,M,F,_EE,_EEs = leftStep(M,W,F,site,nStates,alg=alg,preserveState=preserveState)
         print('\tEnergy at Site {}: {}'.format(site,E))
         if site == int(N/2):
             Ereturn = E
-    return Ereturn,M,F
+            EE = _EE
+            EEs= _EEs
+    return Ereturn,M,F,EE,EEs
 
 def checkConv(E_prev,E,tol,iterCnt,maxIter,nStates=1,targetState=0,EE=None,EEspec=[None]):
     if nStates != 1: E = E[targetState]
@@ -393,16 +470,17 @@ def checkConv(E_prev,E,tol,iterCnt,maxIter,nStates=1,targetState=0,EE=None,EEspe
         conv = False
     return cont,conv,E_prev,iterCnt
 
-def save_mps(M,fname):
+def save_mps(M,fname,gaugeSite=0):
     if fname is not None:
         Mdict = {}
         for i in range(len(M)):
             Mdict['M'+str(i)] = M[i]
-        np.savez(fname+'.npz',**Mdict)
+        np.savez(fname+'.npz',site=gaugeSite,**Mdict)
 
 def observable_sweep(M,F):
     # Going to the right
     # PH - Only calculates Entanglement Currently
+    # PH - Not in use now
     N = len(M)
     for site in range(N-1):
         (n1,n2,n3) = M[site].shape
@@ -427,16 +505,25 @@ def printResults(converged,E,EE,EEspec,gap):
         print('\t\t{}'.format(EEspec[i]))
     print('#'*75)
 
-def run_sweeps(M,W,F,initGuess=None,maxIter=10,tol=1e-5,fname = None,nStates=1,targetState=0,alg='arnoldi'):
+def run_sweeps(M,W,F,initGuess=None,maxIter=10,
+               tol=1e-5,fname = None,nStates=1,
+               targetState=0,alg='arnoldi',
+               preserveState=False,gaugeSiteLoad=0,
+               gaugeSiteSave=0):
     cont = True
     iterCnt = 0
     E_prev = 0
+    if gaugeSiteLoad != 0:
+        E,M,F,EE,EEs = rightSweep(M,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState,startSite=gaugeSiteLoad)
+        E,M,F,EE,EEs = leftSweep(M,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState)
     while cont:
-        E,M,F = rightSweep(M,W,F,iterCnt,nStates=nStates,alg=alg)
-        E,M,F = leftSweep(M,W,F,iterCnt,nStates=nStates,alg=alg)
+        E,M,F,EE,EEs = rightSweep(M,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState)
+        E,M,F,EE,EEs = leftSweep(M,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState)
         cont,conv,E_prev,iterCnt = checkConv(E_prev,E,tol,iterCnt,maxIter,nStates=nStates,targetState=targetState)
-    save_mps(M,fname)
-    EE,EEs = observable_sweep(M,F)
+    if gaugeSiteSave != 0:
+        _,M,_,_,_ = rightSweep(M,W,F,iterCnt+1,nStates=nStates,alg=alg,preserveState=preserveState,endSite=gaugeSiteSave)
+    save_mps(M,fname,gaugeSite=gaugeSiteSave)
+    #EE,EEs = observable_sweep(M,F)
     if nStates != 1: 
         gap = E[0]-E[1]
     else:
@@ -445,8 +532,13 @@ def run_sweeps(M,W,F,initGuess=None,maxIter=10,tol=1e-5,fname = None,nStates=1,t
     printResults(conv,E,EE,EEs,gap)
     return E,EE,gap
 
-def run_dmrg(mpo,initGuess=None,mbd=[2,4,8,16],tol=1e-5,maxIter=3,fname=None,nStates=1,targetState=0,constant_mbd=False,alg='arnoldi'):
+def run_dmrg(mpo,initGuess=None,mbd=[2,4,8,16],
+             tol=1e-5,maxIter=3,fname=None,
+             nStates=1,targetState=0,
+             constant_mbd=False,alg='arnoldi',
+             preserveState=False,gaugeSiteSave=None):
     N = len(mpo[0])
+    if gaugeSiteSave is None: gaugeSiteSave = int(N/2)
     # Make sure everything is a vector
     if not hasattr(mbd,'__len__'): mbd = np.array([mbd])
     if not hasattr(tol,'__len__'):
@@ -467,22 +559,26 @@ def run_dmrg(mpo,initGuess=None,mbd=[2,4,8,16],tol=1e-5,maxIter=3,fname=None,nSt
             mps = create_rand_mps(N,mbdi)
             mps = make_mps_right(mps)
             if constant_mbd: mps = increase_mbd(mps,mbdi,constant=True)
+            gSite = 0
         else:
             if mbdInd == 0:
-                mps = load_mps(N,initGuess+'_mbd'+str(mbdInd))
+                mps,gSite = load_mps(N,initGuess+'_mbd'+str(mbdInd))
             else:
-                mps = load_mps(N,initGuess+'_mbd'+str(mbdInd-1))
+                mps,gSite = load_mps(N,initGuess+'_mbd'+str(mbdInd-1))
                 mps = increase_mbd(mps,mbdi)
-        env = calc_env(mps,mpo,mbdi)
+        env = calc_env(mps,mpo,mbdi,gaugeSite=gSite)
         fname_tmp = None
         if fname is not None: fname_tmp = fname + '_mbd' + str(mbdInd)
         E,EE,gap = run_sweeps(mps,mpo,env,
-                             maxIter=maxIter[mbdInd],
-                             tol=tol[mbdInd],
-                             fname=fname_tmp,
-                             nStates=nStates,
-                             alg=alg,
-                             targetState=targetState)
+                              maxIter=maxIter[mbdInd],
+                              tol=tol[mbdInd],
+                              fname=fname_tmp,
+                              nStates=nStates,
+                              alg=alg,
+                              targetState=targetState,
+                              gaugeSiteLoad=gSite,
+                              gaugeSiteSave=gaugeSiteSave,
+                              preserveState=preserveState)
         Evec[mbdInd]  = E
         EEvec[mbdInd] = EE
         gapvec[mbdInd]=gap
