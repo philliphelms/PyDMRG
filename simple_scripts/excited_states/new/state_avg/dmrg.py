@@ -4,70 +4,12 @@ from pyscf.lib import einsum
 from pyscf.lib import eig as davidson
 from scipy.sparse.linalg import eigs as arnoldi
 from scipy.sparse.linalg import LinearOperator
+from tools.mps_tools import *
 import warnings
 
 # To Do :
 # - Left Eigenvectors
 # - constant_mbd=True does not work
-
-def increase_mbd(M,mbd,periodic=False,constant=False,d=2):
-    N = len(M)
-    if periodic == False:
-        if constant == False:
-            for site in range(int(N/2)):
-                nx,ny,nz = M[site].shape
-                sz1 = min(d**site,mbd)
-                sz2 = min(d**(site+1),mbd)
-                M[site] = np.pad(M[site], ((0,0), (0,sz1-ny), (0,sz2-nz)), 'constant', constant_values=0j)
-            if N%2 is 1:
-                site += 1
-                nx,ny,nz = M[site].shape
-                sz1 = min(d**(site),mbd)
-                sz2 = min(d**(site),mbd)
-                M[site] = np.pad(M[site], ((0,0), (0,sz1-ny), (0,sz2-nz)), 'constant', constant_values=0j)
-            for i in range(int(N/2))[::-1]:
-                site = N - i - 1
-                nx,ny,nz = M[site].shape
-                sz1 = min(d**(N-(site)),mbd)
-                sz2 = min(d**(N-(site+1)),mbd)
-                M[site] = np.pad(M[site], ((0,0), (0,sz1-ny), (0,sz2-nz)), 'constant', constant_values=0j)
-        else:
-            for site in range(N):
-                nx,ny,nz = M[site].shape
-                sz1 = mbd
-                sz2 = mbd
-                if site == 0: sz1 = 1
-                if site == N-1: sz2 = 1
-                M[site] = np.pad(M[site], ((0,0), (0,sz1-ny), (0,sz2-nz)), 'constant', constant_values=0j)
-    else:
-        for site in range(N):
-            nx,ny,nz = M[site].shape
-            sz1 = mbd
-            sz2 = mbd
-            M[site] = np.pad(M[site], ((0,0), (0,sz1-ny), (0,sz2-nz)), 'constant', constant_values=0j)
-    return M
-
-def create_rand_mps(N,mbd,d=2):
-    # Create MPS
-    M = []
-    for i in range(int(N/2)):
-        #M.insert(len(M),np.random.rand(d,min(d**(i),mbd),min(d**(i+1),mbd)))
-        M.insert(len(M),np.ones((d,min(d**(i),mbd),min(d**(i+1),mbd))))
-    if N%2 is 1:
-        #M.insert(len(M),np.random.rand(d,min(d**(i+1),mbd),min(d**(i+1),mbd)))
-        M.insert(len(M),np.ones((d,min(d**(i+1),mbd),min(d**(i+1),mbd))))
-    for i in range(int(N/2))[::-1]:
-        #M.insert(len(M),np.random.rand(d,min(d**(i+1),mbd),min(d**i,mbd)))
-        M.insert(len(M),np.ones((d,min(d**(i+1),mbd),min(d**i,mbd))))
-    return M
-
-def load_mps(N,fname):
-    npzfile = np.load(fname+'.npz')
-    M = []
-    gaugeSite = npzfile['site']
-    for i in range(N):
-        M.append(npzfile['M'+str(i)])
-    return M,gaugeSite
 
 def make_mps_right(M):
     N = len(M)
@@ -286,7 +228,7 @@ def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False):
     reuseOldState = True
     for j in range(nVecs):
         ovlp_j = np.abs(np.dot(Mprev,np.conj(vecs[:,j])))
-        print('\t\tChecking Overlap {} = {}'.format(j,ovlp_j))
+        print('\t\tChecking Overlap {} = {}'.format(j,np.dot(Mprev,np.conj(vecs[:,j]))))
         if ovlp_j > 0.95:
             reuseOldState = False
             if (j != 0) and preserveState:
@@ -469,13 +411,6 @@ def checkConv(E_prev,E,tol,iterCnt,maxIter,nStates=1,targetState=0,EE=None,EEspe
         cont = True
         conv = False
     return cont,conv,E_prev,iterCnt
-
-def save_mps(M,fname,gaugeSite=0):
-    if fname is not None:
-        Mdict = {}
-        for i in range(len(M)):
-            Mdict['M'+str(i)] = M[i]
-        np.savez(fname+'.npz',site=gaugeSite,**Mdict)
 
 def observable_sweep(M,F):
     # Going to the right

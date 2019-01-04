@@ -1,0 +1,135 @@
+from dmrg import *
+from mpo.asep import return_mpo
+import time
+from sys import argv
+from ed import ed
+
+# Set Calculation Parameters
+N = 8
+p = 0.1 
+mbd = 10 # Can only be a single value currently
+ds0 = 0.05
+ds_min = 1e-10
+s_symm = -(N-1.)/(2.*(N+1.))*np.log(p/(1.-p))
+s0 = s_symm
+sF = 3.*s_symm 
+ovlp_tol = 0.99
+make_plt = True
+
+# Allocate Memory for results
+E   = np.array([])
+EE  = np.array([])
+gap = np.array([])
+sVec = np.array([])
+fname = 'saved_states/stateMatchingMPS_N'+str(N)+'_id'+str(int(time.time()))
+
+# Set up Plotting Stuff
+if make_plt:
+    import matplotlib.pyplot as plt
+    f = plt.figure()
+    ax1 = f.add_subplot(221)
+    ax2 = f.add_subplot(222)
+    ax3 = f.add_subplot(223)
+    ax4 = f.add_subplot(224)
+
+# Run initial Calculation
+mpo = return_mpo(N,(0.5,0.5,p,1.-p,0.5,0.5,s0))
+Etmp,v = ed(mpo)
+print(Etmp)
+mps,EEtmp = state2mps(N,v[:,0],mbd)
+mps = move_gauge(mps,0,int(N/2))
+save_mps(mps,fname+'_mbd0',gaugeSite=int(N/2))
+
+# Store Results
+E = np.append(E,Etmp[0])
+EE = np.append(EE,EEtmp)
+gap = np.append(gap,np.abs(Etmp[0]-Etmp[1]))
+sVec = np.append(sVec,s0)
+
+# Run Calculations
+sCurr = s0
+while sCurr <= sF:
+    sCurr += ds0
+    # Check Overlap from previous s point
+    passed = False
+    dsi = ds0
+    while not passed:
+        print('Trying s = {}, ds = {}'.format(sCurr,dsi))
+        site = int(N/2)
+        mpo = return_mpo(N,(0.5,0.5,p,1.-p,0.5,0.5,sCurr))
+        mps,gSite = load_mps(N,fname+'_mbd0')
+        env = calc_env(mps,mpo,mbd,gaugeSite=gSite)
+        Etmp,v,ovlp = calc_eigs(mps,mpo,env,site,2,alg='exact',preserveState=False)
+        print('Gap Comparison',gap[-1],Etmp[0]-Etmp[1])
+        print('Printing Resulting States')
+        print('\tPrevious State\tNew State')
+        stateOld = mps[gSite].ravel()
+        inds = np.argsort(np.abs(stateOld))[::-1]
+        for i in range(len(v)):
+            print('{}\t{}\t{}'.format(stateOld[inds[i]],v[inds[i],0],v[inds[i],1]))
+        if ovlp > ovlp_tol:
+            # The state is similar and we can keep going in the sweep
+            passed = True
+        else:
+            # The state does not overlap, we need a smaller step size
+            sCurr -= dsi
+            dsi /= 2.
+            if dsi < ds_min:
+                sCurr += ds_min
+                passed = True
+                print('Failed to Match State')
+                #print('Printing Resulting States')
+                #print('\tPrevious State\tNew State')
+                #stateOld = mps[gSite].ravel()
+                #inds = np.argsort(np.abs(stateOld))[::-1]
+                #for i in range(len(v)):
+                #    print('{}\t{}\t{}'.format(stateOld[inds[i]],v[inds[i],0],v[inds[i],1]))
+            else:
+                sCurr += dsi
+    # Run Actual Calculation
+    mpo = return_mpo(N,(0.5,0.5,p,1.-p,0.5,0.5,sCurr))
+    Etmp,EEtmp,gaptmp = run_dmrg(mpo,
+                                 mbd=mbd,
+                                 initGuess=fname,
+                                 fname=fname,
+                                 nStates=2,
+                                 alg='exact',
+                                 preserveState=True)
+    E = np.append(E,Etmp)
+    EE = np.append(EE,EEtmp)
+    gap = np.append(gap,gaptmp)
+    sVec = np.append(sVec,sCurr)
+    # Create Plots
+    if make_plt:
+        #ax1.clear()
+        #ax1.plot(sVec,E,'b.')
+        curr = np.gradient(E,sVec)#(E[:-1]-E[1:])/(sVec[:-1]-sVec[1:])
+        #splt_curr = sVec[:-1]+0.5*(sVec[:-1]-sVec[1:])
+        ax1.clear()
+        ax1.plot(sVec,curr,'b.')
+        ax2.clear()
+        ax2.plot(sVec,EE,'b.')
+        ax3.clear()
+        susc = np.gradient(curr,sVec)
+        ax3.plot(sVec,susc,'b.')
+        ax4.clear()
+        ax4.semilogy(sVec,gap,'b.')
+        # Plot around symmetric point
+        #ax1.plot(s_symm + (s_symm - sVec),E,'b.')
+        ax1.plot(s_symm + (s_symm - sVec) - dsi,-curr,'b.')
+        ax2.plot(s_symm + (s_symm - sVec),EE,'b.')
+        ax3.plot(s_symm + (s_symm - sVec),susc,'b.')
+        ax4.semilogy(s_symm + (s_symm - sVec),gap,'b.')
+        #ax2.clear()
+        #ax2.plot(sVec[:sind],EE[:sind],'.')
+        #susc = (curr[:-1]-curr[1:])/(sVec[0]-sVec[1])
+        #splt_susc = splt_curr[:-1]+0.5*(sVec[1]-sVec[0])
+        #ax3.clear()
+        #ax3.plot(splt_susc[:sind-1],susc[:sind-1],'.')
+        #ax4.clear()
+        #ax4.semilogy(sVec[:sind],gap[:sind],'.')
+        plt.pause(0.01)
+    # Save Results
+    np.savez('results/asep_stateMatching_psweep_N'+str(N)+'_Np1_Ns'+str(len(sVec)),N=N,p=p,mbd=mbd,s=sVec,E=E,EE=EE,gap=gap)
+if make_plt:
+    plt.show()
