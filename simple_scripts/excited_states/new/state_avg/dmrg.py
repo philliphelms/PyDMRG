@@ -222,7 +222,7 @@ def renormalizeL(M,v,site,nStates=1,targetState=0):
     M[site-1] = einsum('ijk,lkm,lnm->ijn',M[site-1],vReshape,np.conj(M[site]))
     return M,EE,EEs
 
-def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False):
+def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=False):
     _,nVecs = vecs.shape
     # Check to make sure we dont have a small gap
     reuseOldState = True
@@ -231,7 +231,7 @@ def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False):
         print('\t\tChecking Overlap {} = {}'.format(j,np.dot(Mprev,np.conj(vecs[:,j]))))
         if ovlp_j > 0.95:
             reuseOldState = False
-            if (j != 0) and preserveState:
+            if (j != 0) and preserveState and allowSwap:
                 # Swap eigenstates
                 print('!!! Swapping States {} & {} !!!'.format(0,j))
                 tmpVec = vecs[:,j]
@@ -261,6 +261,10 @@ def calc_eigs_exact(M,W,F,site,nStates,preserveState=False):
     E = vals[inds[:nStates]]
     #print('Some Eigenvalues: {}'.format(vals[inds[:nStates+3]]))
     vecs = vecs[:,inds[:nStates]]
+    # Don't preserve state at ends
+    if not preserveState:
+        if (site == 0) or (site == len(M)-1):
+            preserveState=True
     E,vecs,ovlp = check_overlap(Mprev,vecs,E,preserveState=preserveState)
     return E,vecs,ovlp
 
@@ -397,9 +401,9 @@ def leftSweep(M,W,F,iterCnt,nStates=1,alg='arnoldi',preserveState=False,startSit
             EEs= _EEs
     return Ereturn,M,F,EE,EEs
 
-def checkConv(E_prev,E,tol,iterCnt,maxIter,nStates=1,targetState=0,EE=None,EEspec=[None]):
+def checkConv(E_prev,E,tol,iterCnt,maxIter,minIter,nStates=1,targetState=0,EE=None,EEspec=[None]):
     if nStates != 1: E = E[targetState]
-    if np.abs(E-E_prev) < tol:
+    if (np.abs(E-E_prev) < tol) and (iterCnt > minIter):
         cont = False
         conv = True
     elif iterCnt > maxIter:
@@ -440,11 +444,12 @@ def printResults(converged,E,EE,EEspec,gap):
         print('\t\t{}'.format(EEspec[i]))
     print('#'*75)
 
-def run_sweeps(M,W,F,initGuess=None,maxIter=10,
+def run_sweeps(M,W,F,initGuess=None,maxIter=0,minIter=None,
                tol=1e-5,fname = None,nStates=1,
                targetState=0,alg='arnoldi',
                preserveState=False,gaugeSiteLoad=0,
-               gaugeSiteSave=0):
+               gaugeSiteSave=0,returnState=False,
+               returnEnv=False,returnEntSpec=False):
     cont = True
     iterCnt = 0
     E_prev = 0
@@ -454,9 +459,11 @@ def run_sweeps(M,W,F,initGuess=None,maxIter=10,
     while cont:
         E,M,F,EE,EEs = rightSweep(M,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState)
         E,M,F,EE,EEs = leftSweep(M,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState)
-        cont,conv,E_prev,iterCnt = checkConv(E_prev,E,tol,iterCnt,maxIter,nStates=nStates,targetState=targetState)
+        cont,conv,E_prev,iterCnt = checkConv(E_prev,E,tol,iterCnt,maxIter,minIter,nStates=nStates,targetState=targetState)
     if gaugeSiteSave != 0:
-        _,M,_,_,_ = rightSweep(M,W,F,iterCnt+1,nStates=nStates,alg=alg,preserveState=preserveState,endSite=gaugeSiteSave)
+        _E,M,F,_EE,_EEs = rightSweep(M,W,F,iterCnt+1,nStates=nStates,alg=alg,preserveState=preserveState,endSite=gaugeSiteSave)
+        if _E is not None:
+            E,EE,EEs = _E,_EE,_EEs
     save_mps(M,fname,gaugeSite=gaugeSiteSave)
     #EE,EEs = observable_sweep(M,F)
     if nStates != 1: 
@@ -465,15 +472,23 @@ def run_sweeps(M,W,F,initGuess=None,maxIter=10,
         gap = None
     if hasattr(E,'__len__'): E = E[targetState]
     printResults(conv,E,EE,EEs,gap)
-    return E,EE,gap
+    output = [E,EE,gap]
+    if returnEntSpec:
+        output.append(EEs)
+    if returnState:
+        output.append(M)
+    if returnEnv:
+        output.append(F)
+    return output
 
-def run_dmrg(mpo,initGuess=None,mbd=[2,4,8,16],
-             tol=1e-5,maxIter=3,fname=None,
+def run_dmrg(mpo,env=None,initGuess=None,mbd=[2,4,8,16],
+             tol=1e-5,maxIter=10,minIter=0,fname=None,
              nStates=1,targetState=0,
              constant_mbd=False,alg='arnoldi',
-             preserveState=False,gaugeSiteSave=None):
+             preserveState=False,gaugeSiteSave=None,
+             returnState=False,returnEnv=False,returnEntSpec=False):
     N = len(mpo[0])
-    if gaugeSiteSave is None: gaugeSiteSave = int(N/2)
+    if gaugeSiteSave is None: gaugeSiteSave = int(N/2)+1
     # Make sure everything is a vector
     if not hasattr(mbd,'__len__'): mbd = np.array([mbd])
     if not hasattr(tol,'__len__'):
@@ -484,6 +499,10 @@ def run_dmrg(mpo,initGuess=None,mbd=[2,4,8,16],
         maxIter = maxIter*np.ones(len(mbd))
     else:
         assert(len(maxIter) == len(mbd))
+    if not hasattr(minIter,'__len__'):
+        minIter = minIter*np.ones(len(mbd))
+    else:
+        assert(len(minIter) == len(mbd))
     # Vector to store results
     Evec  = np.zeros(len(mbd),dtype=np.complex_)
     EEvec = np.zeros(len(mbd),dtype=np.complex_)
@@ -501,11 +520,12 @@ def run_dmrg(mpo,initGuess=None,mbd=[2,4,8,16],
             else:
                 mps,gSite = load_mps(N,initGuess+'_mbd'+str(mbdInd-1))
                 mps = increase_mbd(mps,mbdi)
-        env = calc_env(mps,mpo,mbdi,gaugeSite=gSite)
+        if env is None: env = calc_env(mps,mpo,mbdi,gaugeSite=gSite)
         fname_tmp = None
         if fname is not None: fname_tmp = fname + '_mbd' + str(mbdInd)
-        E,EE,gap = run_sweeps(mps,mpo,env,
+        output = run_sweeps(mps,mpo,env,
                               maxIter=maxIter[mbdInd],
+                              minIter=minIter[mbdInd],
                               tol=tol[mbdInd],
                               fname=fname_tmp,
                               nStates=nStates,
@@ -513,11 +533,45 @@ def run_dmrg(mpo,initGuess=None,mbd=[2,4,8,16],
                               targetState=targetState,
                               gaugeSiteLoad=gSite,
                               gaugeSiteSave=gaugeSiteSave,
-                              preserveState=preserveState)
-        Evec[mbdInd]  = E
-        EEvec[mbdInd] = EE
-        gapvec[mbdInd]=gap
+                              preserveState=preserveState,
+                              returnState=returnState,
+                              returnEnv=returnEnv,
+                              returnEntSpec=returnEntSpec)
+        # Extract Results
+        E = output[0]
+        EE = output[1]
+        gap = output[2]
+        Evec[mbdInd]  = output[0]
+        EEvec[mbdInd] = output[1]
+        gapvec[mbdInd]= output[2]
+        if returnEntSpec and returnState and returnEnv:
+            EEs = output[3]
+            mps = output[4]
+            env = output[5]
+        elif returnEntSpec and returnState:
+            EEs = output[3]
+            mps = output[4]
+        elif returnEntSpec and returnEnv:
+            EEs = output[3]
+            env = output[4]
+        elif returnState and returnEnv:
+            mps = output[3]
+            env = output[4]
+        elif returnEntSpec:
+            EEs = output[3]
+        elif returnState:
+            mps = output[3]
+        elif returnEnv:
+            env = output[3]
+    # Return Results
     if len(Evec) == 1:
-        return E,EE,gap
+        output = [E,EE,gap]
     else:
-        return Evec,EEvec,gapvec
+        output = [Evec,EEvec,gapvec]
+    if returnEntSpec:
+        output.append(EEs)
+    if returnState:
+        output.append(mps)
+    if returnEnv:
+        output.append(env)
+    return output

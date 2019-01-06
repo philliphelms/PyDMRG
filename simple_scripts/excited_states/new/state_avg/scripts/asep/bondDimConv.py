@@ -13,7 +13,7 @@ sVec = np.linspace(-0.5,0.5,50)
 E   = np.zeros((len(sVec),len(mbd)))
 EE  = np.zeros((len(sVec),len(mbd)))
 gap = np.zeros((len(sVec),len(mbd)))
-fname = 'mps/myMPS_N'+str(N)+'_id'+str(int(time.time()))
+fname = 'saved_states/myMPS_N'+str(N)+'_id'+str(int(time.time()))
 
 # Run Calculations
 for sind,s in enumerate(sVec):
