@@ -41,7 +41,7 @@ if make_plt:
 # Run initial Calculation
 print(s0)
 mpo = return_mpo(N,(0.5,0.5,p,1.-p,0.5,0.5,s0))
-_,Etmp,EEtmp,gaptmp,env = run_dmrg(mpo,
+Etmp,EEtmp,gaptmp,env = run_dmrg(mpo,
                                  mbd=mbd,
                                  fname=fname,
                                  nStates=2,
@@ -59,51 +59,44 @@ while sCurr <= sF:
     # Check Overlap from previous s point
     passed = False
     dsi = ds0
+    bestEE = 0
+    best_ds = None
     while not passed:
         print('Trying s = {}, ds = {}'.format(sCurr,dsi))
         site = int(N/2)
         mpo = return_mpo(N,(0.5,0.5,p,1.-p,0.5,0.5,sCurr))
-        #mps,gSite = load_mps(N,fname+'_mbd0')
-        #env = calc_env(mps,mpo,mbd,gaugeSite=gSite)
-        #Etmp,v,ovlp = calc_eigs(mps,mpo,env,site,2,alg='exact',preserveState=False)
-        updated,Etmp,EEtmp,gaptmp,envtmp = run_dmrg(mpo,env=env,
-                                                     mbd=mbd,
-                                                     initGuess=fname,
-                                                     fname=fname+'tmp',
-                                                     alg='exact',
-                                                     nStates=2,
-                                                     preserveState=True,
-                                                     minIter = 3,
-                                                     returnEnv=True)
-        if (sCurr < s_threshold) or (EEtmp > ee_threshold) and updated:
+        Etmp,EEtmp,gaptmp,envtmp = run_dmrg(mpo,env=env,
+                                             mbd=mbd,
+                                             initGuess=fname,
+                                             fname=fname+'tmp',
+                                             alg='exact',
+                                             nStates=2,
+                                             preserveState=False,
+                                             minIter = 3,
+                                             maxIter = 5,
+                                             returnEnv=True)
+        if (sCurr < s_threshold) or (EEtmp > ee_threshold) or (forcedPass):
             passed = True
             env = envtmp
             rename(fname+'tmp_mbd0.npz',fname+'_mbd0.npz')
         else:
             # The state does not overlap, we need a smaller step size
             sCurr -= dsi
-            dsi /= 2.
-            #print('Printing Resulting States')
-            #print('\tPrevious State\tNew State')
-            #stateOld = mps[gSite].ravel()
-            #inds = np.argsort(np.abs(stateOld))[::-1]
-            #for i in range(len(v)):
-            #    print('{}\t{}\t{}'.format(stateOld[inds[i]],v[inds[i],0],v[inds[i],1]))
             if dsi < ds_min:
                 sCurr += ds_min
                 passed = True
                 print('Failed to Match State')
+                if bestEE > EEtmp:
+                    dsi = best_ds
+                    sCurr += dsi
+                    passed = False
+                    forcedPass = True
             else:
+                if EEtmp > bestEE:
+                    bestEE = EEtmp
+                    best_ds = dsi
+                dsi /= 2.
                 sCurr += dsi
-    # Run Actual Calculation
-    ## Simple way to run dmrg
-    #Etmp,EEtmp,gaptmp = run_dmrg(mpo,
-    #                             mbd=mbd,
-    #                             initGuess=fname,
-    #                             fname=fname,
-    #                             nStates=2,
-    #                             alg='exact',
-    #                             preserveState=True)
     E = np.append(E,Etmp)
     EE = np.append(EE,EEtmp)
     gap = np.append(gap,gaptmp)
