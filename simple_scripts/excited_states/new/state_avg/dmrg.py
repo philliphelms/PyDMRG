@@ -125,7 +125,7 @@ def calc_ent_right(M,v,site):
     M_reshape = np.reshape(Mtmp,(n1*n2,n3))
     (_,S,_) = np.linalg.svd(M_reshape,full_matrices=False)
     EE,EEs = calc_entanglement(S)
-    print('\t\tEE = {}'.format(EE))
+    #print('\t\tEE = {}'.format(EE))
     return EE, EEs
 
 def calc_ent_left(M,v,site):
@@ -135,7 +135,7 @@ def calc_ent_left(M,v,site):
     M_reshape = np.reshape(M_reshape,(n2,n1*n3))
     (_,S,_) = np.linalg.svd(M_reshape,full_matrices=False)
     EE,EEs = calc_entanglement(S)
-    print('\t\tEE = {}'.format(EE))
+    #print('\t\tEE = {}'.format(EE))
     return EE, EEs
 
 def renormalizeR(M,v,site,nStates=1,targetState=0):
@@ -228,12 +228,12 @@ def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=T
     reuseOldState = True
     for j in range(nVecs):
         ovlp_j = np.abs(np.dot(Mprev,np.conj(vecs[:,j])))
-        print('\t\tChecking Overlap {} = {}'.format(j,ovlp_j))
+        #print('\t\tChecking Overlap {} = {}'.format(j,ovlp_j))
         if ovlp_j > 0.98:
             reuseOldState = False
             if (j != 0) and preserveState and allowSwap:
                 # Swap eigenstates
-                print('!!! Swapping States {} & {} !!!'.format(0,j))
+                #print('!!! Swapping States {} & {} !!!'.format(0,j))
                 tmpVec = vecs[:,j]
                 vecs[:,j] = vecs[:,0]
                 vecs[:,0] = tmpVec
@@ -241,7 +241,7 @@ def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=T
                 E[j] = E[0]
                 E[0] = Etmp
     if reuseOldState and preserveState:
-        print('!!! Correct State Not Found !!!')
+        #print('!!! Correct State Not Found !!!')
         vecs = Mprev
         # Reformat it so it matches vecs
         vecs = np.swapaxes(np.array([vecs]),0,1)
@@ -312,11 +312,14 @@ def calc_eigs_exact(M,W,F,site,nStates,preserveState=False):
     E = vals[inds[:nStates]]
     #print('Some Eigenvalues: {}'.format(vals[inds[:nStates+3]]))
     vecs = vecs[:,inds[:nStates]]
-    print('Checking orthonormalization:')
-    vecs = sla.orth(vecs)
-    print(np.dot(vecs[:,0],np.conj(vecs[:,0])))
-    print(np.dot(vecs[:,1],np.conj(vecs[:,1])))
-    print(np.dot(vecs[:,0],np.conj(vecs[:,1])))
+    #print('Checking orthonormalization:')
+    gap = np.abs(E[0]-E[1])
+    if gap < 1e-10:
+        print('ORTHONORMALIZING')
+        vecs = sla.orth(vecs)
+    #print(np.dot(vecs[:,0],np.conj(vecs[:,0])))
+    #print(np.dot(vecs[:,1],np.conj(vecs[:,1])))
+    #print(np.dot(vecs[:,0],np.conj(vecs[:,1])))
     # Don't preserve state at ends
     if not preserveState:
         if (site == 0) or (site == len(M)-1):

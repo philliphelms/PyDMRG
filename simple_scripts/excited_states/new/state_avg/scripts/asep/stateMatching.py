@@ -4,16 +4,18 @@ import time
 from sys import argv
 
 # Set Calculation Parameters
-N = 10
+N = 20
 p = 0.1 
 mbd = 10 # Can only be a single value currently
-ds0 = 0.05
-ds_min = 1e-10
+ds0 = 0.1
+ds_min = 0.1
 s_symm = -(N-1.)/(2.*(N+1.))*np.log(p/(1.-p))
-s0 = 0.
+s0 = -0.5
 sF = s_symm #+ (s_symm - s0)
 ovlp_tol = 0.95
-make_plt = True
+make_plt = False
+alg = 'exact'
+printMissedStates = False
 
 # Allocate Memory for results
 E   = np.array([])
@@ -38,7 +40,7 @@ Etmp,EEtmp,gaptmp = run_dmrg(mpo,
                              mbd=mbd,
                              fname=fname,
                              nStates=2,
-                             alg='exact')
+                             alg=alg)
 E = np.append(E,Etmp)
 EE = np.append(EE,EEtmp)
 gap = np.append(gap,gaptmp)
@@ -65,12 +67,13 @@ while sCurr <= sF:
             # The state does not overlap, we need a smaller step size
             sCurr -= dsi
             dsi /= 2.
-            print('Printing Resulting States')
-            print('\tPrevious State\tNew State')
-            stateOld = mps[gSite].ravel()
-            inds = np.argsort(np.abs(stateOld))[::-1]
-            for i in range(len(v)):
-                print('{}\t{}\t{}'.format(stateOld[inds[i]],v[inds[i],0],v[inds[i],1]))
+            if printMissedStates:
+                print('Printing Resulting States')
+                print('\tPrevious State\tNew State')
+                stateOld = mps[gSite].ravel()
+                inds = np.argsort(np.abs(stateOld))[::-1]
+                for i in range(len(v)):
+                    print('{}\t{}\t{}'.format(stateOld[inds[i]],v[inds[i],0],v[inds[i],1]))
             if dsi < ds_min:
                 sCurr += ds_min
                 passed = True
@@ -78,6 +81,7 @@ while sCurr <= sF:
             else:
                 sCurr += dsi
     # Run Actual Calculation
+    print('Using s = {}'.format(sCurr))
     mpo = return_mpo(N,(0.5,0.5,p,1.-p,0.5,0.5,sCurr))
     Etmp,EEtmp,gaptmp = run_dmrg(mpo,
                                  mbd=mbd,
@@ -85,7 +89,7 @@ while sCurr <= sF:
                                  fname=fname,
                                  nStates=2,
                                  alg='exact',
-                                 preserveState=True)
+                                 preserveState=False)
     E = np.append(E,Etmp)
     EE = np.append(EE,EEtmp)
     gap = np.append(gap,gaptmp)
