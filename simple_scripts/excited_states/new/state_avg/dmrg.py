@@ -222,14 +222,14 @@ def renormalizeL(M,v,site,nStates=1,targetState=0):
     M[site-1] = einsum('ijk,lkm,lnm->ijn',M[site-1],vReshape,np.conj(M[site]))
     return M,EE,EEs
 
-def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=False):
+def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=True):
     _,nVecs = vecs.shape
     # Check to make sure we dont have a small gap
     reuseOldState = True
     for j in range(nVecs):
         ovlp_j = np.abs(np.dot(Mprev,np.conj(vecs[:,j])))
-        print('\t\tChecking Overlap {} = {}'.format(j,np.dot(Mprev,np.conj(vecs[:,j]))))
-        if ovlp_j > 0.95:
+        print('\t\tChecking Overlap {} = {}'.format(j,ovlp_j))
+        if ovlp_j > 0.98:
             reuseOldState = False
             if (j != 0) and preserveState and allowSwap:
                 # Swap eigenstates
@@ -252,21 +252,6 @@ def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=F
             for i in range(len(Mprev)):
                 print('{}\t{}\t{}'.format(Mprev[indices[i]],vecs[indices[i],0],vecs[indices[i],1]))
     return E,vecs,np.abs(np.dot(Mprev,np.conj(vecs[:,0])))
-
-def calc_eigs_exact(M,W,F,site,nStates,preserveState=False):
-    H = calc_ham(M,W,F,site)
-    Mprev = M[site].ravel()
-    vals,vecs = sla.eig(H)
-    inds = np.argsort(vals)[::-1]
-    E = vals[inds[:nStates]]
-    #print('Some Eigenvalues: {}'.format(vals[inds[:nStates+3]]))
-    vecs = vecs[:,inds[:nStates]]
-    # Don't preserve state at ends
-    if not preserveState:
-        if (site == 0) or (site == len(M)-1):
-            preserveState=True
-    E,vecs,ovlp = check_overlap(Mprev,vecs,E,preserveState=preserveState)
-    return E,vecs,ovlp
 
 def make_ham_func(M,W,F,site):
     H = calc_ham(M,W,F,site)
@@ -319,14 +304,33 @@ def calc_eigs_davidson(M,W,F,site,nStates,nStatesCalc=None):
         pass
     return vals,vecs,ovlp
 
-def calc_eigs_arnoldi(M,W,F,site,nStates,nStatesCalc=None):
+def calc_eigs_exact(M,W,F,site,nStates,preserveState=False):
+    H = calc_ham(M,W,F,site)
+    Mprev = M[site].ravel()
+    vals,vecs = sla.eig(H)
+    inds = np.argsort(vals)[::-1]
+    E = vals[inds[:nStates]]
+    #print('Some Eigenvalues: {}'.format(vals[inds[:nStates+3]]))
+    vecs = vecs[:,inds[:nStates]]
+    print('Checking orthonormalization:')
+    vecs = sla.orth(vecs)
+    print(np.dot(vecs[:,0],np.conj(vecs[:,0])))
+    print(np.dot(vecs[:,1],np.conj(vecs[:,1])))
+    print(np.dot(vecs[:,0],np.conj(vecs[:,1])))
+    # Don't preserve state at ends
+    if not preserveState:
+        if (site == 0) or (site == len(M)-1):
+            preserveState = True
+    E,vecs,ovlp = check_overlap(Mprev,vecs,E,preserveState=preserveState)
+    return E,vecs,ovlp
+
+def calc_eigs_arnoldi(M,W,F,site,nStates,nStatesCalc=None,preserveState=False):
     guess = np.reshape(M[site],-1)
     Hfun,_ = make_ham_func(M,W,F,site)
     (n1,n2,n3) = M[site].shape
     H = LinearOperator((n1*n2*n3,n1*n2*n3),matvec=Hfun)
     if nStatesCalc is None: nStatesCalc = nStates+2
     nStates,nStatesCalc = min(nStates,n1*n2*n3-2), min(nStatesCalc,n1*n2*n3-2)
-    vals,vecs = arnoldi(H,k=nStatesCalc,which='SR',v0=guess,tol=1e-5)
     try:
         vals,vecs = arnoldi(H,k=nStatesCalc,which='SR',v0=guess,tol=1e-5)
     except Exception as exc:
@@ -335,7 +339,11 @@ def calc_eigs_arnoldi(M,W,F,site,nStates,nStatesCalc=None):
     inds = np.argsort(vals)
     E = -vals[inds[:nStates]]
     vecs = vecs[:,inds[:nStates]]
-    print('Overlap Guess & Final = {}'.format(np.dot(guess,vecs[:,0])))
+    # At the ends, we do not want to switch states when preserving state is off
+    if not preserveState:
+        if (site == 0) or (site == len(M)-1):
+            preserveState = True
+    E,vecs,ovlp = check_overlap(guess,vecs,E,preserveState=preserveState)
     return E,vecs,ovlp
 
 def calc_eigs(M,W,F,site,nStates,alg='arnoldi',preserveState=False):
@@ -457,6 +465,7 @@ def run_sweeps(M,W,F,initGuess=None,maxIter=0,minIter=None,
         E,M,F,EE,EEs = rightSweep(M,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState,startSite=gaugeSiteLoad)
         E,M,F,EE,EEs = leftSweep(M,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState)
     while cont:
+        if iterCnt > 2: preserveState = True # PH - Added this line experimentally
         E,M,F,EE,EEs = rightSweep(M,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState)
         E,M,F,EE,EEs = leftSweep(M,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState)
         cont,conv,E_prev,iterCnt = checkConv(E_prev,E,tol,iterCnt,maxIter,minIter,nStates=nStates,targetState=targetState)
