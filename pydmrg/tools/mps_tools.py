@@ -1,4 +1,23 @@
 import numpy as np
+from pyscf.lib import einsum
+
+def make_mps_right(M):
+    N = len(M)
+    for i in range(int(N)-1,0,-1):
+        M_reshape = np.swapaxes(M[i],0,1)
+        (n1,n2,n3) = M_reshape.shape
+        M_reshape = np.reshape(M_reshape,(n1,n2*n3))
+        (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
+        M_reshape = np.reshape(V,(n1,n2,n3))
+        M[i] = np.swapaxes(M_reshape,0,1)
+        M[i-1] = einsum('klj,ji,i->kli',M[i-1],U,s)
+    return M
+
+def make_all_mps_right(mpsList):
+    nStates = len(mpsList)
+    for state in range(nStates):
+        mpsList[state] = make_mps_right(mpsList[state])
+    return mpsList
 
 def move_gauge_right(mps,site):
     (n1,n2,n3) = mps[site].shape
@@ -84,13 +103,11 @@ def create_rand_mps(N,mbd,d=2):
         M.insert(len(M),np.ones((d,min(d**(i+1),mbd),min(d**i,mbd))))
     return M
 
-def load_mps(N,fname):
-    npzfile = np.load(fname+'.npz')
-    M = []
-    gaugeSite = npzfile['site']
-    for i in range(N):
-        M.append(npzfile['M'+str(i)])
-    return M,gaugeSite
+def create_all_mps(N,mbd,nStates):
+    mpsList = []
+    for state in range(nStates):
+        mpsList.append(create_rand_mps(N,mbd))
+    return mpsList
 
 def increase_mbd(M,mbd,periodic=False,constant=False,d=2):
     N = len(M)
@@ -129,9 +146,33 @@ def increase_mbd(M,mbd,periodic=False,constant=False,d=2):
             M[site] = np.pad(M[site], ((0,0), (0,sz1-ny), (0,sz2-nz)), 'constant', constant_values=0j)
     return M
 
-def save_mps(M,fname,gaugeSite=0):
+def increase_all_mbd(mpsL,mbd,periodic=False,constant=False,d=2):
+    nStates = len(mpsL)
+    for state in range(nStates):
+        mpsL[state] = increase_mbd(mpsL[state],mbd,periodic=periodic,constant=constant,d=d)
+    return mpsL
+
+def load_mps(N,fname,nStates=1):
+    # Create a list to contain all mps
+    mpsL = []
+    for state in range(nStates):
+        npzfile = np.load(fname+'state'+str(state)+'.npz')
+        # List to hold a single MPS
+        M = []
+        for i in range(N):
+            # Add each element to single MPS
+            M.append(npzfile['M'+str(i)])
+        # Add full MPS to MPS List
+        mpsL.append(M)
+    # Specifies where the gauge is located in the MPS
+    gaugeSite = npzfile['site']
+    return mpsL,gaugeSite
+
+def save_mps(mpsL,fname,gaugeSite=0):
     if fname is not None:
-        Mdict = {}
-        for i in range(len(M)):
-            Mdict['M'+str(i)] = M[i]
-        np.savez(fname+'.npz',site=gaugeSite,**Mdict)
+        nStates = len(mpsL)
+        for state in range(nStates):
+            Mdict = {}
+            for site in range(len(mpsL[state])):
+                Mdict['M'+str(site)] = mpsL[state][site]
+            np.savez(fname+'state'+str(state)+'.npz',site=gaugeSite,**Mdict)

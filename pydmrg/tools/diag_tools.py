@@ -118,16 +118,11 @@ def orthonormalize(vecs):
         for j in range(i):
             vecs[:,i] -= proj[j]
         vecs[:,i] /= np.dot(vecs[:,i],np.conj(vecs[:,i]))
-    # Test if they are really orthonormal:
-    #print('Checking orthonormalization:')
-    #for i in range(nvecs):
-    #    for j in range(nvecs):
-    #        print('u({})*u({}) = {}'.format(i,j,np.dot(vecs[:,i],np.conj(vecs[:,j]))))
     return vecs
 
-def calc_eigs_exact(M,W,F,site,nStates,preserveState=False):
-    H = calc_ham(M,W,F,site)
-    Mprev = M[site].ravel()
+def calc_eigs_exact(mpsL,W,F,site,nStates,preserveState=False):
+    H = calc_ham(mpsL[0],W,F,site)
+    Mprev = mpsL[0][site].ravel()
     vals,vecs = sla.eig(H)
     inds = np.argsort(vals)[::-1]
     E = vals[inds[:nStates]]
@@ -141,19 +136,17 @@ def calc_eigs_exact(M,W,F,site,nStates,preserveState=False):
             vecs = sla.orth(vecs)
     # Don't preserve state at ends
     if not preserveState:
-        if (site == 0) or (site == len(M)-1):
+        if (site == 0) or (site == len(mpsL[0])-1):
             preserveState = True
     E,vecs,ovlp = check_overlap(Mprev,vecs,E,preserveState=preserveState)
-    print(E)
-    print(vecs.shape)
     return E,vecs,ovlp
 
-def calc_eigs_arnoldi(M,W,F,site,nStates,nStatesCalc=None,preserveState=False):
-    guess = np.reshape(M[site],-1)
-    Hfun,_ = make_ham_func(M,W,F,site)
-    (n1,n2,n3) = M[site].shape
+def calc_eigs_arnoldi(mpsL,W,F,site,nStates,nStatesCalc=None,preserveState=False):
+    guess = np.reshape(mpsL[0][site],-1)
+    Hfun,_ = make_ham_func(mpsL[0],W,F,site)
+    (n1,n2,n3) = mpsL[0][site].shape
     H = LinearOperator((n1*n2*n3,n1*n2*n3),matvec=Hfun)
-    if nStatesCalc is None: nStatesCalc = nStates+2
+    if nStatesCalc is None: nStatesCalc = nStates
     nStates,nStatesCalc = min(nStates,n1*n2*n3-2), min(nStatesCalc,n1*n2*n3-2)
     try:
         vals,vecs = arnoldi(H,k=nStatesCalc,which='SR',v0=guess,tol=1e-5)
@@ -165,23 +158,21 @@ def calc_eigs_arnoldi(M,W,F,site,nStates,nStatesCalc=None,preserveState=False):
     vecs = vecs[:,inds[:nStates]]
     # At the ends, we do not want to switch states when preserving state is off
     if not preserveState:
-        if (site == 0) or (site == len(M)-1):
+        if (site == 0) or (site == len(mpsL[0])-1):
             preserveState = True
     E,vecs,ovlp = check_overlap(guess,vecs,E,preserveState=preserveState)
     return E,vecs,ovlp
 
-def calc_eigs_davidson(M,W,F,site,nStates,nStatesCalc=None,preserveState=False):
-    Hfun,precond = make_ham_func(M,W,F,site)
-    (n1,n2,n3) = M[site].shape
-    if nStatesCalc is None: nStatesCalc = nStates+2
+def calc_eigs_davidson(mpsL,W,F,site,nStates,nStatesCalc=None,preserveState=False):
+    Hfun,precond = make_ham_func(mpsL[0],W,F,site)
+    (n1,n2,n3) = mpsL[0][site].shape
+    if nStatesCalc is None: nStatesCalc = nStates
     nStates,nStatesCalc = min(nStates,n1*n2*n3-1), min(nStatesCalc,n1*n2*n3-1)
     guess = []
-    for i in range(nStatesCalc):
-        if i == 0:
-            guess.append(np.reshape(M[site],-1))
-        else:
-            guess.append(np.random.rand(len(np.reshape(M[site],-1)))+1j*np.zeros((len(np.reshape(M[site],-1)))))
-    vals,vecso = davidson(Hfun,guess,precond,nroots=nStatesCalc,pick=pick_eigs,follow_state=False,tol=1e-16)
+    for state in range(nStates):
+        guess.append(np.reshape(mpsL[state][site],-1))
+    # PH - Could add some convergence check
+    vals,vecso = davidson(Hfun,guess,precond,nroots=nStatesCalc,pick=pick_eigs,follow_state=False,tol=1e-10,max_cycle=1000)
     sort_inds = np.argsort(np.real(vals))
     try:
         vecs = np.zeros((len(vecso[0]),nStates),dtype=np.complex_)
@@ -195,11 +186,11 @@ def calc_eigs_davidson(M,W,F,site,nStates,nStatesCalc=None,preserveState=False):
     E,vecs,ovlp = check_overlap(guess[0],vecs,E,preserveState=preserveState)
     return E,vecs,ovlp
 
-def calc_eigs(M,W,F,site,nStates,alg='arnoldi',preserveState=False):
+def calc_eigs(mpsL,W,F,site,nStates,alg='arnoldi',preserveState=False):
     if alg == 'davidson':
-        E,vecs,ovlp = calc_eigs_davidson(M,W,F,site,nStates,preserveState=preserveState)
+        E,vecs,ovlp = calc_eigs_davidson(mpsL,W,F,site,nStates,preserveState=preserveState)
     elif alg == 'exact':
-        E,vecs,ovlp = calc_eigs_exact(M,W,F,site,nStates,preserveState=preserveState)
+        E,vecs,ovlp = calc_eigs_exact(mpsL,W,F,site,nStates,preserveState=preserveState)
     elif alg == 'arnoldi':
-        E,vecs,ovlp = calc_eigs_arnoldi(M,W,F,site,nStates,preserveState=preserveState)
+        E,vecs,ovlp = calc_eigs_arnoldi(mpsL,W,F,site,nStates,preserveState=preserveState)
     return E,vecs,ovlp

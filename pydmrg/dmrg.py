@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.linalg as sla
-from pyscf.lib import einsum
 from pyscf.lib import eig as davidson
+from pyscf.lib import einsum
 from scipy.sparse.linalg import eigs as arnoldi
 from scipy.sparse.linalg import LinearOperator
 from tools.mps_tools import *
@@ -11,18 +11,6 @@ import warnings
 # To Do :
 # - Left Eigenvectors
 # - constant_mbd=True does not work
-
-def make_mps_right(M):
-    N = len(M)
-    for i in range(int(N)-1,0,-1):
-        M_reshape = np.swapaxes(M[i],0,1)
-        (n1,n2,n3) = M_reshape.shape
-        M_reshape = np.reshape(M_reshape,(n1,n2*n3))
-        (U,s,V) = np.linalg.svd(M_reshape,full_matrices=False)
-        M_reshape = np.reshape(V,(n1,n2,n3))
-        M[i] = np.swapaxes(M_reshape,0,1)
-        M[i-1] = einsum('klj,ji,i->kli',M[i-1],U,s)
-    return M
 
 def alloc_env(M,W,mbd):
     N = len(M)
@@ -111,10 +99,10 @@ def calc_ent_left(M,v,site):
     print('\t\tEE = {}'.format(EE))
     return EE, EEs
 
-def renormalizeR(M,v,site,nStates=1,targetState=0):
-    (n1,n2,n3) = M[site].shape
+def renormalizeR(mpsL,v,site,nStates=1,targetState=0):
+    (n1,n2,n3) = mpsL[0][site].shape
     # Try to calculate Entanglement?
-    EE,EEs = calc_ent_right(M,v[:,targetState],site)
+    EE,EEs = calc_ent_right(mpsL[0],v[:,targetState],site)
     # Calculate the reduced density matrix
     _,nStatesCalc = v.shape
     nStates = min(nStates,nStatesCalc)
@@ -139,24 +127,26 @@ def renormalizeR(M,v,site,nStates=1,targetState=0):
     vecs = vecs[:,inds]
     # Make sure vecs are orthonormal
     vecs = sla.orth(vecs)
-    # Put resulting vectors into MPS
-    M[site] = np.reshape(vecs,(n2,n1,n3))
-    M[site] = np.swapaxes(M[site],0,1)
-    if not np.all(np.isclose(einsum('ijk,ijl->kl',M[site],np.conj(M[site])),np.eye(n3),atol=1e-6)):
-        print('\t\tNormalization Problem')
-    # Calculate next site for guess
-    if nStates != 1:
-        vReshape = np.reshape(v[:,targetState],(n1,n2,n3))
-    else:
-        vReshape = np.reshape(v,(n1,n2,n3))
-    # PH - This next line is incorrect!!!
-    M[site+1] = einsum('lmn,lmk,ikj->inj',np.conj(M[site]),vReshape,M[site+1])
-    return M,EE,EEs
+    # Loop through all MPS in list
+    for state in range(nStates):
+        # Put resulting vectors into MPS
+        mpsL[state][site] = np.reshape(vecs,(n2,n1,n3))
+        mpsL[state][site] = np.swapaxes(mpsL[state][site],0,1)
+        if not np.all(np.isclose(einsum('ijk,ijl->kl',mpsL[state][site],np.conj(mpsL[state][site])),np.eye(n3),atol=1e-6)):
+            print('\t\tNormalization Problem')
+        # Calculate next site for guess
+        if nStates != 1:
+            vReshape = np.reshape(v[:,state],(n1,n2,n3))
+        else:
+            vReshape = np.reshape(v,(n1,n2,n3))
+        # PH - This next line is incorrect!!!
+        mpsL[state][site+1] = einsum('lmn,lmk,ikj->inj',np.conj(mpsL[state][site]),vReshape,mpsL[state][site+1])
+    return mpsL,EE,EEs
 
-def renormalizeL(M,v,site,nStates=1,targetState=0):
-    (n1,n2,n3) = M[site].shape
+def renormalizeL(mpsL,v,site,nStates=1,targetState=0):
+    (n1,n2,n3) = mpsL[0][site].shape
     # Try to calculate Entanglement?
-    EE,EEs = calc_ent_left(M,v[:,targetState],site)
+    EE,EEs = calc_ent_left(mpsL[0],v[:,targetState],site)
     # Calculate the reduced density matrix
     _,nStatesCalc = v.shape
     nStates = min(nStates,nStatesCalc)
@@ -182,18 +172,21 @@ def renormalizeL(M,v,site,nStates=1,targetState=0):
     # Make sure vecs are orthonormal
     vecs = sla.orth(vecs)
     vecs = vecs.T
-    # Put resulting vectors into MPS
-    M[site] = np.reshape(vecs,(n2,n1,n3))
-    M[site] = np.swapaxes(M[site],0,1)
-    if not np.all(np.isclose(einsum('ijk,ilk->jl',M[site],np.conj(M[site])),np.eye(n2),atol=1e-6)):
-        print('\t\tNormalization Problem')
-    # Calculate next site's guess
-    if nStates != 1:
-        vReshape = np.reshape(v[:,targetState],(n1,n2,n3))
-    else:
-        vReshape = np.reshape(v,(n1,n2,n3))
-    M[site-1] = einsum('ijk,lkm,lnm->ijn',M[site-1],vReshape,np.conj(M[site]))
-    return M,EE,EEs
+    # Loops through all MPS in list
+    for state in range(nStates):
+        # Put resulting vectors into MPS
+        mpsL[state][site] = np.reshape(vecs,(n2,n1,n3))
+        mpsL[state][site] = np.swapaxes(mpsL[state][site],0,1)
+        if not np.all(np.isclose(einsum('ijk,ilk->jl',mpsL[state][site],np.conj(mpsL[state][site])),np.eye(n2),atol=1e-6)):
+            print('\t\tNormalization Problem')
+        # Calculate next site's guess
+        if nStates != 1:
+            vReshape = np.reshape(v[:,state],(n1,n2,n3))
+        else:
+            vReshape = np.reshape(v,(n1,n2,n3))
+        # Push gauge onto next site
+        mpsL[state][site-1] = einsum('ijk,lkm,lnm->ijn',mpsL[state][site-1],vReshape,np.conj(mpsL[state][site]))
+    return mpsL,EE,EEs
 
 def calc_entanglement(S):
     # Ensure correct normalization
@@ -203,14 +196,14 @@ def calc_entanglement(S):
     EE = np.sum(EEspec)
     return EE,EEspec
 
-def rightStep(M,W,F,site,nStates=1,alg='arnoldi',preserveState=False):
-    E,v,ovlp = calc_eigs(M,W,F,site,nStates,alg=alg,preserveState=preserveState)
-    M,EE,EEs = renormalizeR(M,v,site,nStates=nStates)
-    F = update_envR(M,W,F,site)
-    return E,M,F,EE,EEs
+def rightStep(mpsL,W,F,site,nStates=1,alg='arnoldi',preserveState=False):
+    E,v,ovlp = calc_eigs(mpsL,W,F,site,nStates,alg=alg,preserveState=preserveState)
+    mpsL,EE,EEs = renormalizeR(mpsL,v,site,nStates=nStates)
+    F = update_envR(mpsL[0],W,F,site)
+    return E,mpsL,F,EE,EEs
 
-def rightSweep(M,W,F,iterCnt,nStates=1,alg='arnoldi',preserveState=False,startSite=None,endSite=None):
-    N = len(M)
+def rightSweep(mpsL,W,F,iterCnt,nStates=1,alg='arnoldi',preserveState=False,startSite=None,endSite=None):
+    N = len(mpsL[0])
     if startSite is None: startSite = 0
     if endSite is None: endSite = N-1
     Ereturn = None
@@ -218,22 +211,22 @@ def rightSweep(M,W,F,iterCnt,nStates=1,alg='arnoldi',preserveState=False,startSi
     EEs = None
     print('Right Sweep {}'.format(iterCnt))
     for site in range(startSite,endSite):
-        E,M,F,_EE,_EEs = rightStep(M,W,F,site,nStates,alg=alg,preserveState=preserveState)
+        E,mpsL,F,_EE,_EEs = rightStep(mpsL,W,F,site,nStates,alg=alg,preserveState=preserveState)
         print('\tEnergy at Site {}: {}'.format(site,E))
         if site == int(N/2):
             Ereturn = E
             EE = _EE
             EEs= _EEs
-    return Ereturn,M,F,EE,EEs
+    return Ereturn,mpsL,F,EE,EEs
 
-def leftStep(M,W,F,site,nStates=1,alg='arnoldi',preserveState=False):
-    E,v,ovlp = calc_eigs(M,W,F,site,nStates,alg=alg,preserveState=preserveState)
-    M,EE,EEs = renormalizeL(M,v,site,nStates=nStates)
-    F = update_envL(M,W,F,site)
-    return E,M,F,EE,EEs
+def leftStep(mpsL,W,F,site,nStates=1,alg='arnoldi',preserveState=False):
+    E,v,ovlp = calc_eigs(mpsL,W,F,site,nStates,alg=alg,preserveState=preserveState)
+    mpsL,EE,EEs = renormalizeL(mpsL,v,site,nStates=nStates)
+    F = update_envL(mpsL[0],W,F,site)
+    return E,mpsL,F,EE,EEs
 
-def leftSweep(M,W,F,iterCnt,nStates=1,alg='arnoldi',preserveState=False,startSite=None,endSite=None):
-    N = len(M)
+def leftSweep(mpsL,W,F,iterCnt,nStates=1,alg='arnoldi',preserveState=False,startSite=None,endSite=None):
+    N = len(mpsL[0])
     if startSite is None: startSite = N-1
     if endSite is None: endSite = 0
     Ereturn = None
@@ -241,13 +234,13 @@ def leftSweep(M,W,F,iterCnt,nStates=1,alg='arnoldi',preserveState=False,startSit
     EEs = None
     print('Left Sweep {}'.format(iterCnt))
     for site in range(startSite,endSite,-1):
-        E,M,F,_EE,_EEs = leftStep(M,W,F,site,nStates,alg=alg,preserveState=preserveState)
+        E,mpsL,F,_EE,_EEs = leftStep(mpsL,W,F,site,nStates,alg=alg,preserveState=preserveState)
         print('\tEnergy at Site {}: {}'.format(site,E))
         if site == int(N/2):
             Ereturn = E
             EE = _EE
             EEs= _EEs
-    return Ereturn,M,F,EE,EEs
+    return Ereturn,mpsL,F,EE,EEs
 
 def checkConv(E_prev,E,tol,iterCnt,maxIter,minIter,nStates=1,targetState=0,EE=None,EEspec=[None]):
     if nStates != 1: E = E[targetState]
@@ -292,7 +285,7 @@ def printResults(converged,E,EE,EEspec,gap):
         print('\t\t{}'.format(EEspec[i]))
     print('#'*75)
 
-def run_sweeps(M,W,F,initGuess=None,maxIter=0,minIter=None,
+def run_sweeps(mpsL,W,F,initGuess=None,maxIter=0,minIter=None,
                tol=1e-5,fname = None,nStates=1,
                targetState=0,alg='arnoldi',
                preserveState=False,gaugeSiteLoad=0,
@@ -302,18 +295,18 @@ def run_sweeps(M,W,F,initGuess=None,maxIter=0,minIter=None,
     iterCnt = 0
     E_prev = 0
     if gaugeSiteLoad != 0:
-        E,M,F,EE,EEs = rightSweep(M,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState,startSite=gaugeSiteLoad)
-        E,M,F,EE,EEs = leftSweep(M,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState)
+        E,mpsL,F,EE,EEs = rightSweep(mpsL,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState,startSite=gaugeSiteLoad)
+        E,mpsL,F,EE,EEs = leftSweep(mpsL,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState)
     while cont:
         if iterCnt > 2: preserveState = True # PH - Added this line experimentally
-        E,M,F,EE,EEs = rightSweep(M,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState)
-        E,M,F,EE,EEs = leftSweep(M,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState)
+        E,mpsL,F,EE,EEs = rightSweep(mpsL,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState)
+        E,mpsL,F,EE,EEs = leftSweep(mpsL,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState)
         cont,conv,E_prev,iterCnt = checkConv(E_prev,E,tol,iterCnt,maxIter,minIter,nStates=nStates,targetState=targetState)
     if gaugeSiteSave != 0:
-        _E,M,F,_EE,_EEs = rightSweep(M,W,F,iterCnt+1,nStates=nStates,alg=alg,preserveState=preserveState,endSite=gaugeSiteSave)
+        _E,mpsL,F,_EE,_EEs = rightSweep(mpsL,W,F,iterCnt+1,nStates=nStates,alg=alg,preserveState=preserveState,endSite=gaugeSiteSave)
         if _E is not None:
             E,EE,EEs = _E,_EE,_EEs
-    save_mps(M,fname,gaugeSite=gaugeSiteSave)
+    save_mps(mpsL,fname,gaugeSite=gaugeSiteSave)
     #EE,EEs = observable_sweep(M,F)
     if nStates != 1: 
         gap = E[0]-E[1]
@@ -325,7 +318,7 @@ def run_sweeps(M,W,F,initGuess=None,maxIter=0,minIter=None,
     if returnEntSpec:
         output.append(EEs)
     if returnState:
-        output.append(M)
+        output.append(mpsL)
     if returnEnv:
         output.append(F)
     return output
@@ -359,20 +352,20 @@ def run_dmrg(mpo,env=None,initGuess=None,mbd=[2,4,8,16],
     for mbdInd,mbdi in enumerate(mbd):
         print('Starting Calc for MBD = {}'.format(mbdi))
         if initGuess is None:
-            mps = create_rand_mps(N,mbdi)
-            mps = make_mps_right(mps)
+            mpsL = create_all_mps(N,mbdi,nStates)
+            mpsL = make_all_mps_right(mpsL)
             if constant_mbd: mps = increase_mbd(mps,mbdi,constant=True)
             gSite = 0
         else:
             if mbdInd == 0:
-                mps,gSite = load_mps(N,initGuess+'_mbd'+str(mbdInd))
+                mpsL,gSite = load_mps(N,initGuess+'_mbd'+str(mbdInd),nStates=nStates)
             else:
-                mps,gSite = load_mps(N,initGuess+'_mbd'+str(mbdInd-1))
-                mps = increase_mbd(mps,mbdi)
-        if env is None: env = calc_env(mps,mpo,mbdi,gaugeSite=gSite)
+                mpsL,gSite = load_mps(N,initGuess+'_mbd'+str(mbdInd-1),nStates=nStates)
+                mpsL = increase_all_mbd(mpsL,mbdi)
+        if env is None: env = calc_env(mpsL[0],mpo,mbdi,gaugeSite=gSite)
         fname_tmp = None
         if fname is not None: fname_tmp = fname + '_mbd' + str(mbdInd)
-        output = run_sweeps(mps,mpo,env,
+        output = run_sweeps(mpsL,mpo,env,
                               maxIter=maxIter[mbdInd],
                               minIter=minIter[mbdInd],
                               tol=tol[mbdInd],
@@ -395,21 +388,21 @@ def run_dmrg(mpo,env=None,initGuess=None,mbd=[2,4,8,16],
         gapvec[mbdInd]= output[2]
         if returnEntSpec and returnState and returnEnv:
             EEs = output[3]
-            mps = output[4]
+            mpsL = output[4]
             env = output[5]
         elif returnEntSpec and returnState:
             EEs = output[3]
-            mps = output[4]
+            mpsL = output[4]
         elif returnEntSpec and returnEnv:
             EEs = output[3]
             env = output[4]
         elif returnState and returnEnv:
-            mps = output[3]
+            mpsL = output[3]
             env = output[4]
         elif returnEntSpec:
             EEs = output[3]
         elif returnState:
-            mps = output[3]
+            mpsL = output[3]
         elif returnEnv:
             env = output[3]
     # Return Results
@@ -420,7 +413,7 @@ def run_dmrg(mpo,env=None,initGuess=None,mbd=[2,4,8,16],
     if returnEntSpec:
         output.append(EEs)
     if returnState:
-        output.append(mps)
+        output.append(mpsL)
     if returnEnv:
         output.append(env)
     return output
