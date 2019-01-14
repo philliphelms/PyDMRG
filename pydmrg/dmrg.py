@@ -253,11 +253,12 @@ def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=T
                 print('{}\t{}\t{}'.format(Mprev[indices[i]],vecs[indices[i],0],vecs[indices[i],1]))
     return E,vecs,np.abs(np.dot(Mprev,np.conj(vecs[:,0])))
 
-def make_ham_func(M,W,F,site):
-    H = calc_ham(M,W,F,site)
+def make_ham_func(M,W,F,site,usePrecond=False,debug=False):
+    # Define Hamiltonian function to give Hx
     def Hfun(x):
         x_reshape = np.reshape(x,M[site].shape)
         fin_sum = np.zeros(x_reshape.shape,dtype=np.complex_)
+        # Loop over all MPOs
         for mpoInd in range(len(W)):
             if W[mpoInd][site] is None:
                 in_sum1 = einsum('ijk,lmk->ijlm',F[mpoInd][site+1],x_reshape)
@@ -266,43 +267,33 @@ def make_ham_func(M,W,F,site):
                 in_sum1 = einsum('ijk,lmk->ijlm',F[mpoInd][site+1],x_reshape)
                 in_sum2 = einsum('njol,ijlm->noim',W[mpoInd][site],in_sum1)
                 fin_sum +=einsum('pnm,noim->opi',F[mpoInd][site],in_sum2)
-        assert(np.isclose(np.sum(np.abs(np.reshape(fin_sum,-1)-np.dot(H,x))),0))
+        # If desired, compare Hx function to analytic Hx
+        if debug:
+            H = calc_ham(M,W,F,site)
+            assert(np.isclose(np.sum(np.abs(np.reshape(fin_sum,-1)-np.dot(H,x))),0))
+        # Return flattened result
         return -np.reshape(fin_sum,-1)
-    diag = calc_diag(M,W,F,site)
-    assert(np.isclose(np.sum(np.abs(diag-np.diag(H))),0))
-    def precond(dx,e,x0):
-        return dx/diag-e
+    # Precond often slows convergence
+    if usePrecond:
+        diag = calc_diag(M,W,F,site)
+        # Compare analytic diagonal and calculated
+        if debug:
+            H = calc_ham(M,W,F,site)
+            assert(np.isclose(np.sum(np.abs(diag-np.diag(H))),0))
+        # Return Davidson Preconditioner
+        def precond(dx,e,x0):
+            return dx/diag-e
+    else:
+        # Return original values, often speeds convergence
+        def precond(dx,e,x0):
+            return dx
     return Hfun,precond
 
 def pick_eigs(w,v,nroots,x0):
-    abs_imag = abs(w.imag)
-    max_imag_tol = max(1e-3, min(abs_imag)*1.1)
-    real_idx = np.where((abs_imag < max_imag_tol))[0]
-    #if len(real_idx) < nroots and w.size >= nroots:
-    #    warnings.warn('%d eigenvalues with imaginary part > 0.01\n' %
-    #                  np.count_nonzero(abs_imag > 1e-2))
-    idx = real_idx[w[real_idx].real.argsort()]
+    idx = np.argsort(np.real(w))
     w = w[idx]
     v = v[:,idx]
     return w, v, idx
-
-def calc_eigs_davidson(M,W,F,site,nStates,nStatesCalc=None):
-    H,precond = make_ham_func(M,W,F,site)
-    (n1,n2,n3) = M[site].shape
-    guess = np.reshape(M[site],-1)
-    if nStatesCalc is None: nStatesCalc = nStates+2
-    nStates,nStatesCalc = min(nStates,n1*n2*n3-1), min(nStatesCalc,n1*n2*n3-1)
-    vals,vecso = davidson(H,guess,precond,nroots=nStatesCalc,pick=pick_eigs,follow_state=False,tol=1e-16)
-    sort_inds = np.argsort(np.real(vals))
-    try:
-        vecs = np.zeros((len(vecso[0]),nStates),dtype=np.complex_)
-        vals = -vals[sort_inds[:nStates]]
-        for i in range(min(nStates,len(sort_inds))):
-            vecs[:,i] = vecso[sort_inds[i]]
-    except:
-        vecs = vecso
-        pass
-    return vals,vecs,ovlp
 
 def orthonormalize(vecs):
     _,nvecs = vecs.shape
@@ -327,22 +318,21 @@ def calc_eigs_exact(M,W,F,site,nStates,preserveState=False):
     vals,vecs = sla.eig(H)
     inds = np.argsort(vals)[::-1]
     E = vals[inds[:nStates]]
-    #print('Some Eigenvalues: {}'.format(vals[inds[:nStates+3]]))
     vecs = vecs[:,inds[:nStates]]
-    #print('Checking orthonormalization:')
-    gap = np.abs(E[0]-E[1])
-    #vecs = orthonormalize(vecs)
-    if gap < 1e-2:
-        print('ORTHONORMALIZING')
-        vecs = sla.orth(vecs)
-    #print(np.dot(vecs[:,0],np.conj(vecs[:,0])))
-    #print(np.dot(vecs[:,1],np.conj(vecs[:,1])))
-    #print(np.dot(vecs[:,0],np.conj(vecs[:,1])))
+    # Check if lowest two states are degenerate
+    if nStates > 1:
+        gap = np.abs(E[0]-E[1])
+        #vecs = orthonormalize(vecs)
+        if gap < 1e-8:
+            print('ORTHONORMALIZING')
+            vecs = sla.orth(vecs)
     # Don't preserve state at ends
     if not preserveState:
         if (site == 0) or (site == len(M)-1):
             preserveState = True
     E,vecs,ovlp = check_overlap(Mprev,vecs,E,preserveState=preserveState)
+    print(E)
+    print(vecs.shape)
     return E,vecs,ovlp
 
 def calc_eigs_arnoldi(M,W,F,site,nStates,nStatesCalc=None,preserveState=False):
@@ -367,9 +357,34 @@ def calc_eigs_arnoldi(M,W,F,site,nStates,nStatesCalc=None,preserveState=False):
     E,vecs,ovlp = check_overlap(guess,vecs,E,preserveState=preserveState)
     return E,vecs,ovlp
 
+def calc_eigs_davidson(M,W,F,site,nStates,nStatesCalc=None,preserveState=False):
+    Hfun,precond = make_ham_func(M,W,F,site)
+    (n1,n2,n3) = M[site].shape
+    if nStatesCalc is None: nStatesCalc = nStates+2
+    nStates,nStatesCalc = min(nStates,n1*n2*n3-1), min(nStatesCalc,n1*n2*n3-1)
+    guess = []
+    for i in range(nStatesCalc):
+        if i == 0:
+            guess.append(np.reshape(M[site],-1))
+        else:
+            guess.append(np.random.rand(len(np.reshape(M[site],-1)))+1j*np.zeros((len(np.reshape(M[site],-1)))))
+    vals,vecso = davidson(Hfun,guess,precond,nroots=nStatesCalc,pick=pick_eigs,follow_state=False,tol=1e-16)
+    sort_inds = np.argsort(np.real(vals))
+    try:
+        vecs = np.zeros((len(vecso[0]),nStates),dtype=np.complex_)
+        E = -vals[sort_inds[:nStates]]
+        for i in range(min(nStates,len(sort_inds))):
+            vecs[:,i] = vecso[sort_inds[i]]
+    except:
+        vecs = vecso
+        E = -vals
+        pass
+    E,vecs,ovlp = check_overlap(guess[0],vecs,E,preserveState=preserveState)
+    return E,vecs,ovlp
+
 def calc_eigs(M,W,F,site,nStates,alg='arnoldi',preserveState=False):
     if alg == 'davidson':
-        E,vecs,ovlp = calc_eigs_davidson(M,W,F,site,nStates,perserveState=preserveState)
+        E,vecs,ovlp = calc_eigs_davidson(M,W,F,site,nStates,preserveState=preserveState)
     elif alg == 'exact':
         E,vecs,ovlp = calc_eigs_exact(M,W,F,site,nStates,preserveState=preserveState)
     elif alg == 'arnoldi':

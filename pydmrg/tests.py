@@ -2,11 +2,23 @@ import unittest
 import numpy as np
 
 class pydmrg_test(unittest.TestCase):
-    def test_eigMethodsCheck(self):
-        import tests.asep.eigMethodsCheck as eigCheck
-        E1,E2,E3 = eigCheck.run_test()
-        self.assertTrue(np.isclose(E1,E2))
-        self.assertTrue(np.isclose(E2,E3))
+    def test_arnoldiCheck(self):
+        import tests.asep.arnoldiCheck as eigCheck
+        E1,E2 = eigCheck.run_test()
+        self.assertTrue(np.isclose(E1,E2),
+                        'Exact ({}) and Arnoldi ({}) energies do not agree'.format(E1,E2))
+
+    def test_davidsonCheck(self):
+        import tests.asep.davidsonCheck as eigCheck
+        E1,E2 = eigCheck.run_test()
+        self.assertTrue(np.isclose(E1,E2),
+                        'Exact ({}) and Davidson ({}) energies do not agree'.format(E1,E2))
+
+    def test_davidsonCheck(self):
+        import tests.asep.davidsonMultipleCheck as eigCheck
+        E1,E2 = eigCheck.run_test()
+        self.assertTrue(np.isclose(E1,E2),
+                        'Exact ({}) and Davidson ({}) energies do not agree'.format(E1,E2))
 
     def test_periodic2D(self):
         import tests.asep2D.periodicCheck as perCheck

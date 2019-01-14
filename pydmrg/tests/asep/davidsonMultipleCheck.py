@@ -23,13 +23,9 @@ def run_test():
     E_exact,_,_ = run_dmrg(mpo,
                      mbd=mbd,
                      alg='exact',
-                     nStates=1)
-    E_arnoldi,_,_ = run_dmrg(mpo,
-                     mbd=mbd,
-                     alg='arnoldi',
-                     nStates=1)
+                     nStates=2)
     E_davidson,_,_ = run_dmrg(mpo,
                      mbd=mbd,
                      alg='davidson',
-                     nStates=1)
-    return E_exact,E_arnoldi,E_davidson
+                     nStates=2)
+    return E_exact,E_davidson
