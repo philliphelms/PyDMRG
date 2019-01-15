@@ -323,7 +323,7 @@ def run_sweeps(mpsL,W,F,initGuess=None,maxIter=0,minIter=None,
         output.append(F)
     return output
 
-def run_dmrg(mpo,env=None,initGuess=None,mbd=[2,4,8,16],
+def run_dmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
              tol=1e-5,maxIter=10,minIter=0,fname=None,
              nStates=1,targetState=0,
              constant_mbd=False,alg='arnoldi',
@@ -354,7 +354,7 @@ def run_dmrg(mpo,env=None,initGuess=None,mbd=[2,4,8,16],
         if initGuess is None:
             mpsL = create_all_mps(N,mbdi,nStates)
             mpsL = make_all_mps_right(mpsL)
-            if constant_mbd: mps = increase_mbd(mps,mbdi,constant=True)
+            if constant_mbd: mps = increase_mbd(mpsL,mbdi,constant=True)
             gSite = 0
         else:
             if mbdInd == 0:
@@ -362,7 +362,10 @@ def run_dmrg(mpo,env=None,initGuess=None,mbd=[2,4,8,16],
             else:
                 mpsL,gSite = load_mps(N,initGuess+'_mbd'+str(mbdInd-1),nStates=nStates)
                 mpsL = increase_all_mbd(mpsL,mbdi)
-        if env is None: env = calc_env(mpsL[0],mpo,mbdi,gaugeSite=gSite)
+        if initEnv is None: 
+            env = calc_env(mpsL[0],mpo,mbdi,gaugeSite=gSite)
+        else:
+            env = initEnv
         fname_tmp = None
         if fname is not None: fname_tmp = fname + '_mbd' + str(mbdInd)
         output = run_sweeps(mpsL,mpo,env,

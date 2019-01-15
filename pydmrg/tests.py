@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 
 class pydmrg_test(unittest.TestCase):
+
     def test_arnoldiCheck(self):
         import tests.asep.arnoldiCheck as eigCheck
         E1,E2 = eigCheck.run_test()
@@ -9,16 +10,23 @@ class pydmrg_test(unittest.TestCase):
                         'Exact ({}) and Arnoldi ({}) energies do not agree'.format(E1,E2))
 
     def test_davidsonCheck(self):
-        import tests.asep.davidsonCheck as eigCheck
-        E1,E2 = eigCheck.run_test()
-        self.assertTrue(np.isclose(E1,E2,atol=1e-4,rtol=1e-4),
-                        'Exact ({}) and Davidson ({}) energies do not agree'.format(E1,E2))
-
-    def test_davidsonCheck(self):
         import tests.asep.davidsonMultipleCheck as eigCheck
         E1,E2 = eigCheck.run_test()
         self.assertTrue(np.isclose(E1,E2,atol=1e-4,rtol=1e-4),
                         'Exact ({}) and Davidson ({}) energies do not agree'.format(E1,E2))
+
+    def tests_multipleMBD(self):
+        import tests.asep.multipleBondDim as mbd
+        Ee1,Ee2,Ea1,Ea2,Ed1,Ed2 = mbd.run_test()
+        np.assertTrue(np.isclose(Ee1[0]-Ee2[0]),'Exact Energies do not agree for d=2 ({},{})'.format(Ee1[0],Ee2[0]))
+        np.assertTrue(np.isclose(Ee1[1]-Ee2[1]),'Exact Energies do not agree for d=4 ({},{})'.format(Ee1[1],Ee2[1]))
+        np.assertTrue(np.isclose(Ee1[2]-Ee2[2]),'Exact Energies do not agree for d=6 ({},{})'.format(Ee1[2],Ee2[2]))
+        np.assertTrue(np.isclose(Ea1[0]-Ea2[0]),'Arnoldi Energies do not agree for d=2 ({},{})'.format(Ea1[0],Ea2[0]))
+        np.assertTrue(np.isclose(Ea1[1]-Ea2[1]),'Arnoldi Energies do not agree for d=4 ({},{})'.format(Ea1[1],Ea2[1]))
+        np.assertTrue(np.isclose(Ea1[2]-Ea2[2]),'Arnoldi Energies do not agree for d=6 ({},{})'.format(Ea1[2],Ea2[2]))
+        np.assertTrue(np.isclose(Ed1[0]-Ed2[0]),'Davidson Energies do not agree for d=2 ({},{})'.format(Ed1[0],Ed2[0]))
+        np.assertTrue(np.isclose(Ed1[1]-Ed2[1]),'Davidson Energies do not agree for d=4 ({},{})'.format(Ed1[1],Ed2[1]))
+        np.assertTrue(np.isclose(Ed1[2]-Ed2[2]),'Davidson Energies do not agree for d=6 ({},{})'.format(Ed1[2],Ed2[2]))
 
     def test_periodic2D(self):
         import tests.asep2D.periodicCheck as perCheck
