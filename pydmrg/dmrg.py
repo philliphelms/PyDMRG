@@ -196,13 +196,22 @@ def calc_entanglement(S):
     EE = np.sum(EEspec)
     return EE,EEspec
 
-def rightStep(mpsL,W,F,site,nStates=1,alg='arnoldi',preserveState=False):
-    E,v,ovlp = calc_eigs(mpsL,W,F,site,nStates,alg=alg,preserveState=preserveState)
+def rightStep(mpsL,W,F,site,
+              nStates=1,alg='arnoldi',
+              preserveState=False,orthonormalize=False):
+    E,v,ovlp = calc_eigs(mpsL,W,F,site,
+                         nStates,
+                         alg=alg,
+                         preserveState=preserveState,
+                         orthonormalize=orthonormalize)
     mpsL,EE,EEs = renormalizeR(mpsL,v,site,nStates=nStates)
     F = update_envR(mpsL[0],W,F,site)
     return E,mpsL,F,EE,EEs
 
-def rightSweep(mpsL,W,F,iterCnt,nStates=1,alg='arnoldi',preserveState=False,startSite=None,endSite=None):
+def rightSweep(mpsL,W,F,iterCnt,
+               nStates=1,alg='arnoldi',
+               preserveState=False,startSite=None,
+               endSite=None,orthonormalize=False):
     N = len(mpsL[0])
     if startSite is None: startSite = 0
     if endSite is None: endSite = N-1
@@ -211,7 +220,11 @@ def rightSweep(mpsL,W,F,iterCnt,nStates=1,alg='arnoldi',preserveState=False,star
     EEs = None
     print('Right Sweep {}'.format(iterCnt))
     for site in range(startSite,endSite):
-        E,mpsL,F,_EE,_EEs = rightStep(mpsL,W,F,site,nStates,alg=alg,preserveState=preserveState)
+        E,mpsL,F,_EE,_EEs = rightStep(mpsL,W,F,site,
+                                      nStates,
+                                      alg=alg,
+                                      preserveState=preserveState,
+                                      orthonormalize=orthonormalize)
         print('\tEnergy at Site {}: {}'.format(site,E))
         if site == int(N/2):
             Ereturn = E
@@ -219,13 +232,22 @@ def rightSweep(mpsL,W,F,iterCnt,nStates=1,alg='arnoldi',preserveState=False,star
             EEs= _EEs
     return Ereturn,mpsL,F,EE,EEs
 
-def leftStep(mpsL,W,F,site,nStates=1,alg='arnoldi',preserveState=False):
-    E,v,ovlp = calc_eigs(mpsL,W,F,site,nStates,alg=alg,preserveState=preserveState)
+def leftStep(mpsL,W,F,site,
+             nStates=1,alg='arnoldi',
+             preserveState=False,orthonormalize=False):
+    E,v,ovlp = calc_eigs(mpsL,W,F,site,
+                         nStates,
+                         alg=alg,
+                         preserveState=preserveState,
+                         orthonormalize=orthonormalize)
     mpsL,EE,EEs = renormalizeL(mpsL,v,site,nStates=nStates)
     F = update_envL(mpsL[0],W,F,site)
     return E,mpsL,F,EE,EEs
 
-def leftSweep(mpsL,W,F,iterCnt,nStates=1,alg='arnoldi',preserveState=False,startSite=None,endSite=None):
+def leftSweep(mpsL,W,F,iterCnt,
+              nStates=1,alg='arnoldi',
+              preserveState=False,startSite=None,
+              endSite=None,orthonormalize=False):
     N = len(mpsL[0])
     if startSite is None: startSite = N-1
     if endSite is None: endSite = 0
@@ -234,7 +256,11 @@ def leftSweep(mpsL,W,F,iterCnt,nStates=1,alg='arnoldi',preserveState=False,start
     EEs = None
     print('Left Sweep {}'.format(iterCnt))
     for site in range(startSite,endSite,-1):
-        E,mpsL,F,_EE,_EEs = leftStep(mpsL,W,F,site,nStates,alg=alg,preserveState=preserveState)
+        E,mpsL,F,_EE,_EEs = leftStep(mpsL,W,F,site,
+                                     nStates,
+                                     alg=alg,
+                                     preserveState=preserveState,
+                                     orthonormalize=orthonormalize)
         print('\tEnergy at Site {}: {}'.format(site,E))
         if site == int(N/2):
             Ereturn = E
@@ -290,20 +316,42 @@ def run_sweeps(mpsL,W,F,initGuess=None,maxIter=0,minIter=None,
                targetState=0,alg='arnoldi',
                preserveState=False,gaugeSiteLoad=0,
                gaugeSiteSave=0,returnState=False,
-               returnEnv=False,returnEntSpec=False):
+               returnEnv=False,returnEntSpec=False,
+               orthonormalize=False):
     cont = True
     iterCnt = 0
     E_prev = 0
     if gaugeSiteLoad != 0:
-        E,mpsL,F,EE,EEs = rightSweep(mpsL,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState,startSite=gaugeSiteLoad)
-        E,mpsL,F,EE,EEs = leftSweep(mpsL,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState)
+        E,mpsL,F,EE,EEs = rightSweep(mpsL,W,F,iterCnt,
+                                     nStates=nStates,
+                                     alg=alg,
+                                     preserveState=preserveState,
+                                     startSite=gaugeSiteLoad,
+                                     orthonormalize=orthonormalize)
+        E,mpsL,F,EE,EEs = leftSweep(mpsL,W,F,iterCnt,
+                                    nStates=nStates,
+                                    alg=alg,
+                                    preserveState=preserveState,
+                                    orthonormalize=orthonormalize)
     while cont:
-        if iterCnt > 2: preserveState = True # PH - Added this line experimentally
-        E,mpsL,F,EE,EEs = rightSweep(mpsL,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState)
-        E,mpsL,F,EE,EEs = leftSweep(mpsL,W,F,iterCnt,nStates=nStates,alg=alg,preserveState=preserveState)
+        E,mpsL,F,EE,EEs = rightSweep(mpsL,W,F,iterCnt,
+                                     nStates=nStates,
+                                     alg=alg,
+                                     preserveState=preserveState,
+                                     orthonormalize=orthonormalize)
+        E,mpsL,F,EE,EEs = leftSweep(mpsL,W,F,iterCnt,
+                                    nStates=nStates,
+                                    alg=alg,
+                                    preserveState=preserveState,
+                                    orthonormalize=orthonormalize)
         cont,conv,E_prev,iterCnt = checkConv(E_prev,E,tol,iterCnt,maxIter,minIter,nStates=nStates,targetState=targetState)
     if gaugeSiteSave != 0:
-        _E,mpsL,F,_EE,_EEs = rightSweep(mpsL,W,F,iterCnt+1,nStates=nStates,alg=alg,preserveState=preserveState,endSite=gaugeSiteSave)
+        _E,mpsL,F,_EE,_EEs = rightSweep(mpsL,W,F,iterCnt+1,
+                                        nStates=nStates,
+                                        alg=alg,
+                                        preserveState=preserveState,
+                                        endSite=gaugeSiteSave,
+                                        orthonormalize=orthonormalize)
         if _E is not None:
             E,EE,EEs = _E,_EE,_EEs
     save_mps(mpsL,fname,gaugeSite=gaugeSiteSave)
@@ -328,7 +376,8 @@ def run_dmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
              nStates=1,targetState=0,
              constant_mbd=False,alg='arnoldi',
              preserveState=False,gaugeSiteSave=None,
-             returnState=False,returnEnv=False,returnEntSpec=False):
+             returnState=False,returnEnv=False,returnEntSpec=False,
+             orthonormalize=False):
     N = len(mpo[0])
     if gaugeSiteSave is None: gaugeSiteSave = int(N/2)+1
     # Make sure everything is a vector
@@ -381,7 +430,8 @@ def run_dmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
                               preserveState=preserveState,
                               returnState=returnState,
                               returnEnv=returnEnv,
-                              returnEntSpec=returnEntSpec)
+                              returnEntSpec=returnEntSpec,
+                              orthonormalize=orthonormalize)
         # Extract Results
         E = output[0]
         EE = output[1]

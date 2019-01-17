@@ -35,15 +35,15 @@ def calc_ham(M,W,F,site):
         H += np.reshape(Htmp,(dim,dim))
     return H
 
-def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=True):
+def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=True,reuseOldState=True):
     _,nVecs = vecs.shape
     # Check to make sure we dont have a small gap
-    reuseOldState = True
+    matchedState = False
     for j in range(nVecs):
         ovlp_j = np.abs(np.dot(Mprev,np.conj(vecs[:,j])))
         print('\t\tChecking Overlap {} = {}'.format(j,ovlp_j))
         if ovlp_j > 0.98:
-            reuseOldState = False
+            matchedState = True
             if (j != 0) and preserveState and allowSwap:
                 # Swap eigenstates
                 print('!!! Swapping States {} & {} !!!'.format(0,j))
@@ -53,7 +53,7 @@ def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=T
                 Etmp = E[j]
                 E[j] = E[0]
                 E[0] = Etmp
-    if reuseOldState and preserveState:
+    if reuseOldState and preserveState and (not matchedState):
         print('!!! Correct State Not Found !!!')
         vecs = Mprev
         # Reformat it so it matches vecs
@@ -120,28 +120,27 @@ def orthonormalize(vecs):
         vecs[:,i] /= np.dot(vecs[:,i],np.conj(vecs[:,i]))
     return vecs
 
-def calc_eigs_exact(mpsL,W,F,site,nStates,preserveState=False):
+def calc_eigs_exact(mpsL,W,F,site,
+                    nStates,preserveState=False,
+                    orthonormalize=False):
     H = calc_ham(mpsL[0],W,F,site)
     Mprev = mpsL[0][site].ravel()
     vals,vecs = sla.eig(H)
     inds = np.argsort(vals)[::-1]
     E = vals[inds[:nStates]]
     vecs = vecs[:,inds[:nStates]]
-    # Check if lowest two states are degenerate
-    if nStates > 1:
-        gap = np.abs(E[0]-E[1])
-        #vecs = orthonormalize(vecs)
-        if gap < 1e-8:
-            print('ORTHONORMALIZING')
-            vecs = sla.orth(vecs)
+    # Orthonormalize (when gap is too small?)
+    # PH - Why is this needed?
+    if (nStates > 1) and orthonormalize:
+        vecs = sla.orth(vecs)
     # Don't preserve state at ends
-    if not preserveState:
-        if (site == 0) or (site == len(mpsL[0])-1):
-            preserveState = True
+    if (site == 0) or (site == len(mpsL[0])-1): preserveState = True
     E,vecs,ovlp = check_overlap(Mprev,vecs,E,preserveState=preserveState)
     return E,vecs,ovlp
 
-def calc_eigs_arnoldi(mpsL,W,F,site,nStates,nStatesCalc=None,preserveState=False):
+def calc_eigs_arnoldi(mpsL,W,F,site,
+                      nStates,nStatesCalc=None,
+                      preserveState=False,orthonormalize=False):
     guess = np.reshape(mpsL[0][site],-1)
     Hfun,_ = make_ham_func(mpsL[0],W,F,site)
     (n1,n2,n3) = mpsL[0][site].shape
@@ -156,14 +155,17 @@ def calc_eigs_arnoldi(mpsL,W,F,site,nStates,nStatesCalc=None,preserveState=False
     inds = np.argsort(vals)
     E = -vals[inds[:nStates]]
     vecs = vecs[:,inds[:nStates]]
+    # Orthonormalize (when gap is too small?) - PH, Why?
+    if (nStates > 1) and orthonormalize:
+        vecs = sla.orth(vecs)
     # At the ends, we do not want to switch states when preserving state is off
-    if not preserveState:
-        if (site == 0) or (site == len(mpsL[0])-1):
-            preserveState = True
+    if (site == 0) or (site == len(mpsL[0])-1): preserveState = True
     E,vecs,ovlp = check_overlap(guess,vecs,E,preserveState=preserveState)
     return E,vecs,ovlp
 
-def calc_eigs_davidson(mpsL,W,F,site,nStates,nStatesCalc=None,preserveState=False):
+def calc_eigs_davidson(mpsL,W,F,site,
+                       nStates,nStatesCalc=None,
+                       preserveState=False,orthonormalize=False):
     Hfun,precond = make_ham_func(mpsL[0],W,F,site)
     (n1,n2,n3) = mpsL[0][site].shape
     if nStatesCalc is None: nStatesCalc = nStates
@@ -183,14 +185,29 @@ def calc_eigs_davidson(mpsL,W,F,site,nStates,nStatesCalc=None,preserveState=Fals
         vecs = vecso
         E = -vals
         pass
+    # Orthonormalize (when gap is too small?) - PH, Why?
+    if (nStates > 1) and orthonormalize:
+        print('ORTHONORMALIZING')
+        vecs = sla.orth(vecs)
+    # At the ends, we do not want to switch states when preserving state is off
+    if (site == 0) or (site == len(mpsL[0])-1): preserveState = True
+    print('Are we preserving state? ',preserveState)
     E,vecs,ovlp = check_overlap(guess[0],vecs,E,preserveState=preserveState)
     return E,vecs,ovlp
 
-def calc_eigs(mpsL,W,F,site,nStates,alg='arnoldi',preserveState=False):
+def calc_eigs(mpsL,W,F,site,nStates,
+              alg='arnoldi',preserveState=False,
+              orthonormalize=False):
     if alg == 'davidson':
-        E,vecs,ovlp = calc_eigs_davidson(mpsL,W,F,site,nStates,preserveState=preserveState)
+        E,vecs,ovlp = calc_eigs_davidson(mpsL,W,F,site,nStates,
+                                         preserveState=preserveState,
+                                         orthonormalize=orthonormalize)
     elif alg == 'exact':
-        E,vecs,ovlp = calc_eigs_exact(mpsL,W,F,site,nStates,preserveState=preserveState)
+        E,vecs,ovlp = calc_eigs_exact(mpsL,W,F,site,nStates,
+                                      preserveState=preserveState,
+                                      orthonormalize=orthonormalize)
     elif alg == 'arnoldi':
-        E,vecs,ovlp = calc_eigs_arnoldi(mpsL,W,F,site,nStates,preserveState=preserveState)
+        E,vecs,ovlp = calc_eigs_arnoldi(mpsL,W,F,site,nStates,
+                                        preserveState=preserveState,
+                                        orthonormalize=orthonormalize)
     return E,vecs,ovlp
