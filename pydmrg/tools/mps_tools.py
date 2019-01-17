@@ -89,18 +89,18 @@ def state2mps(N,psi,mbd,return_ee=True):
     else:
         return mps
 
-def create_rand_mps(N,mbd,d=2):
+def create_rand_mps(N,mbd,d=2,const=1e-3):
     # Create MPS
     M = []
     for i in range(int(N/2)):
         #M.insert(len(M),np.random.rand(d,min(d**(i),mbd),min(d**(i+1),mbd)))
-        M.insert(len(M),np.ones((d,min(d**(i),mbd),min(d**(i+1),mbd))))
+        M.insert(len(M),const*np.ones((d,min(d**(i),mbd),min(d**(i+1),mbd))))
     if N%2 is 1:
         #M.insert(len(M),np.random.rand(d,min(d**(i+1),mbd),min(d**(i+1),mbd)))
-        M.insert(len(M),np.ones((d,min(d**(i+1),mbd),min(d**(i+1),mbd))))
+        M.insert(len(M),np.const*ones((d,min(d**(i+1),mbd),min(d**(i+1),mbd))))
     for i in range(int(N/2))[::-1]:
         #M.insert(len(M),np.random.rand(d,min(d**(i+1),mbd),min(d**i,mbd)))
-        M.insert(len(M),np.ones((d,min(d**(i+1),mbd),min(d**i,mbd))))
+        M.insert(len(M),const*np.ones((d,min(d**(i+1),mbd),min(d**i,mbd))))
     return M
 
 def create_all_mps(N,mbd,nStates):
@@ -148,8 +148,12 @@ def increase_mbd(M,mbd,periodic=False,constant=False,d=2):
 
 def increase_all_mbd(mpsL,mbd,periodic=False,constant=False,d=2):
     nStates = len(mpsL)
+    print(len(mpsL))
+    print(len(mpsL[0]))
     for state in range(nStates):
         mpsL[state] = increase_mbd(mpsL[state],mbd,periodic=periodic,constant=constant,d=d)
+    print(len(mpsL))
+    print(len(mpsL[0]))
     return mpsL
 
 def load_mps(N,fname,nStates=1):

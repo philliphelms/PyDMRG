@@ -6,12 +6,13 @@ from sys import argv
 # Set Calculation Parameters
 N = int(argv[1])
 p = 0.1 
-mbd = 10 # Can only be a single value currently
-ds0 = 0.001
+mbd = int(argv[2]) # Can only be a single value currently
+ds0 = [0.05,0.001,0.01]
+ds_change = [0.,0.1,10]
 s_symm = -(N-1.)/(2.*(N+1.))*np.log(p/(1.-p))
-s0 = -0.1
-sF = 2*N*s_symm #+ (s_symm - s0)
-make_plt = True
+s0 = -0.5
+sF = s_symm #+ (s_symm - s0)
+make_plt = False
 alg = 'davidson'
 s_thresh = s_symm
 if N > 20:
@@ -19,14 +20,14 @@ if N > 20:
 if N > 30:
     s_thresh = 0.05
 if N > 50:
-    s_thresh = 0.001
+    s_thresh = 0.01
 
 # Allocate Memory for results
 E   = np.array([])
 EE  = np.array([])
 gap = np.array([])
 sVec = np.array([])
-fname = 'saved_states/stateMatchingMPS_N'+str(N)+'_id'+str(int(time.time()))
+fname = 'saved_states/stateMatchingMPS_N'+str(N)+'_mbd'+str(mbd)+'_id'+str(int(time.time()))
 
 # Set up Plotting Stuff
 if make_plt:
@@ -54,8 +55,9 @@ sVec = np.append(sVec,s0)
 # Run Calculations
 sCurr = s0
 orthonormalize=False
+dsInd = 0
 while sCurr <= sF:
-    sCurr += ds0
+    sCurr += ds0[dsInd]
     # Run Calculation
     print('Running s = {}'.format(sCurr))
     mpo = return_mpo(N,(0.5,0.5,p,1.-p,0.5,0.5,sCurr))
@@ -79,6 +81,8 @@ while sCurr <= sF:
         EE = np.append(EE,EEtmp)
         gap = np.append(gap,gaptmp)
         sVec = np.append(sVec,sCurr)
+    if sCurr >= ds_change[dsInd]:
+        dsInd += 1
     # Create Plots
     if make_plt:
         if len(sVec) > 1:
@@ -94,6 +98,6 @@ while sCurr <= sF:
             ax4.semilogy(sVec,gap,'b.')
             plt.pause(0.01)
     # Save Results
-    np.savez('results/asep_stateMatching_psweep_N'+str(N)+'_Np1_Ns'+str(len(sVec)),N=N,p=p,mbd=mbd,s=sVec,E=E,EE=EE,gap=gap)
+    np.savez('results/asep_stateMatching_psweep_N'+str(N)+'_mbd'+str(mbd),N=N,p=p,mbd=mbd,s=sVec,E=E,EE=EE,gap=gap)
 if make_plt:
     plt.show()

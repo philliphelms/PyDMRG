@@ -41,7 +41,7 @@ def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=T
     matchedState = False
     for j in range(nVecs):
         ovlp_j = np.abs(np.dot(Mprev,np.conj(vecs[:,j])))
-        print('\t\tChecking Overlap {} = {}'.format(j,ovlp_j))
+        #print('\t\tChecking Overlap {} = {}'.format(j,ovlp_j))
         if ovlp_j > 0.98:
             matchedState = True
             if (j != 0) and preserveState and allowSwap:
@@ -187,11 +187,9 @@ def calc_eigs_davidson(mpsL,W,F,site,
         pass
     # Orthonormalize (when gap is too small?) - PH, Why?
     if (nStates > 1) and orthonormalize:
-        print('ORTHONORMALIZING')
         vecs = sla.orth(vecs)
     # At the ends, we do not want to switch states when preserving state is off
     if (site == 0) or (site == len(mpsL[0])-1): preserveState = True
-    print('Are we preserving state? ',preserveState)
     E,vecs,ovlp = check_overlap(guess[0],vecs,E,preserveState=preserveState)
     return E,vecs,ovlp
 

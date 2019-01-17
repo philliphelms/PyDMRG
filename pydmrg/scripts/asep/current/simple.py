@@ -7,7 +7,8 @@ from sys import argv
 N = int(argv[1])
 p = 0.1 
 mbd = 10#np.array([2,4,8,16,32,48,64])
-sVec = np.linspace(-0.5,0.5,100)
+sVec = np.linspace(0.,0.5,100)
+alg = 'davidson'
 
 # Allocate Memory for results
 E   = np.zeros((len(sVec)))
@@ -24,7 +25,7 @@ for sind,s in enumerate(sVec):
                                      mbd=mbd,
                                      fname=fname,
                                      nStates=2,
-                                     alg='exact')
+                                     alg=alg)
         print(Etmp)
         print(EEtmp)
         print(gaptmp)
@@ -39,7 +40,7 @@ for sind,s in enumerate(sVec):
                                      initGuess=fname,
                                      fname=fname,
                                      nStates=2,
-                                     alg='exact',
+                                     alg=alg,
                                      preserveState=False)
         E[sind] = Etmp
         EE[sind] = EEtmp
