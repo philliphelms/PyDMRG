@@ -7,8 +7,8 @@ from sys import argv
 N = int(argv[1])
 p = 0.1 
 mbd = 10#np.array([2,4,8,16,32,48,64])
-sVec = np.linspace(-0.5,0.5,100)
-alg = 'exact'
+sVec = np.linspace(-0.3,0.3,50)
+alg = 'davidson'
 
 # Allocate Memory for results
 E   = np.zeros((len(sVec)))
@@ -46,4 +46,4 @@ for sind,s in enumerate(sVec):
         EE[sind] = EEtmp
         gap[sind] = gaptmp
     # Save Results
-    np.savez('results/asep_simple_psweep_N'+str(N)+'_Np1_Ns'+str(len(sVec)),N=N,p=p,mbd=mbd,s=sVec,E=E,EE=EE,gap=gap)
+    np.savez('results/asep_activityBiased_simple_psweep_N'+str(N)+'_Np1_Ns'+str(len(sVec)),N=N,p=p,mbd=mbd,s=sVec,E=E,EE=EE,gap=gap)

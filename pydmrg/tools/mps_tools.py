@@ -89,18 +89,18 @@ def state2mps(N,psi,mbd,return_ee=True):
     else:
         return mps
 
-def create_rand_mps(N,mbd,d=2,const=1e-3):
+def create_rand_mps(N,mbd,d=2,const=.1):
     # Create MPS
     M = []
     for i in range(int(N/2)):
-        #M.insert(len(M),np.random.rand(d,min(d**(i),mbd),min(d**(i+1),mbd)))
-        M.insert(len(M),const*np.ones((d,min(d**(i),mbd),min(d**(i+1),mbd))))
+        M.insert(len(M),const*np.random.rand(d,min(d**(i),mbd),min(d**(i+1),mbd)))
+        #M.insert(len(M),const*np.ones((d,min(d**(i),mbd),min(d**(i+1),mbd))))
     if N%2 is 1:
-        #M.insert(len(M),np.random.rand(d,min(d**(i+1),mbd),min(d**(i+1),mbd)))
-        M.insert(len(M),np.const*ones((d,min(d**(i+1),mbd),min(d**(i+1),mbd))))
+        M.insert(len(M),const*np.random.rand(d,min(d**(i+1),mbd),min(d**(i+1),mbd)))
+        #M.insert(len(M),const*np.ones((d,min(d**(i+1),mbd),min(d**(i+1),mbd))))
     for i in range(int(N/2))[::-1]:
-        #M.insert(len(M),np.random.rand(d,min(d**(i+1),mbd),min(d**i,mbd)))
-        M.insert(len(M),const*np.ones((d,min(d**(i+1),mbd),min(d**i,mbd))))
+        M.insert(len(M),const*np.random.rand(d,min(d**(i+1),mbd),min(d**i,mbd)))
+        #M.insert(len(M),const*np.ones((d,min(d**(i+1),mbd),min(d**i,mbd))))
     return M
 
 def create_all_mps(N,mbd,nStates):

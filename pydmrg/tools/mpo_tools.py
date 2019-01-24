@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 
 def mpo2mat(mpo):
     N = len(mpo[0])
@@ -19,5 +20,10 @@ def mpo2mat(mpo):
                 mat[i,j] += tmp_mat[[0]]
     return mat
 
-#def mpoH(mpo):
-    # Return the conjugate transpose of the mpo
+def mpo_conj_trans(mpo):
+    # Return the conjugate transpose of the mp
+    mpoct = copy.deepcopy(mpo)
+    for opind,op in enumerate(mpo):
+        for site in range(len(op)):
+            mpoct[opind][site] = np.transpose(mpo[opind][site],(0,1,3,2)).conj()
+    return mpoct

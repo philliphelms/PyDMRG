@@ -82,3 +82,63 @@ def periodic_mpo(N,hamParams):
     mpoL.append(mpo_p1)
     mpoL.append(mpo_p2)
     return mpoL
+
+def curr_mpo(N,hamParams,periodic=False):
+    if periodic:
+        return periodic_curr(N,hamParams)
+    else:
+        return open_curr(N,hamParams)
+
+def open_curr(N,hamParams):
+    # Unpack Ham Params ############################
+    a = hamParams[0]
+    b = hamParams[1]
+    s = hamParams[2]
+    exp_a = a*np.exp(s)
+    exp_b = b*np.exp(s)
+    exp_p = 1.*np.exp(s)
+    # Create MPO ###################################
+    # List to hold all Operators (only one here though)
+    mpoL = []
+    # Single operator
+    mpo = [None]*N
+    mpo[0] = np.array([[exp_a*Sm, exp_p*Sp, I]])
+    for site in range(1,N-1):
+        mpo[site] = np.array([[I,  z,        z],
+                              [Sm, z,        z],
+                              [z,  exp_p*Sp, I]])
+    mpo[1] = np.array([[I],
+                       [Sm],
+                       [exp_b*Sp]])
+    # Add single mpo to list of mpos
+    mpoL.append(mpo)
+    return mpoL
+
+def periodic_curr(N,hamParams):
+    # Unpack Ham Params ############################
+    a = hamParams[0]
+    b = hamParams[1]
+    s = hamParams[2]
+    exp_a = a*np.exp(s)
+    exp_b = b*np.exp(s)
+    exp_p = 1.*np.exp(s)
+    # Create MPO ###################################
+    # List to hold all Operators (only one here though)
+    mpoL = []
+    # Main operator
+    mpo = [None]*N
+    # General operator form:
+    gen_mpo = np.array([[I,  z,       z],
+                        [Sm, z,       z],
+                        [z,  exp_p*Sp,I]])
+    mpo[0] = np.expand_dims(gen_mpo[-1,:],0)
+    for site in range(1,N-1):
+        mpo[i] = gen_mpo
+    mpo[-1] = np.expand_dims(gen_mpo[:,0],1)
+    mpoL.append(mpo)
+    # Periodic terms:
+    mpo_p1 = [None]*N
+    mpo_p1[-1] = np.array([[exp_p*Sp]])
+    mpo_p1[0] = np.array([[Sm]])
+    mpoL.append(mpo_p1)
+    return mpoL

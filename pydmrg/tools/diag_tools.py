@@ -41,7 +41,7 @@ def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=T
     matchedState = False
     for j in range(nVecs):
         ovlp_j = np.abs(np.dot(Mprev,np.conj(vecs[:,j])))
-        #print('\t\tChecking Overlap {} = {}'.format(j,ovlp_j))
+        print('\t\tChecking Overlap {} = {}'.format(j,ovlp_j))
         if ovlp_j > 0.98:
             matchedState = True
             if (j != 0) and preserveState and allowSwap:
@@ -174,7 +174,7 @@ def calc_eigs_davidson(mpsL,W,F,site,
     for state in range(nStates):
         guess.append(np.reshape(mpsL[state][site],-1))
     # PH - Could add some convergence check
-    vals,vecso = davidson(Hfun,guess,precond,nroots=nStatesCalc,pick=pick_eigs,follow_state=False,tol=1e-10,max_cycle=1000)
+    vals,vecso = davidson(Hfun,guess,precond,nroots=nStatesCalc,pick=pick_eigs,follow_state=False,tol=1e-30,max_cycle=1000)
     sort_inds = np.argsort(np.real(vals))
     try:
         vecs = np.zeros((len(vecso[0]),nStates),dtype=np.complex_)
@@ -185,8 +185,20 @@ def calc_eigs_davidson(mpsL,W,F,site,
         vecs = vecso
         E = -vals
         pass
+    # Allow orthonormalize to a float indicating a gap size where it should be turned on
+    if not isinstance(orthonormalize,bool):
+        if nStates == 1: orthonormalize = False
+        else:
+            gap  = np.abs(E[0]-E[1])
+            print('Calculated gap {}'.format(gap))
+            if gap < orthonormalize:
+                orthonormalize = True
+                print('We are below the gap threshold')
+            else:
+                orthonormalize = False
     # Orthonormalize (when gap is too small?) - PH, Why?
     if (nStates > 1) and orthonormalize:
+        print('Orthonormalizing')
         vecs = sla.orth(vecs)
     # At the ends, we do not want to switch states when preserving state is off
     if (site == 0) or (site == len(mpsL[0])-1): preserveState = True

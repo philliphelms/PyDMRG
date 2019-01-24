@@ -5,6 +5,7 @@ from pyscf.lib import einsum
 from scipy.sparse.linalg import eigs as arnoldi
 from scipy.sparse.linalg import LinearOperator
 from tools.mps_tools import *
+from tools.mpo_tools import *
 from tools.diag_tools import *
 import warnings
 
@@ -377,10 +378,14 @@ def run_dmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
              constant_mbd=False,alg='arnoldi',
              preserveState=False,gaugeSiteSave=None,
              returnState=False,returnEnv=False,returnEntSpec=False,
-             orthonormalize=False):
+             orthonormalize=False,calcLeftState=False):
+    # Determine number of sites from length of mpo operators
     N = len(mpo[0])
+
+    # Set to save MPS at center site as default
     if gaugeSiteSave is None: gaugeSiteSave = int(N/2)+1
-    # Make sure everything is a vector
+    
+    # Check Data Structures to make sure they are correct
     if not hasattr(mbd,'__len__'): mbd = np.array([mbd])
     if not hasattr(tol,'__len__'):
         tol = tol*np.ones(len(mbd))
@@ -394,34 +399,73 @@ def run_dmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
         minIter = minIter*np.ones(len(mbd))
     else:
         assert(len(minIter) == len(mbd))
-    # Vector to store results
+
+    # Get mpo for calculating left state
+    if calcLeftState: mpol = mpo_conj_trans(mpo)
+
+    # Create data structures to save results
     Evec  = np.zeros(len(mbd),dtype=np.complex_)
     EEvec = np.zeros(len(mbd),dtype=np.complex_)
     gapvec= np.zeros(len(mbd),dtype=np.complex_)
+    if calcLeftState: EEvecl = np.zeros(len(mbd),dtype=np.complex_)
+
+    # Loop over all maximum bond dimensions, running dmrg for each one
     for mbdInd,mbdi in enumerate(mbd):
         print('Starting Calc for MBD = {}'.format(mbdi))
+
+        # Set up initial MPS
         if initGuess is None:
-            mpsL = create_all_mps(N,mbdi,nStates)
-            mpsL = make_all_mps_right(mpsL)
-            if constant_mbd: mps = increase_mbd(mpsL,mbdi,constant=True)
+            
+            # Make random or constant MPS initial guess
+            mpsList = create_all_mps(N,mbdi,nStates)
+            mpsList = make_all_mps_right(mpsList)
+            # PH - constant_mbd not currently working
+            if constant_mbd: mps = increase_mbd(mpsList,mbdi,constant=True)
+            # Right canonical, so set gauge site at 0
             gSite = 0
-        else:
+
+            # Repeat for left eigenstate
+            if calcLeftState:
+                mpslList = create_all_mps(N,mbdi,nStates)
+                mpslList = make_all_mps_right(mpsList)
+                if constant_mbd: mps = increase_mbd(mpslList,mbdi,constant=True)
+                glSite = 0
+        else: # PH - Should check if it is a sting here and add the additional possibility that the input is an mpsList
+
+            # Load user provided MPS guess    
             if mbdInd == 0:
-                mpsL,gSite = load_mps(N,initGuess+'_mbd'+str(mbdInd),nStates=nStates)
+                # Load user provided MPS Guess
+                mpsList,gSite = load_mps(N,initGuess+'_mbd'+str(mbdInd),nStates=nStates)
+                # Repeat for left eigenstate
+                if calcLeftState: mpslList,glSite = load_mps(N,initGuess+'_mbd'+str(mbdInd)+'_left',nStates=nStates)
             else:
-                mpsL,gSite = load_mps(N,initGuess+'_mbd'+str(mbdInd-1),nStates=nStates)
-                mpsL = increase_all_mbd(mpsL,mbdi)
+                # Load mps guess from previous bond dimension and increase to current mbd
+                mpsList,gSite = load_mps(N,initGuess+'_mbd'+str(mbdInd-1),nStates=nStates)
+                mpsList = increase_all_mbd(mpsList,mbdi)
+                # Repeat for left eigenstate
+                if calcLeftState:
+                    mpslList,glSite = load_mps(N,initGuess+'_mbd'+str(mbdInd-1)+'_left',nStates=nStates)
+                    mpslList = increase_all_mbd(mpslList,mbdi)
+
+        # Calc environment (or load if provided)
         if initEnv is None: 
-            env = calc_env(mpsL[0],mpo,mbdi,gaugeSite=gSite)
+            env = calc_env(mpsList[0],mpo,mbdi,gaugeSite=gSite)
+            if calcLeftState: envl = calc_env(mpslList[0],mpol,mbdi,gaugeSite=glSite)
         else:
             env = initEnv
-        fname_tmp = None
-        if fname is not None: fname_tmp = fname + '_mbd' + str(mbdInd)
-        output = run_sweeps(mpsL,mpo,env,
+            if calcLeftState: env,envl = initEnv[0],initEnv[1]
+
+        # Add an index to the MPS filename saving to indicate its bond dimension
+        fname_mbd = None
+        if fname is not None: fname_mbd = fname + '_mbd' + str(mbdInd)
+
+        # Run DMRG Sweeps (right eigenvector)
+        print('Calculating Right Eigenstate')
+        output = run_sweeps(mpsList,mpo,env,
                               maxIter=maxIter[mbdInd],
                               minIter=minIter[mbdInd],
                               tol=tol[mbdInd],
-                              fname=fname_tmp,
+                              fname=fname_mbd,
                               nStates=nStates,
                               alg=alg,
                               targetState=targetState,
@@ -439,25 +483,76 @@ def run_dmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
         Evec[mbdInd]  = output[0]
         EEvec[mbdInd] = output[1]
         gapvec[mbdInd]= output[2]
+        # Extract Extra results
         if returnEntSpec and returnState and returnEnv:
             EEs = output[3]
-            mpsL = output[4]
+            mpsList = output[4]
             env = output[5]
         elif returnEntSpec and returnState:
             EEs = output[3]
-            mpsL = output[4]
+            mpsList = output[4]
         elif returnEntSpec and returnEnv:
             EEs = output[3]
             env = output[4]
         elif returnState and returnEnv:
-            mpsL = output[3]
+            mpsList = output[3]
             env = output[4]
         elif returnEntSpec:
             EEs = output[3]
         elif returnState:
-            mpsL = output[3]
+            mpsList = output[3]
         elif returnEnv:
             env = output[3]
+
+        if calcLeftState:
+            # Run DMRG Sweeps (left eigenvector)
+            print('Calculating Left Eigenstate')
+            output = run_sweeps(mpslList,mpol,envl,
+                                  maxIter=maxIter[mbdInd],
+                                  minIter=minIter[mbdInd],
+                                  tol=tol[mbdInd],
+                                  fname=fname_mbd+'_left',
+                                  nStates=nStates,
+                                  alg=alg,
+                                  targetState=targetState,
+                                  gaugeSiteLoad=glSite,
+                                  gaugeSiteSave=gaugeSiteSave,
+                                  preserveState=preserveState,
+                                  returnState=returnState,
+                                  returnEnv=returnEnv,
+                                  returnEntSpec=returnEntSpec,
+                                  orthonormalize=orthonormalize)
+            # Extract left state specific Results
+            EEl = output[1]
+            EEvecl[mbdInd]  = output[1]
+            # Extra potential extra data
+            if returnEntSpec and returnState and returnEnv:
+                EEsl = output[3]
+                mpslList = output[4]
+                envl = output[5]
+            elif returnEntSpec and returnState:
+                EEsl = output[3]
+                mpslList = output[4]
+            elif returnEntSpec and returnEnv:
+                EEsl = output[3]
+                envl = output[4]
+            elif returnState and returnEnv:
+                mpslList = output[3]
+                envl = output[4]
+            elif returnEntSpec:
+                EEsl = output[3]
+            elif returnState:
+                mpslList = output[3]
+            elif returnEnv:
+                envl = output[3]
+
+    # Lump right and left results
+    if calcLeftState:
+        EE = [EE,EEl]
+        if returnEntSpec: EEs = [EEs,EEsl]
+        if returnState: mpsList = [mpsList,mpslList]
+        if returnEnv: env = [env,envl]
+
     # Return Results
     if len(Evec) == 1:
         output = [E,EE,gap]
@@ -466,7 +561,7 @@ def run_dmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
     if returnEntSpec:
         output.append(EEs)
     if returnState:
-        output.append(mpsL)
+        output.append(mpsList)
     if returnEnv:
         output.append(env)
     return output
