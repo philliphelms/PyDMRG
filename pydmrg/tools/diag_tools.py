@@ -36,7 +36,11 @@ def calc_ham(M,W,F,site):
     return H
 
 def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=True,reuseOldState=True):
-    _,nVecs = vecs.shape
+    vecShape = vecs.shape
+    if len(vecShape) == 1: 
+        nVecs = 1
+        vecs = np.swapaxes(np.array([vecs]),0,1)
+    else: _,nVecs = vecShape
     # Check to make sure we dont have a small gap
     matchedState = False
     for j in range(nVecs):
