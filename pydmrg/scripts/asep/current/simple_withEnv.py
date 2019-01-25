@@ -75,7 +75,7 @@ if leftState:
     opNorm = contract(N,mbd,
                       mps = fname+'s0'+'_mbd0',
                       lmps= fname+'s0'+'_mbd0_left')
-    curr=np.append(curr,opCurr/opNorm)
+    curr=np.append(curr,opCurr/opNorm*(N+1))
     print('Current = {}'.format(curr[-1]))
 else:
     EE = np.append(EE,EEtmp)
@@ -126,7 +126,7 @@ while sCurr <= sF:
             opNorm = contract(N,mbd,
                               mps = fname+'s'+str(len(sVec))+'_mbd0',
                               lmps= fname+'s'+str(len(sVec))+'_mbd0_left')
-            curr=np.append(curr,opCurr/opNorm)
+            curr=np.append(curr,opCurr/opNorm*(N+1))
             print('Current = {}'.format(curr[-1]))
         else:
             EE = np.append(EE,EEtmp)
