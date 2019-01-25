@@ -16,10 +16,10 @@ import collections
 #       hamParams[0] = alpha  (In at left)
 #       hamParams[1] = gamma  (Out at left)
 #       hamParams[2] = p      (Forward at site)
-#       hamParams[2] = q      (Backward at site)
-#       hamParams[2] = beta   (Out at right)
-#       hamParams[2] = delta  (In at right)
-#       hamParams[2] = s      (bias)
+#       hamParams[3] = q      (Backward at site)
+#       hamParams[4] = beta   (Out at right)
+#       hamParams[5] = delta  (In at right)
+#       hamParams[6] = s      (bias)
 ###########################################################################
 
 def return_mpo(N,hamParams,periodic=False):

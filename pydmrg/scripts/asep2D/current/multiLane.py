@@ -12,7 +12,6 @@ Nx = int(argv[2])
 p = 0.1 
 mbd = int(argv[3]) # Can only be a single value currently
 ds0 = [0.05,0.001,0.01]
-ds0 = [0.1,0.1,0.1]
 ds_change = [0.,0.2,10]
 s_symm = -(Ny-1.)/(2.*(Ny+1.))*np.log(p/(1.-p))
 s0 = -0.5
@@ -125,7 +124,7 @@ while sCurr <= sF:
     if (sCurr > s_thresh) and (EErtmp < 0.99):
         if not orthonormalize:
             # Redo previous calculation
-            sCurr -= ds0
+            sCurr -= ds0[dsInd]
             # Start to use orhogonalization
             orthonormalize=True
     else:
@@ -147,7 +146,7 @@ while sCurr <= sF:
             EE = np.append(EE,EEtmp)
         E = np.append(E,Etmp)
         gap = np.append(gap,gaptmp)
-        sVec = np.append(sVec,s0)
+        sVec = np.append(sVec,sCurr)
     if sCurr >= ds_change[dsInd]:
         dsInd += 1
     # Create Plots

@@ -13,7 +13,7 @@ mbd = int(argv[2]) # Can only be a single value currently
 ds0 = [0.05,0.001,0.01]
 ds_change = [0.,0.2,10]
 s_symm = -(N-1.)/(2.*(N+1.))*np.log(p/(1.-p))
-s0 = -0.1
+s0 = -0.5
 sF = s_symm #+ (s_symm - s0)
 make_plt = False
 leftState = True
@@ -75,7 +75,7 @@ if leftState:
     opNorm = contract(N,mbd,
                       mps = fname+'s0'+'_mbd0',
                       lmps= fname+'s0'+'_mbd0_left')
-    curr=np.append(curr,opCurr/opNorm)
+    curr=np.append(curr,opCurr/opNorm*(N+1))
     print('Current = {}'.format(curr[-1]))
 else:
     EE = np.append(EE,EEtmp)
@@ -126,13 +126,13 @@ while sCurr <= sF:
             opNorm = contract(N,mbd,
                               mps = fname+'s'+str(len(sVec))+'_mbd0',
                               lmps= fname+'s'+str(len(sVec))+'_mbd0_left')
-            curr=np.append(curr,opCurr/opNorm)
+            curr=np.append(curr,opCurr/opNorm*(N+1))
             print('Current = {}'.format(curr[-1]))
         else:
             EE = np.append(EE,EEtmp)
         E = np.append(E,Etmp)
         gap = np.append(gap,gaptmp)
-        sVec = np.append(sVec,s0)
+        sVec = np.append(sVec,sCurr)
     if sCurr >= ds_change[dsInd]:
         dsInd += 1
     # Create Plots
