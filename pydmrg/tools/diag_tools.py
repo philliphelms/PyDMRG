@@ -6,6 +6,7 @@ from scipy.sparse.linalg import eigs as arnoldi
 from scipy.sparse.linalg import LinearOperator
 from tools.mps_tools import *
 import warnings
+import copy
 
 def calc_diag(M,W,F,site):
     (n1,n2,n3) = M[site].shape
@@ -51,8 +52,8 @@ def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=T
             if (j != 0) and preserveState and allowSwap:
                 # Swap eigenstates
                 print('!!! Swapping States {} & {} !!!'.format(0,j))
-                tmpVec = vecs[:,j]
-                vecs[:,j] = vecs[:,0]
+                tmpVec = copy.deepcopy(vecs[:,j])
+                vecs[:,j] = copy.deepcopy(vecs[:,0])
                 vecs[:,0] = tmpVec
                 Etmp = E[j]
                 E[j] = E[0]
