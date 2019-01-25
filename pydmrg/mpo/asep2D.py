@@ -292,7 +292,7 @@ def periodic_y_mpo(Nx,Ny,hamParams):
 # Current MPOS
 ##########################################################################
 
-def curr_mpo(N,hamParams,periodicx=False,periodicy=False):
+def curr_mpo(N,hamParams,periodicx=False,periodicy=False,includex=True,includey=True):
     if hasattr(N,'__len__'):
         Nx = N[0]
         Ny = N[1]
@@ -305,16 +305,35 @@ def curr_mpo(N,hamParams,periodicx=False,periodicy=False):
     else:
         hamParams = extractParams(hamParams)
     # Generate MPO based on periodicity
-    if periodicx and periodicy:
-        return periodic_xy_curr(Nx,Ny,hamParams)
-    elif periodicx:
-        return periodic_x_curr(Nx,Ny,hamParams)
-    elif periodicy:
-        return periodic_y_curr(Nx,Ny,hamParams)
-    else:
-        return open_curr(Nx,Ny,hamParams)
+    if includex and includey:
+        if periodicx and periodicy:
+            return periodic_xy_curr_xy(Nx,Ny,hamParams)
+        elif periodicx:
+            return periodic_x_curr_xy(Nx,Ny,hamParams)
+        elif periodicy:
+            return periodic_y_curr_xy(Nx,Ny,hamParams)
+        else:
+            return open_curr_xy(Nx,Ny,hamParams)
+    elif includex:
+        if periodicx and periodicy:
+            return periodic_xy_curr_x(Nx,Ny,hamParams)
+        elif periodicx:
+            return periodic_x_curr_x(Nx,Ny,hamParams)
+        elif periodicy:
+            return periodic_y_curr_x(Nx,Ny,hamParams)
+        else:
+            return open_curr_x(Nx,Ny,hamParams)
+    elif includey:
+        if periodicx and periodicy:
+            return periodic_xy_curr_y(Nx,Ny,hamParams)
+        elif periodicx:
+            return periodic_x_curr_y(Nx,Ny,hamParams)
+        elif periodicy:
+            return periodic_y_curr_y(Nx,Ny,hamParams)
+        else:
+            return open_curr_y(Nx,Ny,hamParams)
 
-def open_curr(Nx,Ny,hamParams):
+def open_curr_xy(Nx,Ny,hamParams):
     # Extract parameter Values
     (jr,jl,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,sx,sy) = hamParams
     (ejr,ejl,eju,ejd,ecr,ecl,ecu,ecd,edr,edl,edu,edd) = exponentiateBias(hamParams)
@@ -322,7 +341,7 @@ def open_curr(Nx,Ny,hamParams):
     mpoL = []
     # Main MPO
     mpo = []
-    ham_dim = 2*Ny+2
+    ham_dim = 2+2*Ny
     for xi in range(Nx):
         for yi in range(Ny):
             # Build generic MPO
@@ -363,7 +382,101 @@ def open_curr(Nx,Ny,hamParams):
     mpoL.append(mpo)
     return mpoL
 
-def periodic_xy_mpo(Nx,Ny,hamParams):
+def open_curr_x(Nx,Ny,hamParams):
+    # Extract parameter Values
+    (jr,jl,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,sx,sy) = hamParams
+    (ejr,ejl,eju,ejd,ecr,ecl,ecu,ecd,edr,edl,edu,edd) = exponentiateBias(hamParams)
+    # List to hold all MPOs
+    mpoL = []
+    # Main MPO
+    mpo = []
+    ham_dim = 2*Ny+2
+    for xi in range(Nx):
+        for yi in range(Ny):
+            # Build generic MPO
+            gen_mpo = np.zeros((ham_dim,ham_dim,2,2))
+            gen_mpo[0,0,:,:] = I 
+            gen_mpo[1,0,:,:] = ejr[xi-1,yi]*Sm
+            gen_mpo[Ny+1,0,:,:] = -ejl[xi,yi]*Sp
+            # Build generic interior
+            col_ind = 1
+            row_ind = 2
+            for k in range(2): 
+                for l in range(Ny-1):
+                    gen_mpo[row_ind,col_ind,:,:] = I
+                    col_ind += 1
+                    row_ind += 1
+                col_ind += 1
+                row_ind += 1
+            # Build bottom row
+            gen_mpo[-1,Ny,:,:] = Sp
+            gen_mpo[-1,2*Ny,:,:] = Sm
+            gen_mpo[-1,2*Ny+1,:,:] = I
+            # Include creation & annihilation
+            gen_mpo[-1,0,:,:] += (ecr[xi,yi] - ecl[xi,yi])*Sm +\
+                                 (edr[xi,yi] - edl[xi,yi])*Sp
+            # Prevent interaction between ends
+            if (yi == 0) and (xi != 0):
+                gen_mpo[Ny,0,:,:] = z
+                gen_mpo[2*Ny,0,:,:] = z
+            # Add operator to list of operators
+            if (xi == 0) and (yi == 0):
+                mpo.append(np.expand_dims(gen_mpo[-1,:],0))
+            elif (xi == Nx-1) and (yi == Ny-1):
+                mpo.append(np.expand_dims(gen_mpo[:,0],1))
+            else:
+                mpo.append(gen_mpo)
+    mpoL.append(mpo)
+    return mpoL
+
+def open_curr_y(Nx,Ny,hamParams):
+    # Extract parameter Values
+    (jr,jl,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,sx,sy) = hamParams
+    (ejr,ejl,eju,ejd,ecr,ecl,ecu,ecd,edr,edl,edu,edd) = exponentiateBias(hamParams)
+    # List to hold all MPOs
+    mpoL = []
+    # Main MPO
+    mpo = []
+    ham_dim = 2*Ny+2
+    for xi in range(Nx):
+        for yi in range(Ny):
+            # Build generic MPO
+            gen_mpo = np.zeros((ham_dim,ham_dim,2,2))
+            gen_mpo[0,0,:,:] = I 
+            gen_mpo[Ny,0,:,:] = -ejd[xi,yi-1]*Sm
+            gen_mpo[2*Ny,0,:,:] = eju[xi,yi]*Sp
+            # Build generic interior
+            col_ind = 1
+            row_ind = 2
+            for k in range(2): 
+                for l in range(Ny-1):
+                    gen_mpo[row_ind,col_ind,:,:] = I
+                    col_ind += 1
+                    row_ind += 1
+                col_ind += 1
+                row_ind += 1
+            # Build bottom row
+            gen_mpo[-1,Ny,:,:] = Sp
+            gen_mpo[-1,2*Ny,:,:] = Sm
+            gen_mpo[-1,2*Ny+1,:,:] = I
+            # Include creation & annihilation
+            gen_mpo[-1,0,:,:] += (-ecd[xi,yi] + ecu[xi,yi])*Sm +\
+                                 (-edd[xi,yi] + edu[xi,yi])*Sp
+            # Prevent interaction between ends
+            if (yi == 0) and (xi != 0):
+                gen_mpo[Ny,0,:,:] = z
+                gen_mpo[2*Ny,0,:,:] = z
+            # Add operator to list of operators
+            if (xi == 0) and (yi == 0):
+                mpo.append(np.expand_dims(gen_mpo[-1,:],0))
+            elif (xi == Nx-1) and (yi == Ny-1):
+                mpo.append(np.expand_dims(gen_mpo[:,0],1))
+            else:
+                mpo.append(gen_mpo)
+    mpoL.append(mpo)
+    return mpoL
+
+def periodic_xy_mpo_xy(Nx,Ny,hamParams):
     # Extract parameter Values
     (jr,jl,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,sx,sy) = hamParams
     (ejr,ejl,eju,ejd,ecr,ecl,ecu,ecd,edr,edl,edu,edd) = exponentiateBias(hamParams)
@@ -414,7 +527,7 @@ def periodic_xy_mpo(Nx,Ny,hamParams):
                 mpoL.append(op1)
     return mpoL
 
-def periodic_x_mpo(Nx,Ny,hamParams):
+def periodic_x_mpo_xy(Nx,Ny,hamParams):
     # Extract parameter Values
     (jr,jl,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,sx,sy) = hamParams
     (ejr,ejl,eju,ejd,ecr,ecl,ecu,ecd,edr,edl,edu,edd) = exponentiateBias(hamParams)
@@ -447,7 +560,7 @@ def periodic_x_mpo(Nx,Ny,hamParams):
                 mpoL.append(op1)
     return mpoL
 
-def periodic_y_mpo(Nx,Ny,hamParams):
+def periodic_y_mpo_xy(Nx,Ny,hamParams):
     # Extract parameter Values
     (jr,jl,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,sx,sy) = hamParams
     (ejr,ejl,eju,ejd,ecr,ecl,ecu,ecd,edr,edl,edu,edd) = exponentiateBias(hamParams)

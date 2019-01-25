@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 
 class pydmrg_test(unittest.TestCase):
+
     def test_arnoldiCheck(self):
         import tests.asep.arnoldiCheck as eigCheck
         E1,E2 = eigCheck.run_test()
@@ -53,6 +54,12 @@ class pydmrg_test(unittest.TestCase):
         opCur,opCurS,derCur = currCheck.run_test()
         self.assertTrue(np.isclose(opCur,derCur,atol=1e-3))
         self.assertTrue(np.isclose(opCurS,derCur,atol=1e-3))
+
+    def test_2D_current_calc(self):
+        print('Running 2D Current Calculation Test')
+        import tests.asep2D.current2DCheck as currCheck
+        opCur1,opCur2 = currCheck.run_test()
+        self.assertTrue(np.isclose(opCur1,opCur2,atol=1e-3))
 
 if __name__ == "__main__":
     unittest.main()
