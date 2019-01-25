@@ -16,10 +16,10 @@ import collections
 #       hamParams[0] = alpha  (In at left)
 #       hamParams[1] = gamma  (Out at left)
 #       hamParams[2] = p      (Forward at site)
-#       hamParams[2] = q      (Backward at site)
-#       hamParams[2] = beta   (Out at right)
-#       hamParams[2] = delta  (In at right)
-#       hamParams[2] = s      (bias)
+#       hamParams[3] = q      (Backward at site)
+#       hamParams[4] = beta   (Out at right)
+#       hamParams[5] = delta  (In at right)
+#       hamParams[6] = s      (bias)
 ###########################################################################
 
 def return_mpo(N,hamParams,periodic=False):
@@ -134,17 +134,38 @@ def extractParams(N,hamParams):
     s = hamparams[6].astype(dtype=np.float_)
     return (a,g,p,q,b,d,s)
 
-def curr_mpo(N,hamParams,periodic=False):
+def act_mpo(N,hamParams,periodic=False,singleBond=True,bond=None):
     if not isinstance(hamParams[0],(collections.Sequence,np.ndarray)):
         hamParams = val2vecParams(N,hamParams)
     else:
         hamParams = extractParams(N,hamParams)
-    if periodic:
-        return periodic_curr(N,hamParams)
+    if singleBond:
+        return single_bond_act(N,hamParams,bond=bond)
     else:
-        return open_curr(N,hamParams)
+        if periodic:
+            return periodic_act(N,hamParams)
+        else:
+            return open_act(N,hamParams)
 
-def open_curr(N,hamParams):
+def single_bond_act(N,hamParams,bond=None):
+    # Decide which bond to measure actent over
+    if bond is None:
+        bond = int(N/2)
+    # Extract parameter values
+    (a,g,p,q,b,d,s) = hamParams
+    (ea,eg,ep,eq,eb,ed) = exponentiateBias(hamParams)
+    # List to hold all mpos
+    mpoL = []
+    # Main mpo
+    mpo = [None]*N
+    mpo[bond] = np.array([[Sp,Sm]])
+    mpo[bond+1] = np.array([[ep[bond-1]*Sm],
+                            [eq[bond]*Sp]])
+    # Include in list of mpos
+    mpoL.append(mpo)
+    return mpoL
+
+def open_act(N,hamParams):
     # Extract parameter values
     (a,g,p,q,b,d,s) = hamParams
     (ea,eg,ep,eq,eb,ed) = exponentiateBias(hamParams)
@@ -159,8 +180,8 @@ def open_curr(N,hamParams):
                             [eq[site]*Sp,    z,  z, z],
                             [z,             Sp, Sm, I]])
         # Include destruction & creation at site
-        gen_mpo[-1,0,:,:] += (ea[site] + ed[site])*Sm -\
-                             (eb[site] + eg[site])*Sp -\
+        gen_mpo[-1,0,:,:] += (ea[site] + ed[site])*Sm +\
+                             (eb[site] + eg[site])*Sp
         # Add operator to mpo
         if (site == 0):
             mpo[site] = np.expand_dims(gen_mpo[-1,:],0)
@@ -172,7 +193,7 @@ def open_curr(N,hamParams):
     mpoL.append(mpo)
     return mpoL
 
-def periodic_curr(N,hamParams):
+def periodic_act(N,hamParams):
     # Extract parameter values
     (a,g,p,q,b,d,s) = hamParams
     (ea,eg,ep,eq,eb,ed) = exponentiateBias(hamParams)

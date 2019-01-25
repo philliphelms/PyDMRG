@@ -1,6 +1,6 @@
 from dmrg import *
-from mpo.asep import return_mpo
-from mpo.asep import curr_mpo
+from mpo.asep_activity import return_mpo
+from mpo.asep_activity import act_mpo
 from tools.contract import full_contract as contract
 import time
 from sys import argv
@@ -11,7 +11,6 @@ N = int(argv[1])
 p = 0.1 
 mbd = int(argv[2]) # Can only be a single value currently
 ds0 = [0.0005]
-ds0 = [0.05]
 ds_change = [10]
 s_symm = -(N-1.)/(2.*(N+1.))*np.log(p/(1.-p))
 s0 = -0.05
@@ -34,13 +33,13 @@ E   = np.array([])
 EE  = np.array([])
 if leftState:
     EEl = np.array([])
-    curr = np.array([])
+    act = np.array([])
 gap = np.array([])
 sVec = np.array([])
 
 # Create directory for storing states
 dirid = str(int(time.time()))
-path = 'saved_states/singleLane_'+'N'+str(N)+'mbd'+str(mbd)+'_'+dirid+'/'
+path = 'saved_states/singleLaneActivity_'+'N'+str(N)+'mbd'+str(mbd)+'_'+dirid+'/'
 os.mkdir(path)
 fname = path+'MPS_'
 
@@ -67,17 +66,17 @@ Etmp,EEtmp,gaptmp,env = run_dmrg(mpo,
 if leftState:
     EE = np.append(EE,EEtmp[0])
     EEl= np.append(EEl,EEtmp[1])
-    # Calculate Current
-    currMPO = curr_mpo(N,hamParams,singleBond=True)
-    opCurr = contract(N,mbd,
-                      mpo = currMPO,
+    # Calculate Activity
+    actMPO = act_mpo(N,hamParams,singleBond=True)
+    opAct = contract(N,mbd,
+                      mpo = actMPO,
                       mps = fname+'s0'+'_mbd0',
                       lmps= fname+'s0'+'_mbd0_left')
     opNorm = contract(N,mbd,
                       mps = fname+'s0'+'_mbd0',
                       lmps= fname+'s0'+'_mbd0_left')
-    curr=np.append(curr,opCurr/opNorm*(N+1))
-    print('Current = {}'.format(curr[-1]))
+    act=np.append(act,opAct/opNorm*(N+1))
+    print('Activity = {}'.format(act[-1]))
 else:
     EE = np.append(EE,EEtmp)
 E = np.append(E,Etmp)
@@ -119,16 +118,16 @@ while sCurr <= sF:
             EE = np.append(EE,EEtmp[0])
             EEl= np.append(EEl,EEtmp[1])
             # Calculate Current
-            currMPO = curr_mpo(N,hamParams,singleBond=True)
-            opCurr = contract(N,mbd,
-                              mpo = currMPO,
+            actMPO = act_mpo(N,hamParams,singleBond=True)
+            opAct = contract(N,mbd,
+                              mpo = actMPO,
                               mps = fname+'s'+str(len(sVec))+'_mbd0',
                               lmps= fname+'s'+str(len(sVec))+'_mbd0_left')
             opNorm = contract(N,mbd,
                               mps = fname+'s'+str(len(sVec))+'_mbd0',
                               lmps= fname+'s'+str(len(sVec))+'_mbd0_left')
-            curr=np.append(curr,opCurr/opNorm*(N+1))
-            print('Current = {}'.format(curr[-1]))
+            act=np.append(act,opAct/opNorm*(N+1))
+            print('Activity = {}'.format(act[-1]))
         else:
             EE = np.append(EE,EEtmp)
         E = np.append(E,Etmp)
@@ -139,16 +138,16 @@ while sCurr <= sF:
     # Create Plots
     if make_plt:
         if len(sVec) > 1:
-            currCalc = np.gradient(E,sVec)#(E[:-1]-E[1:])/(sVec[:-1]-sVec[1:])
+            actCalc = np.gradient(E,sVec)#(E[:-1]-E[1:])/(sVec[:-1]-sVec[1:])
             ax1.clear()
-            if leftState: ax1.plot(sVec,curr,'r.')
-            ax1.plot(sVec,currCalc,'b.')
+            if leftState: ax1.plot(sVec,act,'r.')
+            ax1.plot(sVec,actCalc,'b.')
             ax2.clear()
             ax2.plot(sVec,EE,'b.')
             if leftState: ax2.plot(sVec,EEl,'r.')
             ax3.clear()
-            suscCalc = np.gradient(currCalc,sVec)
-            if leftState: susc = np.gradient(curr,sVec)
+            suscCalc = np.gradient(actCalc,sVec)
+            if leftState: susc = np.gradient(act,sVec)
             if leftState: ax3.plot(sVec,susc,'r.')
             ax3.plot(sVec,suscCalc,'b.')
             ax4.clear()
@@ -156,10 +155,10 @@ while sCurr <= sF:
             plt.pause(0.01)
     # Save Results
     if leftState:
-        np.savez('results/asep_stateMatching_psweep_N'+str(N)+'_mbd'+str(mbd),N=N,p=p,mbd=mbd,s=sVec,E=E,EE=EE,EEl=EEl,curr=curr,gap=gap)
-        np.savez(path+'results',N=N,p=p,mbd=mbd,s=sVec,E=E,EE=EE,gap=gap,EEl=EEl,curr=curr)
+        np.savez('results/asepActivity_stateMatching_psweep_N'+str(N)+'_mbd'+str(mbd),N=N,p=p,mbd=mbd,s=sVec,E=E,EE=EE,EEl=EEl,act=act,gap=gap)
+        np.savez(path+'results',N=N,p=p,mbd=mbd,s=sVec,E=E,EE=EE,gap=gap,EEl=EEl,act=act)
     else:
-        np.savez('results/asep_stateMatching_psweep_N'+str(N)+'_mbd'+str(mbd),N=N,p=p,mbd=mbd,s=sVec,E=E,EE=EE,gap=gap)
+        np.savez('results/asepActivity_stateMatching_psweep_N'+str(N)+'_mbd'+str(mbd),N=N,p=p,mbd=mbd,s=sVec,E=E,EE=EE,gap=gap)
         np.savez(path+'results',N=N,p=p,mbd=mbd,s=sVec,E=E,EE=EE,gap=gap)
 if make_plt:
     plt.show()
