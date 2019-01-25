@@ -52,6 +52,10 @@ import collections
 # site in the lattice instead of simply a general value. 
 ###########################################################################
 
+##########################################################################
+# Hamiltonian As MPO
+##########################################################################
+
 def return_mpo(N,hamParams,periodicx=False,periodicy=False):
     if hasattr(N,'__len__'):
         Nx = N[0]
@@ -282,6 +286,201 @@ def periodic_y_mpo(Nx,Ny,hamParams):
                 mpoL.append(op1)
                 mpoL.append(op2)
     return mpoL
+
+
+##########################################################################
+# Current MPOS
+##########################################################################
+
+def curr_mpo(N,hamParams,periodicx=False,periodicy=False):
+    if hasattr(N,'__len__'):
+        Nx = N[0]
+        Ny = N[1]
+    else:
+        Nx = N
+        Ny = N
+    # Convert hamParams all to matrices
+    if not isinstance(hamParams[0],(collections.Sequence,np.ndarray)):
+        hamParams = val2matParams(Nx,Ny,hamParams)
+    else:
+        hamParams = extractParams(hamParams)
+    # Generate MPO based on periodicity
+    if periodicx and periodicy:
+        return periodic_xy_curr(Nx,Ny,hamParams)
+    elif periodicx:
+        return periodic_x_curr(Nx,Ny,hamParams)
+    elif periodicy:
+        return periodic_y_curr(Nx,Ny,hamParams)
+    else:
+        return open_curr(Nx,Ny,hamParams)
+
+def open_curr(Nx,Ny,hamParams):
+    # Extract parameter Values
+    (jr,jl,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,sx,sy) = hamParams
+    (ejr,ejl,eju,ejd,ecr,ecl,ecu,ecd,edr,edl,edu,edd) = exponentiateBias(hamParams)
+    # List to hold all MPOs
+    mpoL = []
+    # Main MPO
+    mpo = []
+    ham_dim = 2*Ny+2
+    for xi in range(Nx):
+        for yi in range(Ny):
+            # Build generic MPO
+            gen_mpo = np.zeros((ham_dim,ham_dim,2,2))
+            gen_mpo[0,0,:,:] = I 
+            gen_mpo[1,0,:,:] = ejr[xi-1,yi]*Sm
+            gen_mpo[Ny,0,:,:] = -ejd[xi,yi-1]*Sm
+            gen_mpo[Ny+1,0,:,:] = -ejl[xi,yi]*Sp
+            gen_mpo[2*Ny,0,:,:] = eju[xi,yi]*Sp
+            # Build generic interior
+            col_ind = 1
+            row_ind = 2
+            for k in range(2): 
+                for l in range(Ny-1):
+                    gen_mpo[row_ind,col_ind,:,:] = I
+                    col_ind += 1
+                    row_ind += 1
+                col_ind += 1
+                row_ind += 1
+            # Build bottom row
+            gen_mpo[-1,Ny,:,:] = Sp
+            gen_mpo[-1,2*Ny,:,:] = Sm
+            gen_mpo[-1,2*Ny+1,:,:] = I
+            # Include creation & annihilation
+            gen_mpo[-1,0,:,:] += (ecr[xi,yi] - ecl[xi,yi] - ecd[xi,yi] + ecu[xi,yi])*Sm +\
+                                 (edr[xi,yi] - edl[xi,yi] - edd[xi,yi] + edu[xi,yi])*Sp
+            # Prevent interaction between ends
+            if (yi == 0) and (xi != 0):
+                gen_mpo[Ny,0,:,:] = z
+                gen_mpo[2*Ny,0,:,:] = z
+            # Add operator to list of operators
+            if (xi == 0) and (yi == 0):
+                mpo.append(np.expand_dims(gen_mpo[-1,:],0))
+            elif (xi == Nx-1) and (yi == Ny-1):
+                mpo.append(np.expand_dims(gen_mpo[:,0],1))
+            else:
+                mpo.append(gen_mpo)
+    mpoL.append(mpo)
+    return mpoL
+
+def periodic_xy_mpo(Nx,Ny,hamParams):
+    # Extract parameter Values
+    (jr,jl,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,sx,sy) = hamParams
+    (ejr,ejl,eju,ejd,ecr,ecl,ecu,ecd,edr,edl,edu,edd) = exponentiateBias(hamParams)
+    # Get main mpo from open_mpo function
+    mpoL = open_mpo(Nx,Ny,hamParams)
+    # Container to hold coupled sites
+    coupled_sites = []
+    # Periodic coupling along x-axis
+    for yi in range(Ny):
+        coupled_sites.append([yi,Ny*(Nx-1)+yi,'horz'])
+    # Periodic coupling along y-axis
+    for xi in range(Nx):
+        coupled_sites.append([Ny*(xi+1)-1,Ny*xi,'vert'])
+    # Build all related operator
+    for i in range(len(coupled_sites)):
+        inds = coupled_sites[i][:2]
+        if coupled_sites[i][2] == 'horz':
+            yind1 = inds[0]
+            xind1 = 0
+            yind2 = inds[0]
+            xind2 = -1
+            if jr[xind2,yind2] != 0:
+                # Jump right
+                op1 = [None]*(Nx*Ny)
+                op1[inds[1]] = np.array([[ejr[xind2,yind2]*Sp]])
+                op1[inds[0]] = np.array([[Sm]])
+                mpoL.append(op1)
+            if jl[xind1,yind1] != 0:
+                # Jump left
+                op1 = [None]*(Nx*Ny)
+                op1[inds[1]] = np.array([[-ejl[xind1,yind1]*Sm]])
+                op1[inds[0]] = np.array([[Sp]])
+                mpoL.append(op1)
+        else: # Vertical
+            xind1 = int(inds[1]/Ny)
+            yind1 = 0
+            xind2 = int(inds[1]/Ny)
+            yind2 = -1
+            if jd[xind2,yind2] != 0:
+                op1 = [None]*(Nx*Ny)
+                op1[inds[1]] = np.array([[-ejd[xind2,yind2]*Sm]])
+                op1[inds[0]] = np.array([[Sp]])
+                mpoL.append(op1)
+            if ju[xind1,yind1] != 0:
+                op1 = [None]*(Nx*Ny)
+                op1[inds[1]] = np.array([[eju[xind1,yind1]*Sp]])
+                op1[inds[0]] = np.array([[Sm]])
+                mpoL.append(op1)
+    return mpoL
+
+def periodic_x_mpo(Nx,Ny,hamParams):
+    # Extract parameter Values
+    (jr,jl,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,sx,sy) = hamParams
+    (ejr,ejl,eju,ejd,ecr,ecl,ecu,ecd,edr,edl,edu,edd) = exponentiateBias(hamParams)
+    # Get main mpo from open_mpo function
+    mpoL = open_mpo(Nx,Ny,hamParams)
+    # Container to hold coupled sites
+    coupled_sites = []
+    # Periodic coupling along x-axis
+    for yi in range(Ny):
+        coupled_sites.append([yi,Ny*(Nx-1)+yi,'horz'])
+    # Build all related operator
+    for i in range(len(coupled_sites)):
+        inds = coupled_sites[i][:2]
+        if coupled_sites[i][2] == 'horz':
+            yind1 = inds[0]
+            xind1 = 0
+            yind2 = inds[0]
+            xind2 = -1
+            if jr[xind2,yind2] != 0:
+                # Jump right
+                op1 = [None]*(Nx*Ny)
+                op1[inds[1]] = np.array([[ejr[xind2,yind2]*Sp]])
+                op1[inds[0]] = np.array([[Sm]])
+                mpoL.append(op1)
+            if jl[xind1,yind1] != 0:
+                # Jump left
+                op1 = [None]*(Nx*Ny)
+                op1[inds[1]] = np.array([[-ejl[xind1,yind1]*Sm]])
+                op1[inds[0]] = np.array([[Sp]])
+                mpoL.append(op1)
+    return mpoL
+
+def periodic_y_mpo(Nx,Ny,hamParams):
+    # Extract parameter Values
+    (jr,jl,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,sx,sy) = hamParams
+    (ejr,ejl,eju,ejd,ecr,ecl,ecu,ecd,edr,edl,edu,edd) = exponentiateBias(hamParams)
+    # Get main mpo from open_mpo function
+    mpoL = open_mpo(Nx,Ny,hamParams)
+    # Container to hold coupled sites
+    coupled_sites = []
+    # Periodic coupling along y-axis
+    for xi in range(Nx):
+        coupled_sites.append([Ny*(xi+1)-1,Ny*xi,'vert'])
+    # Build all related operator
+    for i in range(len(coupled_sites)):
+        inds = coupled_sites[i][:2]
+        if coupled_sites[i][2] == 'vert':
+            xind1 = int(inds[1]/Ny)
+            yind1 = 0
+            xind2 = int(inds[1]/Ny)
+            yind2 = -1
+            if jd[xind2,yind2] != 0:
+                op1 = [None]*(Nx*Ny)
+                op1[inds[1]] = np.array([[-ejd[xind2,yind2]*Sm]])
+                op1[inds[0]] = np.array([[Sp]])
+                mpoL.append(op1)
+            if ju[xind1,yind1] != 0:
+                op1 = [None]*(Nx*Ny)
+                op1[inds[1]] = np.array([[eju[xind1,yind1]*Sp]])
+                op1[inds[0]] = np.array([[Sm]])
+                mpoL.append(op1)
+    return mpoL
+
+##########################################################################
+# Other Useful Functions
+##########################################################################
 
 def exponentiateBias(hamParams):
     (jr,jl,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,sx,sy) = hamParams
