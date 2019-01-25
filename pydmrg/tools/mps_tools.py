@@ -1,5 +1,6 @@
 import numpy as np
 from pyscf.lib import einsum
+import copy
 
 def make_mps_right(M):
     N = len(M)
@@ -18,6 +19,16 @@ def make_all_mps_right(mpsList):
     for state in range(nStates):
         mpsList[state] = make_mps_right(mpsList[state])
     return mpsList
+
+def conj_mps(mps,copyMPS=True):
+    if copyMPS: mps_c = copy.deepcopy(mps)
+    else: mps_c = mps
+    nStates = len(mps)
+    for state in range(nStates):
+        N = len(mps[state])
+        for site in range(N):
+            mps_c[state][site] = np.conj(mps[state][site])
+    return mps_c
 
 def move_gauge_right(mps,site):
     (n1,n2,n3) = mps[site].shape
@@ -148,12 +159,8 @@ def increase_mbd(M,mbd,periodic=False,constant=False,d=2):
 
 def increase_all_mbd(mpsL,mbd,periodic=False,constant=False,d=2):
     nStates = len(mpsL)
-    print(len(mpsL))
-    print(len(mpsL[0]))
     for state in range(nStates):
         mpsL[state] = increase_mbd(mpsL[state],mbd,periodic=periodic,constant=constant,d=d)
-    print(len(mpsL))
-    print(len(mpsL[0]))
     return mpsL
 
 def load_mps(N,fname,nStates=1):
