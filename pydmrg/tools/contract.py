@@ -2,14 +2,12 @@ import numpy as np
 from tools.mps_tools import *
 from tools.env_tools import *
 
-def full_contract(N,mbd,mpo=None,mps=None,lmps=None):
-    if mpo is None:
-        mpo = [[None]*N]
+def full_contract(mpo=None,mps=None,lmps=None,state=0,gSite=None,glSite=None):
     # Load matrix product states
     if isinstance(mps,str):
-        mps,gSite = load_mps(N,mps)
+        mps,gSite = load_mps(mps,nStates=state+1)
     if isinstance(lmps,str):
-        lmps,glSite = load_mps(N,lmps)
+        lmps,glSite = load_mps(lmps,nStates=state+1)
     assert(not ( (lmps is None) and (mps is None)))
     if lmps is None: 
         lmps = conj_mps(mps)
@@ -17,9 +15,15 @@ def full_contract(N,mbd,mpo=None,mps=None,lmps=None):
     if mps is None: 
         mps = conj_mps(lmps)
         gSite = glSite
+    # Figure out size of mps
+    N = nSites(mps)
+    mbd = maxBondDim(mps)
     # Extract lowest state from mps
-    lmps = lmps[0]
-    mps = mps[0]
+    lmps = lmps[state]
+    mps = mps[state]
+    # Make empty mpo if none is provided
+    if mpo is None:
+        mpo = [[None]*N]
     # Ensure both guages are at the same location
     assert(gSite == glSite)
 

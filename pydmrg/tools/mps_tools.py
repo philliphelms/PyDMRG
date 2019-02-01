@@ -1,6 +1,34 @@
 import numpy as np
 from pyscf.lib import einsum
+import scipy.linalg as sla
 import copy
+
+def calc_entanglement(S):
+    # Ensure correct normalization
+    S /= np.sqrt(np.dot(S,np.conj(S)))
+    assert(np.isclose(np.abs(np.sum(S*np.conj(S))),1.))
+    EEspec = -S*np.conj(S)*np.log2(S*np.conj(S))
+    EE = np.sum(EEspec)
+    return EE,EEspec
+
+def calc_ent_right(M,v,site):
+    (n1,n2,n3) = M[site].shape
+    Mtmp = np.reshape(v,(n1,n2,n3))
+    M_reshape = np.reshape(Mtmp,(n1*n2,n3))
+    (_,S,_) = np.linalg.svd(M_reshape,full_matrices=False)
+    EE,EEs = calc_entanglement(S)
+    print('\t\tEE = {}'.format(EE))
+    return EE, EEs 
+
+def calc_ent_left(M,v,site):
+    (n1,n2,n3) = M[site].shape
+    Mtmp = np.reshape(v,(n1,n2,n3))
+    M_reshape = np.swapaxes(Mtmp,0,1)
+    M_reshape = np.reshape(M_reshape,(n2,n1*n3))
+    (_,S,_) = np.linalg.svd(M_reshape,full_matrices=False)
+    EE,EEs = calc_entanglement(S)
+    print('\t\tEE = {}'.format(EE))
+    return EE, EEs
 
 def make_mps_right(M):
     N = len(M)
@@ -30,23 +58,28 @@ def conj_mps(mps,copyMPS=True):
             mps_c[state][site] = np.conj(mps[state][site])
     return mps_c
 
-def move_gauge_right(mps,site):
+def move_gauge_right(mps,site,returnEE=False):
+    # PH - This needs to be adjuste for lists of mps
     (n1,n2,n3) = mps[site].shape
     M_reshape = np.reshape(mps[site],(n1*n2,n3))
     (u,s,v) = np.linalg.svd(M_reshape,full_matrices=False)
+    if returnEE: EE,EEspec = calc_entanglement(s)
     mps[site] = np.reshape(u,(n1,n2,n3))
     mps[site+1] = np.einsum('i,ij,kjl->kil',s,v,mps[site+1])
-    return mps
+    if returnEE: return mps,EE
+    else: return mps
 
-def move_gauge_left(mps,site):
+def move_gauge_left(mps,site,returnEE=False):
     M_reshape = np.swapaxes(mps[site],0,1)
     (n1,n2,n3) = M_reshape.shape
     M_reshape = np.reshape(M_reshape,(n1,n2*n3))
-    (u,s,v) = np.linalg.svd(M_reshape,full_matrice=False)
+    (u,s,v) = np.linalg.svd(M_reshape,full_matrices=False)
+    if returnEE: EE,EEspec = calc_entanglement(s)
     M_reshape = np.reshape(v,(n1,n2,n3))
     mps[site] = np.swapaxes(M_reshape,0,1)
     mps[site-1] = np.einsum('klj,ji,i->kli',mps[site-1],u,s)
-    return mps
+    if returnEE: return mps,EE
+    else: return mps
 
 def move_gauge(mps,init_site,fin_site):
     if init_site < fin_site:
@@ -163,18 +196,29 @@ def increase_all_mbd(mpsL,mbd,periodic=False,constant=False,d=2):
         mpsL[state] = increase_mbd(mpsL[state],mbd,periodic=periodic,constant=constant,d=d)
     return mpsL
 
-def load_mps(N,fname,nStates=1):
+def load_mps(fname):
     # Create a list to contain all mps
     mpsL = []
-    for state in range(nStates):
-        npzfile = np.load(fname+'state'+str(state)+'.npz')
-        # List to hold a single MPS
-        M = []
-        for i in range(N):
-            # Add each element to single MPS
-            M.append(npzfile['M'+str(i)])
-        # Add full MPS to MPS List
-        mpsL.append(M)
+    moreStates = True
+    state = 0
+    while moreStates:
+        try:
+            npzfile = np.load(fname+'state'+str(state)+'.npz')
+            # List to hold a single MPS
+            M = []
+            moreSites = True
+            site = 0
+            while moreSites:
+                try:
+                    M.append(npzfile['M'+str(site)])
+                    site += 1
+                except:
+                    moreSites=False
+            # Add full MPS to MPS List
+            mpsL.append(M)
+            state += 1
+        except:
+            moreStates = False
     # Specifies where the gauge is located in the MPS
     gaugeSite = npzfile['site']
     return mpsL,gaugeSite
@@ -187,3 +231,48 @@ def save_mps(mpsL,fname,gaugeSite=0):
             for site in range(len(mpsL[state])):
                 Mdict['M'+str(site)] = mpsL[state][site]
             np.savez(fname+'state'+str(state)+'.npz',site=gaugeSite,**Mdict)
+
+def nSites(mpsL):
+    return len(mpsL[0])
+
+def maxBondDim(mpsL):
+    mbd = 0
+    for site in range(len(mpsL[0])):
+        mbd = np.max(np.array([mbd,np.max(mpsL[0][site].shape)]))
+    return mbd
+
+def orthonormalize_states(mps,mpo=None,gSite=None,printEnergies=True):
+    from tools.contract import full_contract as contract
+    # Load matrix product states
+    if isinstance(mps,str):
+        mps,gSite = load_mps(mps)
+    N = len(mps[0])
+    nStates = len(mps)
+    # Calculate energy of states before orthonormalization
+    if mpo is not None:
+        E0 = [0]*len(mps)
+        for i in range(len(E0)):
+            E0[i] = contract(mps=mps,mpo=mpo,gSite=gSite,state=i)/contract(mps=mps,gSite=gSite,state=i)
+        if printEnergies: print('Initial Energies = {}'.format(E0))
+    # Get shape of center matrix
+    (n1,n2,n3) = mps[0][gSite].shape
+    # Put the vector of MPS center sites into a matrix
+    vecsList = []
+    for state in range(nStates):
+        vecsList.append(np.reshape(mps[state][gSite],-1))
+    # Put those lists into a matrix
+    vecs = np.zeros((len(vecsList[0]),nStates),dtype=np.complex_)
+    for state in range(nStates):
+        vecs[:,state] = vecsList[state]
+    # Orthonormalize the states
+    vecs = sla.orth(vecs,rcond=1e-100) # PH - Something is wrong here?
+    # Put back into the MPS
+    for state in range(nStates):
+        mps[state][gSite] = np.reshape(vecs[:,state],(n1,n2,n3))
+    # Check if the orthonormalization altered the energy
+    if mpo is not None:
+        Ef = [0]*len(mps)
+        for i in range(len(E0)):
+            Ef[i] = contract(mps=mps,mpo=mpo,gSite=gSite,state=i)/contract(mps=mps,gSite=gSite,state=i)
+        if printEnergies: print('Final Energies = {}'.format(Ef))
+    return mps

@@ -68,12 +68,10 @@ if leftState:
     EEl= np.append(EEl,EEtmp[1])
     # Calculate Activity
     actMPO = act_mpo(N,hamParams,singleBond=True)
-    opAct = contract(N,mbd,
-                      mpo = actMPO,
+    opAct = contract(mpo = actMPO,
                       mps = fname+'s0'+'_mbd0',
                       lmps= fname+'s0'+'_mbd0_left')
-    opNorm = contract(N,mbd,
-                      mps = fname+'s0'+'_mbd0',
+    opNorm = contract(mps = fname+'s0'+'_mbd0',
                       lmps= fname+'s0'+'_mbd0_left')
     act=np.append(act,opAct/opNorm*(N+1))
     print('Activity = {}'.format(act[-1]))
@@ -89,6 +87,7 @@ orthonormalize=False
 dsInd = 0
 while sCurr <= sF:
     sCurr += ds0[dsInd]
+    print('Running Calc for s = {}'.format(sCurr))
     # Run Calculation
     hamParams = np.array([0.5,0.5,p,1.-p,0.5,0.5,sCurr])
     mpo = return_mpo(N,hamParams)
@@ -119,12 +118,10 @@ while sCurr <= sF:
             EEl= np.append(EEl,EEtmp[1])
             # Calculate Current
             actMPO = act_mpo(N,hamParams,singleBond=True)
-            opAct = contract(N,mbd,
-                              mpo = actMPO,
+            opAct = contract(mpo = actMPO,
                               mps = fname+'s'+str(len(sVec))+'_mbd0',
                               lmps= fname+'s'+str(len(sVec))+'_mbd0_left')
-            opNorm = contract(N,mbd,
-                              mps = fname+'s'+str(len(sVec))+'_mbd0',
+            opNorm = contract(mps = fname+'s'+str(len(sVec))+'_mbd0',
                               lmps= fname+'s'+str(len(sVec))+'_mbd0_left')
             act=np.append(act,opAct/opNorm*(N+1))
             print('Activity = {}'.format(act[-1]))

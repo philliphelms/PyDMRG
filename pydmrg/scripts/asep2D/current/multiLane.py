@@ -69,12 +69,10 @@ if leftState:
     EEl= np.append(EEl,EEtmp[1])
     # Calculate Current
     currMPO = curr_mpo((Nx,Ny),hamParams,periodicy=False,periodicx=False)
-    opCurr = contract(Nx*Ny,mbd,
-                        mpo = currMPO,
+    opCurr = contract(mpo = currMPO,
                         mps = fname+'s0'+'_mbd0',
                         lmps= fname+'s0'+'_mbd0_left')
-    opNorm = contract(Nx*Ny,mbd,
-                        mps = fname+'s0'+'_mbd0',
+    opNorm = contract(mps = fname+'s0'+'_mbd0',
                         lmps= fname+'s0'+'_mbd0_left')
     curr=np.append(curr,opCurr/opNorm)
     print('Current = {}'.format(curr[-1]))
@@ -133,12 +131,10 @@ while sCurr <= sF:
             EEl= np.append(EEl,EEtmp[1])
             # Calculate Current
             currMPO = curr_mpo((Nx,Ny),hamParams,periodicy=False,periodicx=False)
-            opCurr = contract(Nx*Ny,mbd,
-                                mpo = currMPO,
+            opCurr = contract(mpo = currMPO,
                                 mps = fname+'s'+str(len(sVec))+'_mbd0',
                                 lmps= fname+'s'+str(len(sVec))+'_mbd0_left')
-            opNorm = contract(Nx*Ny,mbd,
-                                mps = fname+'s'+str(len(sVec))+'_mbd0',
+            opNorm = contract(mps = fname+'s'+str(len(sVec))+'_mbd0',
                                 lmps= fname+'s'+str(len(sVec))+'_mbd0_left')
             curr=np.append(curr,opCurr/opNorm)
             print('Current = {}'.format(curr[-1]))
