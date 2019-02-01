@@ -18,15 +18,7 @@ sF = 0.5#s_symm #+ (s_symm - s0)
 make_plt = False
 leftState = True
 alg = 'davidson'
-s_thresh = s_symm
-#if N >= 10:
-#    s_thresh = 0.3
-#if N >= 20:
-#    s_thresh = 0.1
-#if N >= 30:
-#    s_thresh = 0.05
-#if N >= 50:
-#    s_thresh = 0.01
+s_thresh = 1000
 
 # Allocate Memory for results
 E   = np.array([])

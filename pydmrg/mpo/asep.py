@@ -53,6 +53,10 @@ def open_mpo(N,hamParams):
                              ( a[site] +  d[site])*v  +\
                              (eb[site] + eg[site])*Sp -\
                              ( b[site] +  g[site])*n
+        #gen_mpo[-1,0,:,:] += (a[site] + d[site])*Sm -\
+        #                     (a[site] + d[site])*v  +\
+        #                     (b[site] + g[site])*Sp -\
+        #                     (b[site] + g[site])*n
         # Add operator to mpo
         if (site == 0):
             mpo[site] = np.expand_dims(gen_mpo[-1,:],0)
@@ -102,25 +106,46 @@ def exponentiateBias(hamParams):
 
 def val2vecParams(N,hamParams):
     # Extract values
-    a = float(hamParams[0])
-    g = float(hamParams[1])
-    p = float(hamParams[2])
-    q = float(hamParams[3])
-    b = float(hamParams[4])
-    d = float(hamParams[5])
-    s = float(hamParams[6])
+    if not isinstance(hamParams[0],(collections.Sequence,np.ndarray)):
+        a = float(hamParams[0])
+        aVec = np.zeros(N,dtype=np.float_)
+        aVec[0] = a
+    else:
+        aVec = a
+    if not isinstance(hamParams[1],(collections.Sequence,np.ndarray)):
+        g = float(hamParams[1])
+        gVec = np.zeros(N,dtype=np.float_)
+        gVec[0] = g
+    else:
+        gVec = g
+    if not isinstance(hamParams[2],(collections.Sequence,np.ndarray)):
+        p = float(hamParams[2])
+        pVec = p*np.ones(N,dtype=np.float_)
+    else:
+        pVec = p
+    if not isinstance(hamParams[3],(collections.Sequence,np.ndarray)):
+        q = float(hamParams[3])
+        qVec = q*np.ones(N,dtype=np.float_)
+    else:
+        qVec = q
+    if not isinstance(hamParams[4],(collections.Sequence,np.ndarray)):
+        b = float(hamParams[4])
+        bVec = np.zeros(N,dtype=np.float_)
+        bVec[-1] = b
+    else:
+        bVec = b
+    if not isinstance(hamParams[5],(collections.Sequence,np.ndarray)):
+        d = float(hamParams[5])
+        dVec = np.zeros(N,dtype=np.float_)
+        dVec[-1] = d
+    else:
+        dVec = d
+    if not isinstance(hamParams[6],(collections.Sequence,np.ndarray)):
+        s = float(hamParams[6])
+        sVec = s*np.ones(N,dtype=np.float_)
+    else:
+        sVec = s
     # Convert to vectors
-    aVec = np.zeros(N,dtype=np.float_)
-    aVec[0] = a
-    gVec = np.zeros(N,dtype=np.float_)
-    gVec[0] = g
-    pVec = p*np.ones(N,dtype=np.float_)
-    qVec = q*np.ones(N,dtype=np.float_)
-    bVec = np.zeros(N,dtype=np.float_)
-    bVec[-1] = b
-    dVec = np.zeros(N,dtype=np.float_)
-    dVec[-1] = d
-    sVec = s*np.ones(N,dtype=np.float_)
     returnParams = (aVec,gVec,pVec,qVec,bVec,dVec,sVec)
     return returnParams
 

@@ -10,6 +10,8 @@ from tools.diag_tools import *
 from tools.env_tools import *
 import warnings
 
+VERBOSE = 3
+
 def calcRDM(M,swpDir):
     if swpDir == 'right':
         (n1,n2,n3) = M.shape
@@ -21,6 +23,25 @@ def calcRDM(M,swpDir):
         M = np.swapaxes(M,0,1)
         M = np.reshape(M,(n2,n1*n3))
         return einsum('ij,ik->jk',M,np.conj(M))
+
+def calc_ent_right(M,v,site):
+    (n1,n2,n3) = M[site].shape
+    Mtmp = np.reshape(v,(n1,n2,n3))
+    M_reshape = np.reshape(Mtmp,(n1*n2,n3))
+    (_,S,_) = np.linalg.svd(M_reshape,full_matrices=False)
+    EE,EEs = calc_entanglement(S)
+    if VERBOSE > 2: print('\t\tEE = {}'.format(EE))
+    return EE, EEs
+
+def calc_ent_left(M,v,site):
+    (n1,n2,n3) = M[site].shape
+    Mtmp = np.reshape(v,(n1,n2,n3))
+    M_reshape = np.swapaxes(Mtmp,0,1)
+    M_reshape = np.reshape(M_reshape,(n2,n1*n3))
+    (_,S,_) = np.linalg.svd(M_reshape,full_matrices=False)
+    EE,EEs = calc_entanglement(S)
+    if VERBOSE > 2: print('\t\tEE = {}'.format(EE))
+    return EE, EEs
 
 def renormalizeR(mpsL,v,site,nStates=1,targetState=0):
     (n1,n2,n3) = mpsL[0][site].shape
@@ -56,7 +77,7 @@ def renormalizeR(mpsL,v,site,nStates=1,targetState=0):
         mpsL[state][site] = np.reshape(vecs,(n2,n1,n3))
         mpsL[state][site] = np.swapaxes(mpsL[state][site],0,1)
         if not np.all(np.isclose(einsum('ijk,ijl->kl',mpsL[state][site],np.conj(mpsL[state][site])),np.eye(n3),atol=1e-6)):
-            print('\t\tNormalization Problem')
+            if VERBOSE > 4: print('\t\tNormalization Problem')
         # Calculate next site for guess
         if nStates != 1:
             vReshape = np.reshape(v[:,state],(n1,n2,n3))
@@ -101,7 +122,7 @@ def renormalizeL(mpsL,v,site,nStates=1,targetState=0):
         mpsL[state][site] = np.reshape(vecs,(n2,n1,n3))
         mpsL[state][site] = np.swapaxes(mpsL[state][site],0,1)
         if not np.all(np.isclose(einsum('ijk,ilk->jl',mpsL[state][site],np.conj(mpsL[state][site])),np.eye(n2),atol=1e-6)):
-            print('\t\tNormalization Problem')
+            if VERBOSE > 4: print('\t\tNormalization Problem')
         # Calculate next site's guess
         if nStates != 1:
             vReshape = np.reshape(v[:,state],(n1,n2,n3))
@@ -133,14 +154,14 @@ def rightSweep(mpsL,W,F,iterCnt,
     Ereturn = None
     EE = None
     EEs = None
-    print('Right Sweep {}'.format(iterCnt))
+    if VERBOSE > 1: print('Right Sweep {}'.format(iterCnt))
     for site in range(startSite,endSite):
         E,mpsL,F,_EE,_EEs = rightStep(mpsL,W,F,site,
                                       nStates,
                                       alg=alg,
                                       preserveState=preserveState,
                                       orthonormalize=orthonormalize)
-        print('\tEnergy at Site {}: {}'.format(site,E))
+        if VERBOSE > 2: print('\tEnergy at Site {}: {}'.format(site,E))
         if site == int(N/2):
             Ereturn = E
             EE = _EE
@@ -169,14 +190,14 @@ def leftSweep(mpsL,W,F,iterCnt,
     Ereturn = None
     EE = None
     EEs = None
-    print('Left Sweep {}'.format(iterCnt))
+    if VERBOSE > 1: print('Left Sweep {}'.format(iterCnt))
     for site in range(startSite,endSite,-1):
         E,mpsL,F,_EE,_EEs = leftStep(mpsL,W,F,site,
                                      nStates,
                                      alg=alg,
                                      preserveState=preserveState,
                                      orthonormalize=orthonormalize)
-        print('\tEnergy at Site {}: {}'.format(site,E))
+        if VERBOSE > 2: print('\tEnergy at Site {}: {}'.format(site,E))
         if site == int(N/2):
             Ereturn = E
             EE = _EE
@@ -214,17 +235,17 @@ def observable_sweep(M,F):
     return EE,EEs
 
 def printResults(converged,E,EE,EEspec,gap):
-    print('#'*75)
+    if VERBOSE > 1: print('#'*75)
     if converged:
-        print('Converged at E = {}'.format(E))
+        if VERBOSE > 0: print('Converged at E = {}'.format(E))
     else:
-        print('Convergence not acheived, E = {}'.format(E))
-    print('\tGap = {}'.format(gap))
-    print('\tEntanglement Entropy  = {}'.format(EE))
-    print('\tEntanglement Spectrum =')
+        if VERBOSE > 0: print('Convergence not acheived, E = {}'.format(E))
+    if VERBOSE > 2: print('\tGap = {}'.format(gap))
+    if VERBOSE > 2: print('\tEntanglement Entropy  = {}'.format(EE))
+    if VERBOSE > 3: print('\tEntanglement Spectrum =')
     for i in range(len(EEspec)):
-        print('\t\t{}'.format(EEspec[i]))
-    print('#'*75)
+        if VERBOSE > 3: print('\t\t{}'.format(EEspec[i]))
+    if VERBOSE > 1: print('#'*75)
 
 def run_sweeps(mpsL,W,F,initGuess=None,maxIter=0,minIter=None,
                tol=1e-5,fname = None,nStates=1,
@@ -325,7 +346,7 @@ def run_dmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
 
     # Loop over all maximum bond dimensions, running dmrg for each one
     for mbdInd,mbdi in enumerate(mbd):
-        print('Starting Calc for MBD = {}'.format(mbdi))
+        if VERBOSE > 1: print('Starting Calc for MBD = {}'.format(mbdi))
 
         # Set up initial MPS
         if initGuess is None:
@@ -374,7 +395,7 @@ def run_dmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
         if fname is not None: fname_mbd = fname + '_mbd' + str(mbdInd)
 
         # Run DMRG Sweeps (right eigenvector)
-        print('Calculating Right Eigenstate')
+        if VERBOSE > 0: print('Calculating Right Eigenstate')
         output = run_sweeps(mpsList,mpo,env,
                               maxIter=maxIter[mbdInd],
                               minIter=minIter[mbdInd],
@@ -420,7 +441,7 @@ def run_dmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
 
         if calcLeftState:
             # Run DMRG Sweeps (left eigenvector)
-            print('Calculating Left Eigenstate')
+            if VERBOSE > 0: print('Calculating Left Eigenstate')
             output = run_sweeps(mpslList,mpol,envl,
                                   maxIter=maxIter[mbdInd],
                                   minIter=minIter[mbdInd],
