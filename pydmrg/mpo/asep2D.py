@@ -65,11 +65,8 @@ def return_mpo(N,hamParams,periodicx=False,periodicy=False):
         Ny = N
     # Convert hamParams all to matrices
     if not isinstance(hamParams[0],(collections.Sequence,np.ndarray)):
-        print('did val2mat')
         hamParams = val2matParams(Nx,Ny,hamParams)
-        print(hamParams[0].shape)
     else:
-        print('not val2mat')
         hamParams = extractParams(hamParams)
     # Generate MPO based on periodicity
     if periodicx and periodicy:

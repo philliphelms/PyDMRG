@@ -106,7 +106,7 @@ def renormalizeL(mpsL,v,site,nStates=1,targetState=0):
         else:
             rdm +=w*calcRDM(vReshape,'left')
     # Take eigenvalues of the rdm
-    vals,vecs = np.linalg.eig(rdm) # Transpose here is useless...
+    vals,vecs = np.linalg.eig(rdm) 
     # Sort inds
     inds = np.argsort(vals)[::-1]
     # Keep only maxBondDim eigenstates
@@ -116,7 +116,7 @@ def renormalizeL(mpsL,v,site,nStates=1,targetState=0):
     # Make sure vecs are orthonormal
     vecs = sla.orth(vecs)
     vecs = vecs.T
-    # Loops through all MPS in list
+    # Loops through all MPSs in list
     for state in range(nStates):
         # Put resulting vectors into MPS
         mpsL[state][site] = np.reshape(vecs,(n2,n1,n3))
@@ -131,14 +131,6 @@ def renormalizeL(mpsL,v,site,nStates=1,targetState=0):
         # Push gauge onto next site
         mpsL[state][site-1] = einsum('ijk,lkm,lnm->ijn',mpsL[state][site-1],vReshape,np.conj(mpsL[state][site]))
     return mpsL,EE,EEs
-
-def calc_entanglement(S):
-    # Ensure correct normalization
-    S /= np.sqrt(np.dot(S,np.conj(S)))
-    assert(np.isclose(np.abs(np.sum(S*np.conj(S))),1.))
-    EEspec = -S*np.conj(S)*np.log2(S*np.conj(S))
-    EE = np.sum(EEspec)
-    return EE,EEspec
 
 def rightStep(mpsL,W,F,site,
               nStates=1,alg='arnoldi',
@@ -378,16 +370,16 @@ def run_dmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
             # Load user provided MPS guess    
             if mbdInd == 0:
                 # Load user provided MPS Guess
-                mpsList,gSite = load_mps(N,initGuess+'_mbd'+str(mbdInd),nStates=nStates)
+                mpsList,gSite = load_mps(initGuess+'_mbd'+str(mbdInd),nStates=nStates)
                 # Repeat for left eigenstate
-                if calcLeftState: mpslList,glSite = load_mps(N,initGuess+'_mbd'+str(mbdInd)+'_left',nStates=nStates)
+                if calcLeftState: mpslList,glSite = load_mps(initGuess+'_mbd'+str(mbdInd)+'_left',nStates=nStates)
             else:
                 # Load mps guess from previous bond dimension and increase to current mbd
-                mpsList,gSite = load_mps(N,initGuess+'_mbd'+str(mbdInd-1),nStates=nStates)
+                mpsList,gSite = load_mps(initGuess+'_mbd'+str(mbdInd-1),nStates=nStates)
                 mpsList = increase_all_mbd(mpsList,mbdi)
                 # Repeat for left eigenstate
                 if calcLeftState:
-                    mpslList,glSite = load_mps(N,initGuess+'_mbd'+str(mbdInd-1)+'_left',nStates=nStates)
+                    mpslList,glSite = load_mps(initGuess+'_mbd'+str(mbdInd-1)+'_left',nStates=nStates)
                     mpslList = increase_all_mbd(mpslList,mbdi)
 
         # Calc environment (or load if provided)
