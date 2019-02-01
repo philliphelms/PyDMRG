@@ -10,24 +10,14 @@ import os
 N = int(argv[1])
 p = 0.1 
 mbd = int(argv[2]) # Can only be a single value currently
-ds0 = [0.0005]
 ds0 = [0.05]
 ds_change = [10]
-s_symm = -(N-1.)/(2.*(N+1.))*np.log(p/(1.-p))
-s0 = -0.05
-sF = 0.05#s_symm #+ (s_symm - s0)
-make_plt = False
+s0 = -5
+sF = 5
+make_plt = True
 leftState = True
 alg = 'davidson'
-s_thresh = s_symm
-#if N >= 10:
-#    s_thresh = 0.3
-#if N >= 20:
-#    s_thresh = 0.1
-#if N >= 30:
-#    s_thresh = 0.05
-#if N >= 50:
-#    s_thresh = 0.01
+s_thresh = 1000
 
 # Allocate Memory for results
 E   = np.array([])

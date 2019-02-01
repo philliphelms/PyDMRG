@@ -8,6 +8,8 @@ from tools.mps_tools import *
 import warnings
 import copy
 
+VERBOSE = 3
+
 def calc_diag(M,W,F,site):
     (n1,n2,n3) = M[site].shape
     diag = np.zeros((n1*n2*n3),dtype=np.complex_)
@@ -46,12 +48,12 @@ def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=T
     matchedState = False
     for j in range(nVecs):
         ovlp_j = np.abs(np.dot(Mprev,np.conj(vecs[:,j])))
-        print('\t\tChecking Overlap {} = {}'.format(j,ovlp_j))
+        if VERBOSE > 3: print('\t\tChecking Overlap {} = {}'.format(j,ovlp_j))
         if ovlp_j > 0.98:
             matchedState = True
             if (j != 0) and preserveState and allowSwap:
                 # Swap eigenstates
-                print('!!! Swapping States {} & {} !!!'.format(0,j))
+                if VERBOSE > 3: print('!!! Swapping States {} & {} !!!'.format(0,j))
                 tmpVec = copy.deepcopy(vecs[:,j])
                 vecs[:,j] = copy.deepcopy(vecs[:,0])
                 vecs[:,0] = tmpVec
@@ -59,7 +61,7 @@ def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=T
                 E[j] = E[0]
                 E[0] = Etmp
     if reuseOldState and preserveState and (not matchedState):
-        print('!!! Correct State Not Found !!!')
+        if VERBOSE > 3: print('!!! Correct State Not Found !!!')
         vecs = Mprev
         # Reformat it so it matches vecs
         vecs = np.swapaxes(np.array([vecs]),0,1)
@@ -195,15 +197,12 @@ def calc_eigs_davidson(mpsL,W,F,site,
         if nStates == 1: orthonormalize = False
         else:
             gap  = np.abs(E[0]-E[1])
-            print('Calculated gap {}'.format(gap))
             if gap < orthonormalize:
                 orthonormalize = True
-                print('We are below the gap threshold')
             else:
                 orthonormalize = False
     # Orthonormalize (when gap is too small?) - PH, Why?
     if (nStates > 1) and orthonormalize:
-        print('Orthonormalizing')
         vecs = sla.orth(vecs)
     # At the ends, we do not want to switch states when preserving state is off
     if (site == 0) or (site == len(mpsL[0])-1): preserveState = True
