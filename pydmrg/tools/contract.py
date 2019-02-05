@@ -5,9 +5,9 @@ from tools.env_tools import *
 def full_contract(mpo=None,mps=None,lmps=None,state=0,gSite=None,glSite=None):
     # Load matrix product states
     if isinstance(mps,str):
-        mps,gSite = load_mps(mps,nStates=state+1)
+        mps,gSite = load_mps(mps)
     if isinstance(lmps,str):
-        lmps,glSite = load_mps(lmps,nStates=state+1)
+        lmps,glSite = load_mps(lmps)
     assert(not ( (lmps is None) and (mps is None)))
     if lmps is None: 
         lmps = conj_mps(mps)

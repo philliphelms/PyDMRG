@@ -159,7 +159,7 @@ def extractParams(N,hamParams):
     s = hamparams[6].astype(dtype=np.float_)
     return (a,g,p,q,b,d,s)
 
-def curr_mpo(N,hamParams,periodic=False,singleBond=True,bond=None):
+def curr_mpo(N,hamParams,periodic=False,singleBond=False,bond=None):
     if not isinstance(hamParams[0],(collections.Sequence,np.ndarray)):
         hamParams = val2vecParams(N,hamParams)
     else:
