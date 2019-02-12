@@ -8,7 +8,7 @@ from tools.mps_tools import *
 import warnings
 import copy
 
-VERBOSE = 3
+VERBOSE = 10
 
 def calc_diag(M,W,F,site):
     (n1,n2,n3) = M[site].shape
