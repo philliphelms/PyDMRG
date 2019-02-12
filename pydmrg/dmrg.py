@@ -10,7 +10,7 @@ from tools.diag_tools import *
 from tools.env_tools import *
 import warnings
 
-VERBOSE = 3
+VERBOSE = 10
 
 def calcRDM(M,swpDir):
     if swpDir == 'right':
@@ -370,16 +370,16 @@ def run_dmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
             # Load user provided MPS guess    
             if mbdInd == 0:
                 # Load user provided MPS Guess
-                mpsList,gSite = load_mps(initGuess+'_mbd'+str(mbdInd),nStates=nStates)
+                mpsList,gSite = load_mps(initGuess+'_mbd'+str(mbdInd))
                 # Repeat for left eigenstate
-                if calcLeftState: mpslList,glSite = load_mps(initGuess+'_mbd'+str(mbdInd)+'_left',nStates=nStates)
+                if calcLeftState: mpslList,glSite = load_mps(initGuess+'_mbd'+str(mbdInd)+'_left')
             else:
                 # Load mps guess from previous bond dimension and increase to current mbd
-                mpsList,gSite = load_mps(initGuess+'_mbd'+str(mbdInd-1),nStates=nStates)
+                mpsList,gSite = load_mps(initGuess+'_mbd'+str(mbdInd-1))
                 mpsList = increase_all_mbd(mpsList,mbdi)
                 # Repeat for left eigenstate
                 if calcLeftState:
-                    mpslList,glSite = load_mps(initGuess+'_mbd'+str(mbdInd-1)+'_left',nStates=nStates)
+                    mpslList,glSite = load_mps(initGuess+'_mbd'+str(mbdInd-1)+'_left')
                     mpslList = increase_all_mbd(mpslList,mbdi)
 
         # Calc environment (or load if provided)

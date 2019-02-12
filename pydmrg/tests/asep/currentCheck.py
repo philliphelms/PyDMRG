@@ -27,23 +27,19 @@ def run_test():
                      calcLeftState=True)
     # Calc Current with operator
     curr_mpo = return_curr_mpo_asep(N,hamParams,singleBond=True)
-    opCurrS = contract(N,mbd,
-                      mpo = curr_mpo,
+    opCurrS = contract(mpo = curr_mpo,
                       mps = 'saved_states/tests/current_mbd0',
                       lmps='saved_states/tests/current_mbd0_left')
-    normCurr = contract(N,mbd,
-                        mps = 'saved_states/tests/current_mbd0',
+    normCurr = contract(mps = 'saved_states/tests/current_mbd0',
                         lmps='saved_states/tests/current_mbd0_left')
     opCurrS /= normCurr
     opCurrS *= (N+1)
     # Calc Current with operator
     curr_mpo = return_curr_mpo_asep(N,hamParams,singleBond=False)
-    opCurr = contract(N,mbd,
-                      mpo = curr_mpo,
+    opCurr = contract(mpo = curr_mpo,
                       mps = 'saved_states/tests/current_mbd0',
                       lmps='saved_states/tests/current_mbd0_left')
-    normCurr = contract(N,mbd,
-                        mps = 'saved_states/tests/current_mbd0',
+    normCurr = contract(mps = 'saved_states/tests/current_mbd0',
                         lmps='saved_states/tests/current_mbd0_left')
     opCurr /= normCurr
     # Calc Current From derivative
