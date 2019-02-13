@@ -8,6 +8,7 @@ from tools.mps_tools import *
 from tools.mpo_tools import *
 from tools.diag_tools import *
 from tools.env_tools import *
+from tools.contract import *
 import warnings
 
 VERBOSE = 10
@@ -49,14 +50,14 @@ def renormalizeR(mpsL,v,site,nStates=1,targetState=0):
     EE,EEs = calc_ent_right(mpsL[0],v[:,targetState],site)
     # Calculate the reduced density matrix
     _,nStatesCalc = v.shape
-    nStates = min(nStates,nStatesCalc)
-    for i in range(nStates):
-        if nStates != 1: 
+    nStatesAvg = min(nStates,nStatesCalc)
+    for i in range(nStatesAvg):
+        if nStatesAvg != 1: 
             vtmp = v[:,i]
         else:
             vtmp  = v
         vReshape = np.reshape(vtmp,(n1,n2,n3))
-        w = 1./float(nStates)
+        w = 1./float(nStatesAvg)
         if i == 0:
             rdm = w*calcRDM(vReshape,'right')
         else:
@@ -80,7 +81,7 @@ def renormalizeR(mpsL,v,site,nStates=1,targetState=0):
             if VERBOSE > 4: print('\t\tNormalization Problem')
         # Calculate next site for guess
         if nStates != 1:
-            vReshape = np.reshape(v[:,state],(n1,n2,n3))
+            vReshape = np.reshape(v[:,min(nStatesAvg-1,state)],(n1,n2,n3))
         else:
             vReshape = np.reshape(v,(n1,n2,n3))
         # PH - This next line is incorrect!!!
@@ -93,14 +94,14 @@ def renormalizeL(mpsL,v,site,nStates=1,targetState=0):
     EE,EEs = calc_ent_left(mpsL[0],v[:,targetState],site)
     # Calculate the reduced density matrix
     _,nStatesCalc = v.shape
-    nStates = min(nStates,nStatesCalc)
-    for i in range(nStates):
-        if nStates != 1: 
+    nStatesAvg = min(nStates,nStatesCalc)
+    for i in range(nStatesAvg):
+        if nStatesAvg != 1: 
             vtmp = v[:,i]
         else: 
             vtmp = v
         vReshape = np.reshape(vtmp,(n1,n2,n3))
-        w = 1./float(nStates)
+        w = 1./float(nStatesAvg)
         if i == 0:
             rdm = w*calcRDM(vReshape,'left') 
         else:
@@ -125,7 +126,7 @@ def renormalizeL(mpsL,v,site,nStates=1,targetState=0):
             if VERBOSE > 4: print('\t\tNormalization Problem')
         # Calculate next site's guess
         if nStates != 1:
-            vReshape = np.reshape(v[:,state],(n1,n2,n3))
+            vReshape = np.reshape(v[:,min(nStatesAvg-1,state)],(n1,n2,n3))
         else:
             vReshape = np.reshape(v,(n1,n2,n3))
         # Push gauge onto next site
@@ -286,8 +287,28 @@ def run_sweeps(mpsL,W,F,initGuess=None,maxIter=0,minIter=None,
                                         nStates=nStates,
                                         alg=alg,
                                         preserveState=preserveState,
-                                        endSite=gaugeSiteSave,
+                                        endSite=gaugeSiteSave-1,
                                         orthonormalize=orthonormalize)
+        # Do final calculation 
+        _,v,_ = calc_eigs(mpsL,W,F,gaugeSiteSave-1,
+                         nStates,
+                         alg=alg,
+                         preserveState=preserveState,
+                         orthonormalize=orthonormalize)
+        # Put final result into mpsL
+        (n1,n2,n3) = mpsL[0][gaugeSiteSave-1].shape
+        for state in range(nStates):
+            mpsL[state][gaugeSiteSave-1] = np.reshape(v[:,state],(n1,n2,n3))
+            print('original vec',np.dot(v[:,state],np.conj(v[:,state])))
+            print('just matrices',np.einsum('ijk,ijk->',mpsL[state][gaugeSiteSave-1],np.conj(mpsL[state][gaugeSiteSave-1])))
+            print(mpsL[state])
+            print('Full MPS',full_contract(mps=mpsL,state=state))
+            print('My Contract',np.einsum('ijk,ilm,nko,nmp,qor,qps,tru,tsv->',
+                                             mpsL[state][0],np.conj(mpsL[state][0]),
+                                             mpsL[state][1],np.conj(mpsL[state][1]),
+                                             mpsL[state][2],np.conj(mpsL[state][2]),
+                                             mpsL[state][3],np.conj(mpsL[state][3])))
+        # Check if we got to the center site
         if _E is not None:
             E,EE,EEs = _E,_EE,_EEs
     save_mps(mpsL,fname,gaugeSite=gaugeSiteSave)

@@ -2,7 +2,7 @@ import numpy as np
 from tools.mps_tools import *
 from tools.env_tools import *
 
-def full_contract(mpo=None,mps=None,lmps=None,state=0,gSite=None,glSite=None):
+def full_contract(mpo=None,mps=None,lmps=None,state=None,lstate=None,gSite=None,glSite=None):
     # Load matrix product states
     if isinstance(mps,str):
         mps,gSite = load_mps(mps)
@@ -19,18 +19,24 @@ def full_contract(mpo=None,mps=None,lmps=None,state=0,gSite=None,glSite=None):
     N = nSites(mps)
     mbd = maxBondDim(mps)
     # Extract lowest state from mps
-    lmps = lmps[state]
-    mps = mps[state]
+    if (state is None) and (lstate is None):
+        state,lstate = 0,0
+    elif state is None:
+        state = lstate
+    elif lstate is None:
+        lstate = state
+    lmps_ss = lmps[lstate]
+    mps_ss = mps[state]
     # Make empty mpo if none is provided
     if mpo is None:
         mpo = [[None]*N]
     # Ensure both guages are at the same location
     assert(gSite == glSite)
 
-    env = alloc_env(mps,mpo,mbd)
+    env = alloc_env(mps_ss,mpo,mbd)
     # Calculate Environment From Right
     for site in range(int(N)-1,-1,-1):
-        env = update_envL(mps,mpo,env,site,Ml=lmps)
+        env = update_envL(mps_ss,mpo,env,site,Ml=lmps_ss)
     Nenv = len(env)
     result = 0
     for j in range(Nenv):
