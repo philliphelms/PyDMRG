@@ -8,8 +8,8 @@ from mpo.asep2D import curr_mpo
 from mpo.asep2D_activity import act_mpo
 
 # Collect inputs
-Ny = int(argv[1])  # System size x-dir 
-Nx = int(argv[2])  # System size y-dir
+Ny = int(argv[1])  # System size y-dir 
+Nx = int(argv[2])  # System size x-dir
 mbd = int(argv[3]) # Maximum Bond Dimension
 bcs = str(argv[4]) # Boundary Condition (periodic, closed, open) x-direction
 
@@ -20,7 +20,7 @@ ds_change = [-0.05,  0.05,  0.15,   10]
 s_symm = -(Ny-1.)/(2.*(Ny+1.))*np.log(p/(1.-p))
 s0 = -0.5
 sF = s_symm #+ (s_symm - s0)
-make_plt = False
+make_plt = True
 alg = 'davidson'
 leftState = True
 s_thresh = sF+10
@@ -39,6 +39,7 @@ EE  = np.array([])
 if leftState: 
     EEl = np.array([])
     curr = np.array([])
+    act = np.array([])
 gap = np.array([])
 sVec = np.array([])
 
@@ -52,10 +53,12 @@ fname = path+'MPS_'
 if make_plt:
     import matplotlib.pyplot as plt
     f = plt.figure()
-    ax1 = f.add_subplot(221)
-    ax2 = f.add_subplot(222)
-    ax3 = f.add_subplot(223)
-    ax4 = f.add_subplot(224)
+    ax1 = f.add_subplot(231)
+    ax2 = f.add_subplot(232)
+    ax3 = f.add_subplot(233)
+    ax4 = f.add_subplot(234)
+    ax5 = f.add_subplot(235)
+    ax6 = f.add_subplot(236)
 
 # Run initial Calculation
 print(s0)
@@ -116,19 +119,25 @@ while sCurr <= sF:
     elif bcs == 'periodic':
         hamParams = np.array([0.5,0.5,p,1.-p,0.0,0.0,0.5,0.5,0.0,0.0,0.5,0.5,0.,sCurr])
         mpo = return_mpo_asep2D((Nx,Ny),hamParams,periodicy=periodicy,periodicx=periodicx)
-    Etmp,EEtmp,gaptmp = run_dmrg(mpo,
+    Etmp,EEtmp,gaptmp,env = run_dmrg(mpo,
                                  initEnv=env,
                                  initGuess=fname+'s'+str(len(sVec)-1),
                                  mbd=mbd,
                                  fname=fname+'s'+str(len(sVec)),
                                  nStates=2,
                                  alg=alg,
-                                 returnEnv=False,
+                                 returnEnv=True,
                                  preserveState=False,
                                  calcLeftState=leftState,
                                  orthonormalize=orthonormalize)
     if leftState: EErtmp = EEtmp[0]
     else: EErtmp = EEtmp
+    if (sCurr > s_thresh) and (EErtmp < 0.99):
+        if not orthonormalize:
+            # Redo previous calculation
+            sCurr -= ds0[dsInd]
+            # Start to use orhogonalization
+            orthonormalize=True
     if leftState:
         EE = np.append(EE,EEtmp[0])
         EEl= np.append(EEl,EEtmp[1])
@@ -157,20 +166,24 @@ while sCurr <= sF:
     # Create Plots
     if make_plt:
         if len(sVec) > 1:
-            currCalc = np.gradient(E,sVec)#(E[:-1]-E[1:])/(sVec[:-1]-sVec[1:])
             ax1.clear()
-            ax1.plot(sVec,currCalc,'b.')
-            if leftState: ax1.plot(sVec,curr,'r.')
+            ax1.plot(sVec,E,'r.')
+            currCalc = np.gradient(E,sVec)#(E[:-1]-E[1:])/(sVec[:-1]-sVec[1:])
             ax2.clear()
-            ax2.plot(sVec,EE,'b.')
-            if leftState: ax2.plot(sVec,EEl,'r.')
+            ax2.plot(sVec,currCalc,'b.')
+            if leftState: ax2.plot(sVec,curr,'r.')
             ax3.clear()
+            ax3.plot(sVec,EE,'b.')
+            if leftState: ax3.plot(sVec,EEl,'r.')
+            ax4.clear()
             suscCalc = np.gradient(currCalc,sVec)
             if leftState: susc = np.gradient(curr,sVec)
-            ax3.plot(sVec,suscCalc,'b.')
-            if leftState: ax3.plot(sVec,susc,'r.')
-            ax4.clear()
-            ax4.semilogy(sVec,gap,'b.')
+            ax4.plot(sVec,suscCalc,'b.')
+            if leftState: ax4.plot(sVec,susc,'r.')
+            ax5.clear()
+            ax5.semilogy(sVec,gap,'b.')
+            ax6.clear()
+            ax6.plot(sVec,act,'r.')
             plt.pause(0.01)
     # Save Results
     if leftState:
