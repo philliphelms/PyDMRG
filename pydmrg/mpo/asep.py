@@ -94,6 +94,8 @@ def periodic_mpo(N,hamParams):
         mpoL.append(tmp_op2)
     return mpoL
 
+# USEFUL FUNCTIONS ------------------------------------------------------
+
 def exponentiateBias(hamParams):
     (a,g,p,q,b,d,s) = hamParams
     ea = a*np.exp(s)
@@ -159,6 +161,8 @@ def extractParams(N,hamParams):
     s = hamparams[6].astype(dtype=np.float_)
     return (a,g,p,q,b,d,s)
 
+# CURRENT OPERATORS ------------------------------------------------------
+
 def curr_mpo(N,hamParams,periodic=False,singleBond=False,bond=None):
     if not isinstance(hamParams[0],(collections.Sequence,np.ndarray)):
         hamParams = val2vecParams(N,hamParams)
@@ -173,19 +177,24 @@ def curr_mpo(N,hamParams,periodic=False,singleBond=False,bond=None):
             return open_curr(N,hamParams)
 
 def single_bond_curr(N,hamParams,bond=None):
-    # Decide which bond to measure current over
-    if bond is None:
-        bond = int(N/2)
     # Extract parameter values
     (a,g,p,q,b,d,s) = hamParams
     (ea,eg,ep,eq,eb,ed) = exponentiateBias(hamParams)
+    # Decide which bond to measure current over
+    if bond is None:
+        bond = int(N/2)
     # List to hold all mpos
     mpoL = []
-    # Main mpo
     mpo = [None]*N
-    mpo[bond] = np.array([[Sp,Sm]])
-    mpo[bond+1] = np.array([[ep[bond-1]*Sm],
-                            [-eq[bond]*Sp]])
+    # Fill in mpo
+    if bond == 'left':
+        mpo[0] = np.array([[(ea[ 0]-ed[ 0])*Sm - (eb[ 0]-eg[ 0])*Sp]])
+    elif bond == 'right':
+        mpo[-1]= np.array([[(ea[-1]-ed[-1])*Sm - (eb[-1]-eg[-1])*Sp]])
+    else:
+        mpo[bond] = np.array([[Sp,Sm]])
+        mpo[bond+1] = np.array([[ep[bond]*Sm],
+                                [-eq[bond+1]*Sp]])
     # Include in list of mpos
     mpoL.append(mpo)
     return mpoL
@@ -219,6 +228,90 @@ def open_curr(N,hamParams):
     return mpoL
 
 def periodic_curr(N,hamParams):
+    # Extract parameter values
+    (a,g,p,q,b,d,s) = hamParams
+    (ea,eg,ep,eq,eb,ed) = exponentiateBias(hamParams)
+    # Get main mpo from open_mpo function
+    mpoL = open_mpo(N,hamParams)
+    if p[-1] != 0:
+        tmp_op1 = [None]*N
+        tmp_op1[-1] = np.array([[ep[-1]*Sp]])
+        tmp_op1[0] = np.array([[Sm]])
+        mpoL.append(tmp_op1)
+    if q[0] != 0:
+        tmp_op1 = [None]*N
+        tmp_op1[-1] = np.array([[-eq[0]*Sm]])
+        tmp_op1[0] = np.array([[Sp]])
+        mpoL.append(tmp_op1)
+    return mpoL
+
+# ACTIVITY OPERATORS ------------------------------------------------------
+
+def act_mpo(N,hamParams,periodic=False,singleBond=False,bond=None):
+    if not isinstance(hamParams[0],(collections.Sequence,np.ndarray)):
+        hamParams = val2vecParams(N,hamParams)
+    else:
+        hamParams = extractParams(N,hamParams)
+    if singleBond:
+        return single_bond_act(N,hamParams,bond=bond)
+    else:
+        if periodic:
+            return periodic_act(N,hamParams)
+        else:
+            return open_act(N,hamParams)
+
+def single_bond_act(N,hamParams,bond=None):
+    # Extract parameter values
+    (a,g,p,q,b,d,s) = hamParams
+    (ea,eg,ep,eq,eb,ed) = exponentiateBias(hamParams)
+    # Decide which bond to measure current over
+    if bond is None:
+        bond = int(N/2)
+    # List to hold corresponding mpos
+    mpoL = []
+    mpo = [None]*N
+    # Fill in mpo
+    if bond == 'left':
+        mpo[0]  = np.array([[(ea[ 0]+ed[ 0])*Sm + (eb[ 0]+eg[ 0])*Sp]])
+    elif bond == 'right':
+        mpo[-1] = np.array([[(ea[-1]+ed[-1])*Sm + (eb[-1]+eg[-1])*Sp]])
+    else:
+        mpo[bond] = np.array([[Sp,Sm]])
+        mpo[bond+1] = np.array([[ep[bond]*Sm],
+                                [eq[bond+1]*Sp]])
+    # Include in list of mpos
+    mpoL.append(mpo)
+    return mpoL
+
+def open_act(N,hamParams):
+    # Extract parameter values
+    (a,g,p,q,b,d,s) = hamParams
+    (ea,eg,ep,eq,eb,ed) = exponentiateBias(hamParams)
+    # List to hold all mpos
+    mpoL = []
+    # Main mpo
+    mpo = [None]*N
+    for site in range(N):
+        # Generic Operator Form
+        gen_mpo = np.array([[I,              z,  z, z],
+                            [ep[site-1]*Sm,  z,  z, z],
+                            [eq[site]*Sp,    z,  z, z],
+                            [z,             Sp, Sm, I]])
+        # Include destruction & creation at site
+        gen_mpo[-1,0,:,:] += (ea[site] + ed[site])*Sm +\
+                             (eb[site] + eg[site])*Sp
+        # Add operator to mpo
+        if (site == 0):
+            mpo[site] = np.expand_dims(gen_mpo[-1,:],0)
+        elif (site == N-1):
+            mpo[site] = np.expand_dims(gen_mpo[:,0],1)
+        else:
+            mpo[site] = gen_mpo
+    # Include in list of mpos
+    mpoL.append(mpo)
+    return mpoL
+
+def periodic_act(N,hamParams):
     # Extract parameter values
     (a,g,p,q,b,d,s) = hamParams
     (ea,eg,ep,eq,eb,ed) = exponentiateBias(hamParams)
