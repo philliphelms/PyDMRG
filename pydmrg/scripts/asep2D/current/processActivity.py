@@ -4,8 +4,7 @@ from tools.contract import full_contract as contract
 import time
 from sys import argv
 import os
-from mpo.asep2D import curr_mpo
-from mpo.asep2D_activity import act_mpo
+from mpo.asep2D import curr_mpo,act_mpo
 
 # Get directory name
 folder = argv[1]

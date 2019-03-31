@@ -14,11 +14,10 @@ bcs = str(argv[4]) # Boundary Condition (periodic, closed, open) x-direction
 
 # Set Calculation Parameters
 p = 0.1 
-s_symm = -(Ny-1.)/(2.*(Ny+1.))*np.log(p/(1.-p))
-s0 = -0.32
-sF = -0.28#s_symm 
-ds0 = [0.01]
-ds_change = [10]
+s0 = -0.5
+sF = 0.5
+ds0 = [0.01,0.005]
+ds_change = [0,10]
 s_thresh = sF+10
 make_plt = False
 alg = 'davidson'

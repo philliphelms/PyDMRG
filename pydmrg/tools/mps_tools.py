@@ -6,7 +6,7 @@ import copy
 def calc_entanglement(S):
     # Ensure correct normalization
     S /= np.sqrt(np.dot(S,np.conj(S)))
-    assert(np.isclose(np.abs(np.sum(S*np.conj(S))),1.))
+    #assert(np.isclose(np.abs(np.sum(S*np.conj(S))),1.))
     EEspec = -S*np.conj(S)*np.log2(S*np.conj(S))
     EE = np.sum(EEspec)
     return EE,EEspec
@@ -138,19 +138,30 @@ def create_rand_mps(N,mbd,d=2,const=.1):
     M = []
     for i in range(int(N/2)):
         M.insert(len(M),const*np.random.rand(d,min(d**(i),mbd),min(d**(i+1),mbd)))
-        #M.insert(len(M),const*np.ones((d,min(d**(i),mbd),min(d**(i+1),mbd))))
     if N%2 is 1:
         M.insert(len(M),const*np.random.rand(d,min(d**(i+1),mbd),min(d**(i+1),mbd)))
-        #M.insert(len(M),const*np.ones((d,min(d**(i+1),mbd),min(d**(i+1),mbd))))
     for i in range(int(N/2))[::-1]:
         M.insert(len(M),const*np.random.rand(d,min(d**(i+1),mbd),min(d**i,mbd)))
-        #M.insert(len(M),const*np.ones((d,min(d**(i+1),mbd),min(d**i,mbd))))
     return M
 
-def create_all_mps(N,mbd,nStates):
+def create_const_mps(N,mbd,d=2,const=1.):
+    # Create MPS
+    M = []
+    for i in range(int(N/2)):
+        M.insert(len(M),const*np.ones((d,min(d**(i),mbd),min(d**(i+1),mbd))))
+    if N%2 is 1:
+        M.insert(len(M),const*np.ones((d,min(d**(i+1),mbd),min(d**(i+1),mbd))))
+    for i in range(int(N/2))[::-1]:
+        M.insert(len(M),const*np.ones((d,min(d**(i+1),mbd),min(d**i,mbd))))
+    return M
+
+def create_all_mps(N,mbd,nStates,rand=True,const=1.,d=2):
     mpsList = []
     for state in range(nStates):
-        mpsList.append(create_rand_mps(N,mbd))
+        if rand:
+            mpsList.append(create_rand_mps(N,mbd,d=d,const=const))
+        else:
+            mpsList.append(create_const_mps(N,mbd,d=d,const=const))
     return mpsList
 
 def increase_mbd(M,mbd,periodic=False,constant=False,d=2):
@@ -220,7 +231,11 @@ def load_mps(fname):
         except:
             moreStates = False
     # Specifies where the gauge is located in the MPS
-    gaugeSite = npzfile['site']
+    try:
+        gaugeSite = npzfile['site']
+    except:
+        print('Fname {} not found'.format(fname+'state'+str(state)+'.npz'))
+        gaugeSite = npzfile['site']
     return mpsL,gaugeSite
 
 def save_mps(mpsL,fname,gaugeSite=0):
@@ -241,7 +256,7 @@ def maxBondDim(mpsL):
         mbd = np.max(np.array([mbd,np.max(mpsL[0][site].shape)]))
     return mbd
 
-def orthonormalize_states(mps,mpo=None,gSite=None,printEnergies=True):
+def orthonormalize_states(mps,mpo=None,gSite=None,printEnergies=False):
     from tools.contract import full_contract as contract
     # Load matrix product states
     if isinstance(mps,str):
@@ -276,3 +291,36 @@ def orthonormalize_states(mps,mpo=None,gSite=None,printEnergies=True):
             Ef[i] = contract(mps=mps,mpo=mpo,gSite=gSite,state=i)/contract(mps=mps,gSite=gSite,state=i)
         if printEnergies: print('Final Energies = {}'.format(Ef))
     return mps
+
+def contract_config(mps,config,norm='L1',state=0,gSite=None):
+    from tools.contract import full_contract as contract
+    # Load matrix product states
+    if isinstance(mps,str):
+        mps,gSite = load_mps(mps)
+    N = len(mps[0])
+    nStates = len(mps)
+    # Check Normalization
+    if norm == 'L1':
+        mps[state][gSite-1] /= np.einsum('ijk->',mps[state][gSite-1])
+        #print('L1 Norm',np.einsum('ijk->',mps[state][gSite-1]))
+    else:
+        mps[state][gSite-1] /= np.einsum('ijk,ijk->',mps[state][gSite-1],np.conj(mps[state][gSite-1]))
+        #print('L2 Norm',np.einsum('ijk,ijk->',mps[state][gSite-1],np.conj(mps[state][gSite-1])))
+    # Contract MPS
+    res = np.array([[1]])
+    for site in range(N):
+        res = np.dot(res,mps[state][site][config[site],:,:])
+    return res[0,0]
+
+def all_config_prob(mps,norm='L2',state=0):
+    # Load MPS
+    if isinstance(mps,str):
+        mps,gSite = load_mps(mps)
+    N = len(mps[0])
+    nStates = len(mps)
+    prob = np.zeros(2**N,dtype=np.complex_)
+    for i in range(2**N):
+        config = np.asarray(list(map(lambda x: int(x),'0'*(N-len(bin(i)[2:]))+bin(i)[2:])))
+        prob[i] = contract_config(mps,config,norm=norm,state=state,gSite=gSite)
+        print(str(i)+"\t'"+'0'*(N-len(bin(i)[2:]))+bin(i)[2:]+'\t'+str(np.real(prob[i]))+'\t'+str(np.imag(prob[i])))
+    return prob

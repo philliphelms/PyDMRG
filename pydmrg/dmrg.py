@@ -220,21 +220,6 @@ def checkConv(E_prev,E,tol,iterCnt,maxIter,minIter,nStates=1,targetState=0,EE=No
         conv = False
     return cont,conv,E_prev,iterCnt
 
-def observable_sweep(M,F):
-    # Going to the right
-    # PH - Only calculates Entanglement Currently
-    # PH - Not in use now
-    N = len(M)
-    for site in range(N-1):
-        (n1,n2,n3) = M[site].shape
-        M_reshape = np.reshape(M[site],(n1*n2,n3))
-        (U,S,V) = np.linalg.svd(M_reshape,full_matrices=False)
-        M[site] = np.reshape(U,(n1,n2,n3))
-        M[site+1] = einsum('i,ij,kjl->kil',S,V,M[site+1])
-        if site == int(N/2):
-            EE,EEs = calc_entanglement(S)
-    return EE,EEs
-
 def printResults(converged,E,EE,EEspec,gap):
     if VERBOSE > 1: print('#'*75)
     if converged:
@@ -249,7 +234,7 @@ def printResults(converged,E,EE,EEspec,gap):
     if VERBOSE > 1: print('#'*75)
 
 def run_sweeps(mpsL,W,F,initGuess=None,maxIter=0,minIter=None,
-               tol=1e-5,fname = None,nStates=1,
+               tol=1e-10,fname = None,nStates=1,
                targetState=0,alg='arnoldi',
                preserveState=False,gaugeSiteLoad=0,
                gaugeSiteSave=0,returnState=False,
@@ -287,7 +272,7 @@ def run_sweeps(mpsL,W,F,initGuess=None,maxIter=0,minIter=None,
                                         nStates=nStates,
                                         alg=alg,
                                         preserveState=preserveState,
-                                        endSite=gaugeSiteSave-1,
+                                        endSite=gaugeSiteSave,
                                         orthonormalize=orthonormalize)
         # Do final calculation 
         _,v,_ = calc_eigs(mpsL,W,F,gaugeSiteSave-1,

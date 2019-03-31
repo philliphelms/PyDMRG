@@ -4,8 +4,7 @@ from tools.contract import full_contract as contract
 import time
 from sys import argv
 import os
-from mpo.asep2D import curr_mpo
-from mpo.asep2D_activity import act_mpo
+from mpo.asep2D import curr_mpo,act_mpo
 
 # Collect inputs
 Ny = int(argv[1])  # System size y-dir 
@@ -15,12 +14,12 @@ bcs = str(argv[4]) # Boundary Condition (periodic, closed, open) x-direction
 
 # Set Calculation Parameters
 p = 0.1 
-ds0 =       [ 0.05, 0.001, 0.005, 0.01]
+ds0 =       [ 0.05, 0.005,  0.01, 0.05]
 ds_change = [-0.05,  0.05,  0.15,   10]
 s_symm = -(Ny-1.)/(2.*(Ny+1.))*np.log(p/(1.-p))
 s0 = -0.5
 sF = s_symm #+ (s_symm - s0)
-make_plt = True
+make_plt = False
 alg = 'davidson'
 leftState = True
 s_thresh = sF+10
@@ -45,7 +44,7 @@ sVec = np.array([])
 
 # Create Directory for saving states
 dirid = str(int(time.time()))
-path = 'saved_states/multiLane_'+'Nx'+str(Nx)+'Ny'+str(Ny)+'mbd'+str(mbd)+'_'+dirid+'/'
+path = 'saved_states/'+bcs+'_multiLane_'+'Nx'+str(Nx)+'Ny'+str(Ny)+'mbd'+str(mbd)+'_'+dirid+'/'
 os.mkdir(path)
 fname = path+'MPS_'
 

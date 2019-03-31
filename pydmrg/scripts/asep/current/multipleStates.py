@@ -10,15 +10,25 @@ import os
 N = int(argv[1])
 p = 0.1 
 mbd = int(argv[2]) # Can only be a single value currently
-ds0 = [0.01]
-ds_change = [10]
+# Set up bias
+ds0 = [0.0001,0.001,0.01,0.01]
+ds_change = [0.1,0.2,0.3,0.4]
 s_symm = -(N-1.)/(2.*(N+1.))*np.log(p/(1.-p))
-s0 = -0.2
-sF = 0.2#s_symm #+ (s_symm - s0)
-make_plt = True
-leftState = True
-alg = 'davidson'
+s0 = -0.0
+sF = 0.5 #s_symm #+ (s_symm - s0)
 s_thresh = 1000
+# Jumping Rates
+alpha = 0.5      # in at left
+gamma = 1.-alpha  # Out at left
+q     = 1.-p      # Jump left
+beta  = 0.5     # Out at right
+delta = 1.-beta   # In at right
+hamParams = np.array([alpha,gamma,p,q,beta,delta,s0])
+# Calculation Settings
+make_plt = False
+leftState = False
+nStates = 2
+alg = 'davidson'
 
 # Allocate Memory for results
 E   = np.array([])
@@ -35,7 +45,7 @@ sVec = np.array([])
 
 # Create directory for storing states
 dirid = str(int(time.time()))
-path = 'saved_states/singleLane_manyStates_'+'N'+str(N)+'mbd'+str(mbd)+'_'+dirid+'/'
+path = 'saved_states/restartCalc_'+'N'+str(N)+'mbd'+str(mbd)+'_'+dirid+'/'
 os.mkdir(path)
 fname = path+'MPS_'
 
@@ -51,16 +61,27 @@ if make_plt:
 
 # Run initial Calculation
 print(s0)
-hamParams = np.array([0.5,0.5,p,1.-p,0.5,0.5,s0])
+hamParams[-1] = s0
 mpo = return_mpo(N,hamParams)
 Etmp,EEtmp,gaptmp,env = run_dmrg(mpo,
                                  mbd=mbd,
+                                 #initGuess = 'saved_states/singleLane_MCSHD_N100mbd10_1553109008/MPS_s242',
                                  fname=fname+'s0',
-                                 nStates=4,
+                                 nStates=nStates,
                                  alg=alg,
                                  returnEnv=True,
                                  calcLeftState=leftState)
-
+"""
+Etmp,EEtmp,gaptmp,env = run_dmrg(mpo,
+                                 mbd=mbd,
+                                 initGuess = fname+'s0',
+                                 initEnv = env,
+                                 fname=fname+'s0',
+                                 nStates=nStates,
+                                 alg=alg,
+                                 returnEnv=True,
+                                 calcLeftState=leftState)
+"""
 if leftState:
     EE = np.append(EE,EEtmp[0])
     EEl= np.append(EEl,EEtmp[1])
@@ -78,15 +99,11 @@ else:
 # Calculate Higher Energies
 E0tmp = contract(mps=fname+'s0'+'_mbd0',mpo=mpo,state=0)/contract(mps=fname+'s0'+'_mbd0',state=0)
 E1tmp = contract(mps=fname+'s0'+'_mbd0',mpo=mpo,state=1)/contract(mps=fname+'s0'+'_mbd0',state=1)
-E2tmp = contract(mps=fname+'s0'+'_mbd0',mpo=mpo,state=2)/contract(mps=fname+'s0'+'_mbd0',state=2)
-E3tmp = contract(mps=fname+'s0'+'_mbd0',mpo=mpo,state=3)/contract(mps=fname+'s0'+'_mbd0',state=3)
 
 # Save Results
 E = np.append(E,Etmp)
 E0 = np.append(E0,E0tmp)
 E1 = np.append(E1,E1tmp)
-E2 = np.append(E2,E2tmp)
-E3 = np.append(E3,E3tmp)
 gap = np.append(gap,gaptmp)
 sVec = np.append(sVec,s0)
 
@@ -97,14 +114,15 @@ dsInd = 0
 while sCurr <= sF:
     sCurr += ds0[dsInd]
     # Run Calculation
-    hamParams = np.array([0.5,0.5,p,1.-p,0.5,0.5,sCurr])
+    hamParams[-1] = sCurr
     mpo = return_mpo(N,hamParams)
-    Etmp,EEtmp,gaptmp,env = run_dmrg(mpo,initEnv=env,
+    Etmp,EEtmp,gaptmp,env = run_dmrg(mpo,
+                                     initEnv=env,
                                      mbd=mbd,
                                      initGuess=fname+'s'+str(len(sVec)-1),
                                      fname=fname+'s'+str(len(sVec)),
                                      alg=alg,
-                                     nStates=4,
+                                     nStates=nStates,
                                      preserveState=False,
                                      returnEnv=True,
                                      calcLeftState=leftState,
@@ -138,15 +156,11 @@ while sCurr <= sF:
         # Calculate Higher Energies
         E0tmp = contract(mps=fname+'s'+str(len(sVec))+'_mbd0',mpo=mpo,state=0)/contract(mps=fname+'s'+str(len(sVec))+'_mbd0',state=0)
         E1tmp = contract(mps=fname+'s'+str(len(sVec))+'_mbd0',mpo=mpo,state=1)/contract(mps=fname+'s'+str(len(sVec))+'_mbd0',state=1)
-        E2tmp = contract(mps=fname+'s'+str(len(sVec))+'_mbd0',mpo=mpo,state=2)/contract(mps=fname+'s'+str(len(sVec))+'_mbd0',state=2)
-        E3tmp = contract(mps=fname+'s'+str(len(sVec))+'_mbd0',mpo=mpo,state=3)/contract(mps=fname+'s'+str(len(sVec))+'_mbd0',state=3)
 
         # Save Results
         E = np.append(E,Etmp)
         E0 = np.append(E0,E0tmp)
         E1 = np.append(E1,E1tmp)
-        E2 = np.append(E2,E2tmp)
-        E3 = np.append(E3,E3tmp)
         gap = np.append(gap,gaptmp)
         sVec = np.append(sVec,sCurr)
     if sCurr >= ds_change[dsInd]:
@@ -176,10 +190,8 @@ while sCurr <= sF:
             plt.pause(0.01)
     # Save Results
     if leftState:
-        np.savez('results/asep_manyStates_psweep_N'+str(N)+'_mbd'+str(mbd),N=N,p=p,mbd=mbd,s=sVec,E=E,EE=EE,EEl=EEl,curr=curr,gap=gap)
         np.savez(path+'results',N=N,p=p,mbd=mbd,s=sVec,E=E,EE=EE,gap=gap,EEl=EEl,curr=curr)
     else:
-        np.savez('results/asep_manyStates_psweep_N'+str(N)+'_mbd'+str(mbd),N=N,p=p,mbd=mbd,s=sVec,E=E,EE=EE,gap=gap)
         np.savez(path+'results',N=N,p=p,mbd=mbd,s=sVec,E=E,EE=EE,gap=gap)
 if make_plt:
     plt.show()

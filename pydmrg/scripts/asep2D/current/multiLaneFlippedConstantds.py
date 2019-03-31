@@ -7,14 +7,14 @@ import os
 from mpo.asep2D import curr_mpo,act_mpo
 
 # Collect inputs
-Ny = 3#int(argv[1])  # System size y-dir 
-Nx = 50#int(argv[2])  # System size x-dir
-mbd = 50#int(argv[3]) # Maximum Bond Dimension
-bcs = 'open'#str(argv[4]) # Boundary Condition (periodic, closed, open) x-direction
+Ny = int(argv[1])  # System size y-dir 
+Nx = int(argv[2])  # System size x-dir
+mbd = int(argv[3]) # Maximum Bond Dimension
+bcs = str(argv[4]) # Boundary Condition (periodic, closed, open) x-direction
 
 # Set Calculation Parameters
 p = 0.1 
-sVec = np.array([-0.5,-0.1,0.0,0.1,0.5])
+sVec = np.linspace(0.,0.5,100)
 make_plt = False
 alg = 'davidson'
 leftState = True
@@ -38,7 +38,7 @@ gap = np.array([])
 
 # Create Directory for saving states
 dirid = str(int(time.time()))
-path = 'saved_states/MCy_'+bcs+'_multiLaneFlipped_'+'Nx'+str(Nx)+'Ny'+str(Ny)+'mbd'+str(mbd)+'_'+dirid+'/'
+path = 'saved_states/superTest_'+bcs+'_multiLaneFlipped_'+'Nx'+str(Nx)+'Ny'+str(Ny)+'mbd'+str(mbd)+'_'+dirid+'/'
 os.mkdir(path)
 fname = path+'MPS_'
 
@@ -63,6 +63,7 @@ if bcs == 'closed':
 elif bcs == 'open':
     #                     jr,  jl, ju, jd, cr, cl, cu, cd, dr, dl, du, dd,sx,sy
     hamParams = np.array([p ,1.-p,0.5,0.5,0.5,0.5,0.9,0.1,0.5,0.5,0.9,0.1,s0,0.])
+    #hamParams = np.array([p ,1.-p,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,s0,0.])
     mpo = return_mpo_asep2D((Nx,Ny),hamParams,periodicy=periodicy,periodicx=periodicx)
 elif bcs == 'periodic':
     hamParams = np.array([p,1.-p,0.5,0.5,0.5,0.5,0.0,0.0,0.5,0.5,0.0,0.0,s0,0.])
@@ -109,6 +110,7 @@ for sInd,sCurr in enumerate(sVec[1:]):
         mpo = return_mpo_asep2D((Nx,Ny),hamParams,periodicy=periodicy,periodicx=periodicx)
     elif bcs == 'open':
         hamParams = np.array([p ,1.-p,0.5,0.5,0.5,0.5,0.9,0.1,0.5,0.5,0.9,0.1,sCurr,0.])
+        #hamParams = np.array([p ,1.-p,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,sCurr,0.])
         mpo = return_mpo_asep2D((Nx,Ny),hamParams,periodicy=periodicy,periodicx=periodicx)
     elif bcs == 'periodic':
         hamParams = np.array([p,1.-p,0.5,0.5,0.5,0.5,0.0,0.0,0.5,0.5,0.0,0.0,sCurr,0.])

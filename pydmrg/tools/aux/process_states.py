@@ -6,12 +6,11 @@ def calc_entanglement_all(mps,mpo=None,orth=True):
     # Load matrix product states
     if isinstance(mps,str):
         mps,gSite = load_mps(mps)
-    print(gSite)
     N = len(mps[0])
     nStates = len(mps)
     # Orthonormalize states if desired
     if orth: 
-        mpsUse = orthonormalize_states(mps,mpo=mpo,gSite=gSite)
+        mpsUse = orthonormalize_states(mps,mpo=mpo,gSite=gSite-1)
     else:
         mpsUse = mps
     # Calculate Entanglement Entropy

@@ -371,7 +371,7 @@ def extractParams(hamParams):
 
 def curr_mpo(N,hamParams,
              periodicx=False,periodicy=False,
-             includex=True,includey=True):
+             includex=True,includey=True,
              singleBond=False,xbond=None,ybond=None,orientation=None):
     if hasattr(N,'__len__'):
         Nx = N[0]
@@ -417,36 +417,125 @@ def curr_mpo(N,hamParams,
                 return open_curr_y(Nx,Ny,hamParams)
 
 def single_bond_curr(Nx,Ny,hamParams,xbond,ybond,orientation):
-    # Extract Parameter Values:
+    # Extract parameter Values
+    (jr,jl,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,sx,sy) = hamParams
+    # Set all params to zero, except those involved
+    if orientation == 'vert':
+        jr = np.zeros(jr.shape)
+        jl = np.zeros(jl.shape)
+        cr = np.zeros(jl.shape)
+        cl = np.zeros(jl.shape)
+        dr = np.zeros(jl.shape)
+        dl = np.zeros(jl.shape)
+        if ybond == 'top':
+            ju = np.zeros(ju.shape)
+            jd = np.zeros(jd.shape)
+            cu = np.zeros(cu.shape)
+            dd = np.zeros(dd.shape)
+            mask = np.ones(cd.shape,bool)
+            mask[xbond,0] = False
+            cd[mask] = 0.
+            du[mask] = 0. 
+        elif ybond == 'bottom':
+            ju = np.zeros(ju.shape)
+            jd = np.zeros(jd.shape)
+            cd = np.zeros(cd.shape)
+            du = np.zeros(du.shape)
+            mask = np.ones(cu.shape,bool)
+            mask[xbond,-1] = False
+            cu[mask] = 0.
+            dd[mask] = 0.
+        else:
+            cu = np.zeros(cu.shape)
+            cd = np.zeros(cd.shape)
+            du = np.zeros(du.shape)
+            dd = np.zeros(dd.shape)
+            mask = np.ones(ju.shape,bool)
+            mask[xbond,ybond+1] = False
+            ju[mask] = 0.
+            mask = np.ones(jd.shape,bool)
+            mask[xbond,ybond] = False
+            jd[mask] = 0.
+    elif orientation == 'horz':
+        ju = np.zeros(jr.shape)
+        jd = np.zeros(jl.shape)
+        cu = np.zeros(jl.shape)
+        cd = np.zeros(jl.shape)
+        du = np.zeros(jl.shape)
+        dd = np.zeros(jl.shape)
+        if xbond == 'left':
+            jr = np.zeros(jr.shape)
+            jl = np.zeros(jl.shape)
+            cl = np.zeros(cl.shape)
+            dr = np.zeros(dr.shape)
+            mask = np.ones(dl.shape,bool)
+            mask[0,ybond] = False
+            dl[mask] = 0.
+            cr[mask] = 0.
+        elif xbond == 'right':
+            jr = np.zeros(jr.shape)
+            jl = np.zeros(jl.shape)
+            dl = np.zeros(dl.shape)
+            cr = np.zeros(cr.shape)
+            mask = np.ones(dr.shape,bool)
+            mask[-1,ybond] = False
+            dr[mask] = 0.
+            cl[mask] = 0.
+        else:
+            cr = np.zeros(cu.shape)
+            cl = np.zeros(cd.shape)
+            dr = np.zeros(du.shape)
+            dl = np.zeros(dd.shape)
+            mask = np.ones(jr.shape,bool)
+            mask[xbond,ybond] = False
+            jr[mask] = 0.
+            mask = np.ones(jl.shape,bool)
+            mask[xbond+1,ybond] = False
+            jl[mask] = 0.
+    hamParams = (jr,jl,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,sx,sy)
     (ejr,ejl,eju,ejd,ecr,ecl,ecu,ecd,edr,edl,edu,edd) = exponentiateBias(hamParams)
     # List to hold all MPOs
     mpoL = []
     # Main MPO
-    mpo = [None]*N
-    # Fill in MPO
-    if orientation == 'vert':
-        if ybond == 'top':
-            mpo[(xbond+1)*Ny-1] = np.array([[ (ecu[xbond,Ny-1]-ecd[xbond,Ny-1])*Sm + \
-                                              (edu[xbond,Ny-1]-edd[xbond,Ny-1])*Sp ]])
-        elif ybond == 'bottom':
-            mpo[xbond*Ny]       = np.array([[ (ecu[xbond,0]-ecd[xbond,0])*Sm + \
-                                              (edu[xbond,0]-edd[xbond,0])*Sp ]])
-        else:
-            mpo[xbond*Ny+ybond]   = np.array([[Sp,Sm]])
-            mpo[xbond*Ny+ybond+1] = np.array([[eju[xbond,ybond]  *Sm],
-                                              [-ejd[xbond,ybond+1]*Sp]])
-    elif orientation == 'horz':
-        if xbond == 'left':
-            mpo[ybond] = np.array([[ (ecr[0,ybond]-ecl[0,ybond])*Sm + \
-                                     (edr[0,ybond]-edl[0,ybond])*Sp]])
-        elif xbond == 'right':
-            mpo[Ny*(Nx-1)+ybond] = np.array([[ (ecr[-1,ybond]-ecl[-1,ybond])*Sm + \
-                                               (edr[-1,ybond]-edl[-1,ybond])*Sp]])
-        else:
-            mpo[xbond*Ny+ybond]     = np.array([[Sp,Sm]])
-            mpo[xbond*(Ny+1)+ybond] = np.array([[ejr[xbond  ,ybond]*Sm],
-                                                [-ejl[xbond+1,ybond]*Sp]])
-    # Add main mpo to MPO List
+    mpo = []
+    ham_dim = 2+2*Ny
+    for xi in range(Nx):
+        for yi in range(Ny):
+            # Build generic MPO
+            gen_mpo = np.zeros((ham_dim,ham_dim,2,2))
+            gen_mpo[0,0,:,:] = I 
+            gen_mpo[1,0,:,:] = ejr[xi-1,yi]*Sm
+            gen_mpo[Ny,0,:,:] = -ejd[xi,yi-1]*Sm
+            gen_mpo[Ny+1,0,:,:] = -ejl[xi,yi]*Sp
+            gen_mpo[2*Ny,0,:,:] = eju[xi,yi]*Sp
+            # Build generic interior
+            col_ind = 1
+            row_ind = 2
+            for k in range(2): 
+                for l in range(Ny-1):
+                    gen_mpo[row_ind,col_ind,:,:] = I
+                    col_ind += 1
+                    row_ind += 1
+                col_ind += 1
+                row_ind += 1
+            # Build bottom row
+            gen_mpo[-1,Ny,:,:] = Sp
+            gen_mpo[-1,2*Ny,:,:] = Sm
+            gen_mpo[-1,2*Ny+1,:,:] = I
+            # Include creation & annihilation
+            gen_mpo[-1,0,:,:] += (ecr[xi,yi] - ecl[xi,yi] - ecd[xi,yi] + ecu[xi,yi])*Sm +\
+                                 (edr[xi,yi] - edl[xi,yi] - edd[xi,yi] + edu[xi,yi])*Sp
+            # Prevent interaction between ends
+            if (yi == 0) and (xi != 0):
+                gen_mpo[Ny,0,:,:] = z
+                gen_mpo[2*Ny,0,:,:] = z
+            # Add operator to list of operators
+            if (xi == 0) and (yi == 0):
+                mpo.append(np.expand_dims(gen_mpo[-1,:],0))
+            elif (xi == Nx-1) and (yi == Ny-1):
+                mpo.append(np.expand_dims(gen_mpo[:,0],1))
+            else:
+                mpo.append(gen_mpo)
     mpoL.append(mpo)
     return mpoL
 
@@ -901,6 +990,7 @@ def act_mpo(N,hamParams,
         hamParams = extractParams(hamParams)
     # Generate MPO based on periodicity
     if singleBond:
+        print('Doing Single Bond')
         return single_bond_act(Nx,Ny,hamParams,xbond,ybond,orientation)
     else:
         if includex and includey:
@@ -932,36 +1022,125 @@ def act_mpo(N,hamParams,
                 return open_act_y(Nx,Ny,hamParams)
 
 def single_bond_act(Nx,Ny,hamParams,xbond,ybond,orientation):
-    # Extract Parameter Values:
+    # Extract parameter Values
+    (jr,jl,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,sx,sy) = hamParams
+    # Set all params to zero, except those involved
+    if orientation == 'vert':
+        jr = np.zeros(jr.shape)
+        jl = np.zeros(jl.shape)
+        cr = np.zeros(jl.shape)
+        cl = np.zeros(jl.shape)
+        dr = np.zeros(jl.shape)
+        dl = np.zeros(jl.shape)
+        if ybond == 'top':
+            ju = np.zeros(ju.shape)
+            jd = np.zeros(jd.shape)
+            cu = np.zeros(cu.shape)
+            dd = np.zeros(dd.shape)
+            mask = np.ones(cd.shape,bool)
+            mask[xbond,0] = False
+            cd[mask] = 0.
+            du[mask] = 0. 
+        elif ybond == 'bottom':
+            ju = np.zeros(ju.shape)
+            jd = np.zeros(jd.shape)
+            cd = np.zeros(cd.shape)
+            du = np.zeros(du.shape)
+            mask = np.ones(cu.shape,bool)
+            mask[xbond,-1] = False
+            cu[mask] = 0.
+            dd[mask] = 0.
+        else:
+            cu = np.zeros(cu.shape)
+            cd = np.zeros(cd.shape)
+            du = np.zeros(du.shape)
+            dd = np.zeros(dd.shape)
+            mask = np.ones(ju.shape,bool)
+            mask[xbond,ybond+1] = False
+            ju[mask] = 0.
+            mask = np.ones(jd.shape,bool)
+            mask[xbond,ybond] = False
+            jd[mask] = 0.
+    elif orientation == 'horz':
+        ju = np.zeros(jr.shape)
+        jd = np.zeros(jl.shape)
+        cu = np.zeros(jl.shape)
+        cd = np.zeros(jl.shape)
+        du = np.zeros(jl.shape)
+        dd = np.zeros(jl.shape)
+        if xbond == 'left':
+            jr = np.zeros(jr.shape)
+            jl = np.zeros(jl.shape)
+            cl = np.zeros(cl.shape)
+            dr = np.zeros(dr.shape)
+            mask = np.ones(dl.shape,bool)
+            mask[0,ybond] = False
+            dl[mask] = 0.
+            cr[mask] = 0.
+        elif xbond == 'right':
+            jr = np.zeros(jr.shape)
+            jl = np.zeros(jl.shape)
+            dl = np.zeros(dl.shape)
+            cr = np.zeros(cr.shape)
+            mask = np.ones(dr.shape,bool)
+            mask[-1,ybond] = False
+            dr[mask] = 0.
+            cl[mask] = 0.
+        else:
+            cr = np.zeros(cu.shape)
+            cl = np.zeros(cd.shape)
+            dr = np.zeros(du.shape)
+            dl = np.zeros(dd.shape)
+            mask = np.ones(jr.shape,bool)
+            mask[xbond,ybond] = False
+            jr[mask] = 0.
+            mask = np.ones(jl.shape,bool)
+            mask[xbond+1,ybond] = False
+            jl[mask] = 0.
+    hamParams = (jr,jl,ju,jd,cr,cl,cu,cd,dr,dl,du,dd,sx,sy)
     (ejr,ejl,eju,ejd,ecr,ecl,ecu,ecd,edr,edl,edu,edd) = exponentiateBias(hamParams)
     # List to hold all MPOs
     mpoL = []
     # Main MPO
-    mpo = [None]*N
-    # Fill in MPO
-    if orientation == 'vert':
-        if ybond == 'top':
-            mpo[(xbond+1)*Ny-1] = np.array([[ (ecu[xbond,Ny-1]+ecd[xbond,Ny-1])*Sm + \
-                                              (edu[xbond,Ny-1]+edd[xbond,Ny-1])*Sp ]])
-        elif ybond == 'bottom':
-            mpo[xbond*Ny]       = np.array([[ (ecu[xbond,0]+ecd[xbond,0])*Sm + \
-                                              (edu[xbond,0]+edd[xbond,0])*Sp ]])
-        else:
-            mpo[xbond*Ny+ybond]   = np.array([[Sp,Sm]])
-            mpo[xbond*Ny+ybond+1] = np.array([[eju[xbond,ybond]  *Sm],
-                                              [ejd[xbond,ybond+1]*Sp]])
-    elif orientation == 'horz':
-        if xbond == 'left':
-            mpo[ybond] = np.array([[ (ecr[0,ybond]+ecl[0,ybond])*Sm + \
-                                     (edr[0,ybond]+edl[0,ybond])*Sp]])
-        elif xbond == 'right':
-            mpo[Ny*(Nx-1)+ybond] = np.array([[ (ecr[-1,ybond]+ecl[-1,ybond])*Sm + \
-                                               (edr[-1,ybond]+edl[-1,ybond])*Sp]])
-        else:
-            mpo[xbond*Ny+ybond]     = np.array([[Sp,Sm]])
-            mpo[xbond*(Ny+1)+ybond] = np.array([[ejr[xbond  ,ybond]*Sm],
-                                                [ejl[xbond+1,ybond]*Sp]])
-    # Add main mpo to MPO List
+    mpo = []
+    ham_dim = 2+2*Ny
+    for xi in range(Nx):
+        for yi in range(Ny):
+            # Build generic MPO
+            gen_mpo = np.zeros((ham_dim,ham_dim,2,2))
+            gen_mpo[0,0,:,:] = I 
+            gen_mpo[1,0,:,:] = ejr[xi-1,yi]*Sm
+            gen_mpo[Ny,0,:,:] = ejd[xi,yi-1]*Sm
+            gen_mpo[Ny+1,0,:,:] = ejl[xi,yi]*Sp
+            gen_mpo[2*Ny,0,:,:] = eju[xi,yi]*Sp
+            # Build generic interior
+            col_ind = 1
+            row_ind = 2
+            for k in range(2): 
+                for l in range(Ny-1):
+                    gen_mpo[row_ind,col_ind,:,:] = I
+                    col_ind += 1
+                    row_ind += 1
+                col_ind += 1
+                row_ind += 1
+            # Build bottom row
+            gen_mpo[-1,Ny,:,:] = Sp
+            gen_mpo[-1,2*Ny,:,:] = Sm
+            gen_mpo[-1,2*Ny+1,:,:] = I
+            # Include creation & annihilation
+            gen_mpo[-1,0,:,:] += (ecr[xi,yi] + ecl[xi,yi] + ecd[xi,yi] + ecu[xi,yi])*Sm +\
+                                 (edr[xi,yi] + edl[xi,yi] + edd[xi,yi] + edu[xi,yi])*Sp
+            # Prevent interaction between ends
+            if (yi == 0) and (xi != 0):
+                gen_mpo[Ny,0,:,:] = z
+                gen_mpo[2*Ny,0,:,:] = z
+            # Add operator to list of operators
+            if (xi == 0) and (yi == 0):
+                mpo.append(np.expand_dims(gen_mpo[-1,:],0))
+            elif (xi == Nx-1) and (yi == Ny-1):
+                mpo.append(np.expand_dims(gen_mpo[:,0],1))
+            else:
+                mpo.append(gen_mpo)
     mpoL.append(mpo)
     return mpoL
 
