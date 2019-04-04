@@ -144,7 +144,7 @@ def create_rand_mps(N,mbd,d=2,const=.1):
         M.insert(len(M),const*np.random.rand(d,min(d**(i+1),mbd),min(d**i,mbd)))
     return M
 
-def create_const_mps(N,mbd,d=2,const=1.):
+def create_const_mps(N,mbd,d=2,const=.1):
     # Create MPS
     M = []
     for i in range(int(N/2)):
@@ -155,7 +155,7 @@ def create_const_mps(N,mbd,d=2,const=1.):
         M.insert(len(M),const*np.ones((d,min(d**(i+1),mbd),min(d**i,mbd))))
     return M
 
-def create_all_mps(N,mbd,nStates,rand=True,const=1.,d=2):
+def create_all_mps(N,mbd,nStates,rand=True,const=.1,d=2):
     mpsList = []
     for state in range(nStates):
         if rand:

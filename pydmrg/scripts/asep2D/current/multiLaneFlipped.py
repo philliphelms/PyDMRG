@@ -14,9 +14,9 @@ bcs = str(argv[4]) # Boundary Condition (periodic, closed, open) x-direction
 
 # Set Calculation Parameters
 p = 0.1 
-s0 = -0.5
+s0 = -0.05
 sF = 0.5
-ds0 = [0.01,0.005]
+ds0 = [0.01,0.001]
 ds_change = [0,10]
 s_thresh = sF+10
 make_plt = False
@@ -43,7 +43,7 @@ sVec = np.array([])
 
 # Create Directory for saving states
 dirid = str(int(time.time()))
-path = 'saved_states/MCy_'+bcs+'_multiLaneFlipped_'+'Nx'+str(Nx)+'Ny'+str(Ny)+'mbd'+str(mbd)+'_'+dirid+'/'
+path = 'saved_states/_'+bcs+'_multiLaneFlipped_'+'Nx'+str(Nx)+'Ny'+str(Ny)+'mbd'+str(mbd)+'_'+dirid+'/'
 os.mkdir(path)
 fname = path+'MPS_'
 
