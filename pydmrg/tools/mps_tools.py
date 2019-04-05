@@ -2,6 +2,7 @@ import numpy as np
 from pyscf.lib import einsum
 import scipy.linalg as sla
 import copy
+import h5py
 
 def calc_entanglement(S):
     # Ensure correct normalization
@@ -207,7 +208,7 @@ def increase_all_mbd(mpsL,mbd,periodic=False,constant=False,d=2):
         mpsL[state] = increase_mbd(mpsL[state],mbd,periodic=periodic,constant=constant,d=d)
     return mpsL
 
-def load_mps(fname):
+def load_mps_npz(fname):
     # Create a list to contain all mps
     mpsL = []
     moreStates = True
@@ -238,14 +239,66 @@ def load_mps(fname):
         gaugeSite = npzfile['site']
     return mpsL,gaugeSite
 
-def save_mps(mpsL,fname,gaugeSite=0):
-    if fname is not None:
-        nStates = len(mpsL)
+def load_mps_hdf5(fname):
+    mpsL = []
+    moreStates = True
+    state = 0
+    try:
+        with h5py.File(fname+'.hdf5','r') as f:
+            while moreStates:
+                # List to hold a single MPS
+                mps = []
+                moreSites = True
+                site = 0
+                while moreSites:
+                    M_dataset = f.get('state'+str(state)+'/M'+str(site))
+                    if M_dataset is None:
+                        if site == 0:
+                            moreSites = False
+                            moreStates=False
+                        else:
+                            moreSites=False
+                    else:
+                        mps.append(np.array(M_dataset))
+                        site += 1
+                mpsL.append(mps)
+                state += 1
+            gaugeSite = f.get('state0/site')
+    except:
+        print('Fname {} not found'.format(fname+'.hdf5'))
+    return mpsL,gaugeSite
+
+def load_mps(fname,fformat='hdf5'):
+    if fformat == 'npz':
+        return load_mps_npz(fname)
+    elif fformat == 'hdf5':
+        return load_mps_hdf5(fname)
+
+def save_mps_npz(mpsL,fname,gaugeSite=0):
+    nStates = len(mpsL)
+    nSites = len(mpsL[0])
+    for state in range(nStates):
+        Mdict = {}
+        for site in range(nSites):
+            Mdict['M'+str(site)] = mpsL[state][site]
+        np.savez(fname+'state'+str(state)+'.npz',site=gaugeSite,**Mdict)
+
+def save_mps_hdf5(mpsL,fname,gaugeSite=0,comp_opts=4):
+    nStates = len(mpsL)
+    nSites = len(mpsL[0])
+    with h5py.File(fname+'.hdf5','w') as f:
         for state in range(nStates):
-            Mdict = {}
-            for site in range(len(mpsL[state])):
-                Mdict['M'+str(site)] = mpsL[state][site]
-            np.savez(fname+'state'+str(state)+'.npz',site=gaugeSite,**Mdict)
+            stateGroup = f.create_group('state'+str(state))
+            stateGroup.create_dataset('site',data=gaugeSite)
+            for site in range(nSites):
+                stateGroup.create_dataset('M'+str(site),data=mpsL[state][site],compression='gzip',compression_opts=comp_opts)
+
+def save_mps(mpsL,fname,gaugeSite=0,fformat='hdf5',comp_opts=4):
+    if fname is not None:
+        if fformat == 'npz':
+            save_mps_npz(mpsL,fname,gaugeSite=gaugeSite)
+        elif fformat == 'hdf5':
+            save_mps_hdf5(mpsL,fname,gaugeSite=gaugeSite,comp_opts=comp_opts)
 
 def nSites(mpsL):
     return len(mpsL[0])
