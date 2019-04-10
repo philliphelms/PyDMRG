@@ -10,27 +10,7 @@
 using namespace H5;
 using namespace std;
 
-int mbd(int N, H5File file){
-    int mbd = 0;
-    for (int site = 0; site < N; ++site){
-        // Get tensor as dataset
-        DataSet dataset = file.openDataSet("state0/M"+std::to_string(site)+"/real");
-
-        // Get dataspace of dataset
-        DataSpace dataspace = dataset.getSpace();
-
-        // Find size of Tensor
-        hsize_t dims[3];
-        int ndims = dataspace.getSimpleExtentDims(dims,NULL);
-        cout << "Site: " << site << ", ndims: " << ndims << ", dims: (" << dims[0] << "," << dims[1] << "," << dims[2] << ")" << endl;
-
-        // Specify mbd
-        mbd = max( max( mbd,static_cast<int>(dims[1])), static_cast<int>(dims[2]));
-    }
-    return mbd;
-}
-
-vector<vector<vector<complex<double> > > > load_mat(H5File file,int site){
+vector<vector<vector<complex<double> > > > load_ten(H5File file,int site){
     // Load real part
     DataSet dataset_r = file.openDataSet("state0/M"+std::to_string(site)+"/real");
     DataSpace dataspace_r = dataset_r.getSpace();
@@ -81,8 +61,8 @@ complex<double> contract_mps(int N, string fname, vector<int> config){
     // Open File
     H5File file(fname,H5F_ACC_RDONLY);
     // Set up for initial Calculations
-    auto ten1 = load_mat(file,0);
-    auto ten2 = load_mat(file,1);
+    auto ten1 = load_ten(file,0);
+    auto ten2 = load_ten(file,1);
     auto mat1 = ten1[config[0]];
     auto mat2 = ten2[config[1]];
     auto res = mat_mult(mat1,mat2);
