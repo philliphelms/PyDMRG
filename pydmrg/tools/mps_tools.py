@@ -3,6 +3,7 @@ from pyscf.lib import einsum
 import scipy.linalg as sla
 import copy
 import h5py
+import sys
 
 def calc_entanglement(S):
     # Ensure correct normalization
@@ -251,21 +252,23 @@ def load_mps_hdf5(fname):
                 moreSites = True
                 site = 0
                 while moreSites:
-                    M_dataset = f.get('state'+str(state)+'/M'+str(site))
-                    if M_dataset is None:
+                    M_datasetR = f.get('state'+str(state)+'/M'+str(site)+'/real')
+                    M_datasetI = f.get('state'+str(state)+'/M'+str(site)+'/imag')
+                    if M_datasetR is None:
                         if site == 0:
                             moreSites = False
                             moreStates=False
                         else:
                             moreSites=False
                     else:
-                        mps.append(np.array(M_dataset))
+                        mps.append(np.array(M_datasetR)+1.j*np.array(M_datasetI))
                         site += 1
-                mpsL.append(mps)
+                if moreStates:
+                    mpsL.append(mps)
                 state += 1
-            gaugeSite = f.get('state0/site')
-    except:
-        print('Fname {} not found'.format(fname+'.hdf5'))
+            gaugeSite = np.array(f.get('state0/site'))
+    except Exception:
+        print('Error: {}'.format(sys.exc_info()[0]))
     return mpsL,gaugeSite
 
 def load_mps(fname,fformat='hdf5'):
@@ -291,7 +294,9 @@ def save_mps_hdf5(mpsL,fname,gaugeSite=0,comp_opts=4):
             stateGroup = f.create_group('state'+str(state))
             stateGroup.create_dataset('site',data=gaugeSite)
             for site in range(nSites):
-                stateGroup.create_dataset('M'+str(site),data=mpsL[state][site],compression='gzip',compression_opts=comp_opts)
+                stateGroup.create_dataset('M'+str(site)+'/real',data=np.real(mpsL[state][site]),compression='gzip',compression_opts=comp_opts)
+                stateGroup.create_dataset('M'+str(site)+'/imag',data=np.imag(mpsL[state][site]),compression='gzip',compression_opts=comp_opts)
+            
 
 def save_mps(mpsL,fname,gaugeSite=0,fformat='hdf5',comp_opts=4):
     if fname is not None:

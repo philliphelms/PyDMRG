@@ -181,7 +181,7 @@ def calc_eigs_davidson(mpsL,W,F,site,
     for state in range(nStates):
         guess.append(np.reshape(mpsL[state][site],-1))
     # PH - Could add some convergence check
-    vals,vecso = davidson(Hfun,guess,precond,nroots=nStatesCalc,pick=pick_eigs,follow_state=False,tol=1e-16,max_cycle=1000)
+    vals,vecso = davidson(Hfun,guess,precond,nroots=nStatesCalc,pick=pick_eigs,follow_state=False,tol=1e-10,max_cycle=100)
     sort_inds = np.argsort(np.real(vals))
     try:
         vecs = np.zeros((len(vecso[0]),nStates),dtype=np.complex_)

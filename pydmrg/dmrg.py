@@ -210,7 +210,7 @@ def checkConv(E_prev,E,tol,iterCnt,maxIter,minIter,nStates=1,targetState=0,EE=No
     if (np.abs(E-E_prev) < tol) and (iterCnt > minIter):
         cont = False
         conv = True
-    elif iterCnt > maxIter:
+    elif iterCnt > maxIter - 1:
         cont = False
         conv = False
     else:
@@ -275,15 +275,15 @@ def run_sweeps(mpsL,W,F,initGuess=None,maxIter=0,minIter=None,
                                         endSite=gaugeSiteSave,
                                         orthonormalize=orthonormalize)
         # Do final calculation 
-        _,v,_ = calc_eigs(mpsL,W,F,gaugeSiteSave-1,
+        _,v,_ = calc_eigs(mpsL,W,F,gaugeSiteSave,
                          nStates,
                          alg=alg,
                          preserveState=preserveState,
                          orthonormalize=orthonormalize)
         # Put final result into mpsL
-        (n1,n2,n3) = mpsL[0][gaugeSiteSave-1].shape
+        (n1,n2,n3) = mpsL[0][gaugeSiteSave].shape
         for state in range(nStates):
-            mpsL[state][gaugeSiteSave-1] = np.reshape(v[:,state],(n1,n2,n3))
+            mpsL[state][gaugeSiteSave] = np.reshape(v[:,state],(n1,n2,n3))
         # Check if we got to the center site
         if _E is not None:
             E,EE,EEs = _E,_EE,_EEs
@@ -347,23 +347,30 @@ def run_dmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
 
         # Set up initial MPS
         if initGuess is None:
-            
-            # Make random or constant MPS initial guess
-            mpsList = create_all_mps(N,mbdi,nStates)
-            mpsList = make_all_mps_right(mpsList)
-            # PH - constant_mbd not currently working
-            if constant_mbd: mps = increase_mbd(mpsList,mbdi,constant=True)
-            # Right canonical, so set gauge site at 0
-            gSite = 0
+            if (mbdInd != 0) and (fname is not None):
+                # Load mps guess from previous bond dimension and increase to current mbd
+                mpsList,gSite = load_mps(fname+'_mbd'+str(mbdInd-1))
+                mpsList = increase_all_mbd(mpsList,mbdi)
+                # Repeat for left eigenstate
+                if calcLeftState:
+                    mpslList,glSite = load_mps(fname+'_mbd'+str(mbdInd-1)+'_left')
+                    mpslList = increase_all_mbd(mpslList,mbdi)
+            else:
+                # Make random or constant MPS initial guess
+                mpsList = create_all_mps(N,mbdi,nStates)
+                mpsList = make_all_mps_right(mpsList)
+                # PH - constant_mbd not currently working
+                if constant_mbd: mps = increase_mbd(mpsList,mbdi,constant=True)
+                # Right canonical, so set gauge site at 0
+                gSite = 0
 
-            # Repeat for left eigenstate
-            if calcLeftState:
-                mpslList = create_all_mps(N,mbdi,nStates)
-                mpslList = make_all_mps_right(mpsList)
-                if constant_mbd: mps = increase_mbd(mpslList,mbdi,constant=True)
-                glSite = 0
+                # Repeat for left eigenstate
+                if calcLeftState:
+                    mpslList = create_all_mps(N,mbdi,nStates)
+                    mpslList = make_all_mps_right(mpsList)
+                    if constant_mbd: mps = increase_mbd(mpslList,mbdi,constant=True)
+                    glSite = 0
         else: # PH - Should check if it is a sting here and add the additional possibility that the input is an mpsList
-
             # Load user provided MPS guess    
             if mbdInd == 0:
                 # Load user provided MPS Guess

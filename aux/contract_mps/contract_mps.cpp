@@ -68,7 +68,7 @@ complex<double> contract_mps(int N, string fname, vector<int> config){
     auto res = mat_mult(mat1,mat2);
     for (int i = 1; i<N-1; ++i){
         // Load next tensor
-        auto ten2 = load_mat(file,i+1);
+        auto ten2 = load_ten(file,i+1);
         // Convert to matrix for local config
         vector<vector<complex<double> > > mat2 = ten2[config[i+1]];
         // Multiply Matrices
@@ -78,7 +78,7 @@ complex<double> contract_mps(int N, string fname, vector<int> config){
     return res[0][0];
 }
             
-int main(void){
+int main(int argc, char *argv[]){
     /*
      * Load a saved MPS in an hdf5 file
      * and compute the probabilities of being in the 
@@ -91,9 +91,10 @@ int main(void){
     srand(time(NULL));
 
     // Inputs
-    int N = 10;
-    srand(time(NULL));
-    string fname = "../../pydmrg/saved_states/singleLane_N10mbd10_1548458130/MPS_s0_mbd0.hdf5";
+    int N = stoi(argv[1]);
+    string fname(argv[2]);
+    //int N = 10;
+    //string fname = "../../pydmrg/saved_states/singleLane_N10mbd10_1548458130/MPS_s0_mbd0.hdf5";
 
     // Generate Random Configuration
     cout << "Config: ";
