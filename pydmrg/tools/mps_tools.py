@@ -135,20 +135,57 @@ def state2mps(N,psi,mbd,return_ee=True):
     else:
         return mps
 
-def create_rand_mps(N,mbd,d=2,const=.1):
+def move_gauge_left(mps,site,returnEE=False):
+    M_reshape = np.swapaxes(mps[site],0,1)
+    (n1,n2,n3) = M_reshape.shape
+    M_reshape = np.reshape(M_reshape,(n1,n2*n3))
+    (u,s,v) = np.linalg.svd(M_reshape,full_matrices=False)
+    if returnEE: EE,EEspec = calc_entanglement(s)
+    M_reshape = np.reshape(v,(n1,n2,n3))
+    mps[site] = np.swapaxes(M_reshape,0,1)
+    mps[site-1] = np.einsum('klj,ji,i->kli',mps[site-1],u,s)
+    if returnEE: return mps,EE
+    else: return mps
+
+def create_rand_mps(N,mbd,d=2,const=0.1):
     # Create MPS
     M = []
     for i in range(int(N/2)):
-        M.insert(len(M),const*np.random.rand(d,min(d**(i),mbd),min(d**(i+1),mbd)))
+        n1,n2,n3 = d,min(d**(i),mbd),min(d**(i+1),mbd)
+        mat = np.random.rand(n1,n2,n3)
+        mat = np.swapaxes(mat,0,1)
+        (n1,n2,n3) = mat.shape
+        mat = np.reshape(mat,(n1,n2*n3))
+        U,S,V = np.linalg.svd(mat,full_matrices=False)
+        mat = np.reshape(V,(n1,n2,n3))
+        mat = np.swapaxes(mat,0,1)
+        M.insert(len(M),mat)
     if N%2 is 1:
-        M.insert(len(M),const*np.random.rand(d,min(d**(i+1),mbd),min(d**(i+1),mbd)))
+        n1,n2,n3 = d,min(d**(i+1),mbd),min(d**(i+1),mbd)
+        mat = np.random.rand(n1,n2,n3)
+        mat = np.swapaxes(mat,0,1)
+        (n1,n2,n3) = mat.shape
+        mat = np.reshape(mat,(n1,n2*n3))
+        U,S,V = np.linalg.svd(mat,full_matrices=False)
+        mat = np.reshape(V,(n1,n2,n3))
+        mat = np.swapaxes(mat,0,1)
+        M.insert(len(M),mat)
     for i in range(int(N/2))[::-1]:
-        M.insert(len(M),const*np.random.rand(d,min(d**(i+1),mbd),min(d**i,mbd)))
+        n1,n2,n3 = d,min(d**(i+1),mbd),min(d**(i),mbd)
+        mat = np.random.rand(n1,n2,n3)
+        mat = np.swapaxes(mat,0,1)
+        (n1,n2,n3) = mat.shape
+        mat = np.reshape(mat,(n1,n2*n3))
+        U,S,V = np.linalg.svd(mat,full_matrices=False)
+        mat = np.reshape(V,(n1,n2,n3))
+        mat = np.swapaxes(mat,0,1)
+        M.insert(len(M),mat)
     return M
 
-def create_const_mps(N,mbd,d=2,const=.1):
+def create_const_mps(N,mbd,d=2,const=1e-20):
     # Create MPS
     M = []
+    print('Constant constant = {}'.format(const))
     for i in range(int(N/2)):
         M.insert(len(M),const*np.ones((d,min(d**(i),mbd),min(d**(i+1),mbd))))
     if N%2 is 1:
@@ -157,7 +194,7 @@ def create_const_mps(N,mbd,d=2,const=.1):
         M.insert(len(M),const*np.ones((d,min(d**(i+1),mbd),min(d**i,mbd))))
     return M
 
-def create_all_mps(N,mbd,nStates,rand=True,const=.1,d=2):
+def create_all_mps(N,mbd,nStates,rand=True,const=1e-20,d=2):
     mpsList = []
     for state in range(nStates):
         if rand:
