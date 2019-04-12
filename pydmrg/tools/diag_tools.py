@@ -8,7 +8,7 @@ from tools.mps_tools import *
 import warnings
 import copy
 
-VERBOSE = 10
+VERBOSE = 2
 
 def calc_diag(M,W,F,site):
     (n1,n2,n3) = M[site].shape
@@ -118,9 +118,17 @@ def make_ham_func_twoSite(M,W,F,site,usePrecond=False,debug=False):
         fin_sum = np.zeros(x_reshape.shape,dtype=np.complex_)
         for mpoInd in range(len(W)):
             if W[mpoInd][site] is None:
+                pass # PH Adapt to No operator
             else:
-                in_sum1 = einsum('ijk,lmnk->ijnml',F[mpoInd][1],x_reshape)
-                in_sum2 = einsum('')
+                in_sum1 =  einsum('ijk,lmnk->ijnml',F[mpoInd][1],x_reshape)
+                in_sum2 =  einsum('ojpn,ijnml->ipoml',W[mpoInd][1],in_sum1)
+                in_sum3 =  einsum('qorm,ipoml->iprql',W[mpoInd][0],in_sum2)
+                fin_sum += einsum('sql,iprql->iprs',F[mpoInd][0],in_sum3)
+        return -np.reshape(fin_sum,-1)
+    if usePrecond:
+        print('No preconditioner available yet for two site optimization')
+    def precond(dx,e,x0):
+        return dx
     return Hfun,precond
 
 def make_ham_func(M,W,F,site,usePrecond=False,debug=False,oneSite=True):

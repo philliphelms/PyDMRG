@@ -30,8 +30,9 @@ envList = []
 for state in range(nStates):
     env = [np.array([[[1.]]],dtype=np.complex_),np.array([[[1.]]],dtype=np.complex_)]
     envList.append(env)
-
 # Do two-site optimization of random MPS of size 2
 E,vecs,ovlp = calc_eigs(mpsList,mpoList,envList,0,nStates,oneSite=False)
 # Do SVD Of resulting sites (also figure out how to use the RDM to do this?)
+print('Energies: {}'.format(E))
+print('Resulting Eigenvecs: {}'.format(vecs.shape))
 
