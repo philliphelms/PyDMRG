@@ -73,7 +73,7 @@ def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=T
                 print('{}\t{}\t{}'.format(Mprev[indices[i]],vecs[indices[i],0],vecs[indices[i],1]))
     return E,vecs,np.abs(np.dot(Mprev,np.conj(vecs[:,0])))
 
-def make_ham_func(M,W,F,site,usePrecond=False,debug=False):
+def make_ham_func_oneSite(M,W,F,site,usePrecond=False,debug=False):
     # Define Hamiltonian function to give Hx
     def Hfun(x):
         x_reshape = np.reshape(x,M[site].shape)
@@ -109,6 +109,26 @@ def make_ham_func(M,W,F,site,usePrecond=False,debug=False):
             return dx
     return Hfun,precond
 
+def make_ham_func_twoSite(M,W,F,site,usePrecond=False,debug=False):
+    # Define Hamiltonian function to give Hx
+    (n1,n2,n3) = M[0].shape
+    (n4,n5,n6) = M[1].shape
+    def Hfun(x):
+        x_reshape = np.reshape(x,(n2,n1,n4,n6)) # PH - Check ordering???
+        fin_sum = np.zeros(x_reshape.shape,dtype=np.complex_)
+        for mpoInd in range(len(W)):
+            if W[mpoInd][site] is None:
+            else:
+                in_sum1 = einsum('ijk,lmnk->ijnml',F[mpoInd][1],x_reshape)
+                in_sum2 = einsum('')
+    return Hfun,precond
+
+def make_ham_func(M,W,F,site,usePrecond=False,debug=False,oneSite=True):
+    if oneSite:
+        return make_ham_func_oneSite(M,W,F,site,usePrecond=usePrecond,debug=debug)
+    else:
+        return make_ham_func_twoSite(M,W,F,site,usePrecond=usePrecond,debug=debug)
+
 def pick_eigs(w,v,nroots,x0):
     idx = np.argsort(np.real(w))
     w = w[idx]
@@ -129,8 +149,8 @@ def orthonormalize(vecs):
 
 def calc_eigs_exact(mpsL,W,F,site,
                     nStates,preserveState=False,
-                    orthonormalize=False):
-    H = calc_ham(mpsL[0],W,F,site)
+                    orthonormalize=False,oneSite=True):
+    H = calc_ham(mpsL[0],W,F,site,oneSite=oneSite)
     Mprev = mpsL[0][site].ravel()
     vals,vecs = sla.eig(H)
     inds = np.argsort(vals)[::-1]
@@ -147,9 +167,10 @@ def calc_eigs_exact(mpsL,W,F,site,
 
 def calc_eigs_arnoldi(mpsL,W,F,site,
                       nStates,nStatesCalc=None,
-                      preserveState=False,orthonormalize=False):
+                      preserveState=False,orthonormalize=False,
+                      oneSite=True):
     guess = np.reshape(mpsL[0][site],-1)
-    Hfun,_ = make_ham_func(mpsL[0],W,F,site)
+    Hfun,_ = make_ham_func(mpsL[0],W,F,site,oneSite=oneSite)
     (n1,n2,n3) = mpsL[0][site].shape
     H = LinearOperator((n1*n2*n3,n1*n2*n3),matvec=Hfun)
     if nStatesCalc is None: nStatesCalc = nStates
@@ -172,8 +193,9 @@ def calc_eigs_arnoldi(mpsL,W,F,site,
 
 def calc_eigs_davidson(mpsL,W,F,site,
                        nStates,nStatesCalc=None,
-                       preserveState=False,orthonormalize=False):
-    Hfun,precond = make_ham_func(mpsL[0],W,F,site)
+                       preserveState=False,orthonormalize=False,
+                       oneSite=True):
+    Hfun,precond = make_ham_func(mpsL[0],W,F,site,oneSite=oneSite)
     (n1,n2,n3) = mpsL[0][site].shape
     if nStatesCalc is None: nStatesCalc = nStates
     nStates,nStatesCalc = min(nStates,n1*n2*n3-1), min(nStatesCalc,n1*n2*n3-1)
@@ -210,18 +232,21 @@ def calc_eigs_davidson(mpsL,W,F,site,
     return E,vecs,ovlp
 
 def calc_eigs(mpsL,W,F,site,nStates,
-              alg='arnoldi',preserveState=False,
-              orthonormalize=False):
+              alg='davidson',preserveState=False,
+              orthonormalize=False,oneSite=True):
     if alg == 'davidson':
         E,vecs,ovlp = calc_eigs_davidson(mpsL,W,F,site,nStates,
                                          preserveState=preserveState,
-                                         orthonormalize=orthonormalize)
+                                         orthonormalize=orthonormalize,
+                                         oneSite=oneSite)
     elif alg == 'exact':
         E,vecs,ovlp = calc_eigs_exact(mpsL,W,F,site,nStates,
                                       preserveState=preserveState,
-                                      orthonormalize=orthonormalize)
+                                      orthonormalize=orthonormalize,
+                                      oneSite=oneSite)
     elif alg == 'arnoldi':
         E,vecs,ovlp = calc_eigs_arnoldi(mpsL,W,F,site,nStates,
                                         preserveState=preserveState,
-                                        orthonormalize=orthonormalize)
+                                        orthonormalize=orthonormalize,
+                                        oneSite=oneSite)
     return E,vecs,ovlp
