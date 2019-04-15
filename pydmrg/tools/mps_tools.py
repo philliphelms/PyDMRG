@@ -147,6 +147,7 @@ def move_gauge_left(mps,site,returnEE=False):
     if returnEE: return mps,EE
     else: return mps
 
+"""
 def create_rand_mps(N,mbd,d=2,const=0.1):
     # Create MPS
     M = []
@@ -180,6 +181,18 @@ def create_rand_mps(N,mbd,d=2,const=0.1):
         mat = np.reshape(V,(n1,n2,n3))
         mat = np.swapaxes(mat,0,1)
         M.insert(len(M),mat)
+    return M
+"""
+def create_rand_mps(N,mbd,d=2,const=1):
+    # Create MPS
+    M = []
+    print('Constant constant = {}'.format(const))
+    for i in range(int(N/2)):
+        M.insert(len(M),const*np.random.rand(d,min(d**(i),mbd),min(d**(i+1),mbd)))
+    if N%2 is 1:
+        M.insert(len(M),const*np.random.rand(d,min(d**(i+1),mbd),min(d**(i+1),mbd)))
+    for i in range(int(N/2))[::-1]:
+        M.insert(len(M),const*np.random.rand(d,min(d**(i+1),mbd),min(d**i,mbd)))
     return M
 
 def create_const_mps(N,mbd,d=2,const=1e-20):

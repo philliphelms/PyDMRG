@@ -113,17 +113,20 @@ def make_ham_func_twoSite(M,W,F,site,usePrecond=False,debug=False):
     # Define Hamiltonian function to give Hx
     (n1,n2,n3) = M[0].shape
     (n4,n5,n6) = M[1].shape
+    print(M[0].shape)
+    print(M[1].shape)
     def Hfun(x):
-        x_reshape = np.reshape(x,(n2,n1,n4,n6)) # PH - Check ordering???
+        x_reshape = np.reshape(x,(n1,n2,n4,n6)) # PH - Check ordering???
         fin_sum = np.zeros(x_reshape.shape,dtype=np.complex_)
         for mpoInd in range(len(W)):
             if W[mpoInd][site] is None:
                 pass # PH Adapt to No operator
             else:
-                in_sum1 =  einsum('ijk,lmnk->ijnml',F[mpoInd][1],x_reshape)
-                in_sum2 =  einsum('ojpn,ijnml->ipoml',W[mpoInd][1],in_sum1)
-                in_sum3 =  einsum('qorm,ipoml->iprql',W[mpoInd][0],in_sum2)
-                fin_sum += einsum('sql,iprql->iprs',F[mpoInd][0],in_sum3)
+                in_sum1 =  einsum('ijk,lkmn->ijlmn',F[mpoInd][1],x_reshape)
+                print(W[mpoInd][0].shape)
+                in_sum2 =  einsum('jopl,ijlmn->ipomn',W[mpoInd][0],in_sum1)
+                in_sum3 =  einsum('oqrm,ipomn->iprqn',W[mpoInd][1],in_sum2)
+                fin_sum += einsum('sqn,iprqn->pirs',F[mpoInd][0],in_sum3)
         return -np.reshape(fin_sum,-1)
     if usePrecond:
         print('No preconditioner available yet for two site optimization')
