@@ -25,7 +25,7 @@ def calc_diag(M,W,F,site):
         diag += diag_mis.ravel()
     return diag
 
-def calc_ham(M,W,F,site):
+def calc_ham_oneSite(M,W,F,site):
     (n1,n2,n3) = M[site].shape
     dim = n1*n2*n3
     H = np.zeros((dim,dim),dtype=np.complex_)
@@ -37,6 +37,34 @@ def calc_ham(M,W,F,site):
         Htmp = einsum('jlp,linkq->ijknpq',F[mpoInd][site],tmp1)
         H += np.reshape(Htmp,(dim,dim))
     return H
+
+def calc_ham_twoSite(M,W,F,site):
+    # Create the Hamiltonian using site & site+1
+    #H +=einsum('ijk,jlmn,lopq,ros->mpirnqks',envList[mpoInd][0],mpoList[mpoInd][0],mpoList[mpoInd][1],envList[mpoInd][2])
+    (_,_,n1,_) = W[0][0].shape
+    (_,_,n2,_) = W[0][1].shape
+    (n3,_,_) = F[0][0].shape
+    (n4,_,_) = F[0][1].shape
+    dim = n1*n2*n3*n4
+    H = np.zeros((dim,dim),dtype=np.complex_)
+    for mpoInd in range(len(W)):
+        # Put in identities where None operator
+        if W[mpoInd][site+1] is None:
+            W[mpoInd][site+1] = np.array([[np.eye(n1)]])
+        if W[mpoInd][site] is None:
+            W[mpoInd][site] = np.array([[np.eye(n1)]])
+        # Contract envs with mpos to get effective ham
+        tmp1 = einsum('lopq,ros->lpqrs',W[mpoInd][site+1],F[mpoInd][site+1])
+        tmp2 = einsum('jlmn,lpqrs->jmnpqrs',W[mpoInd][site],tmp1)
+        tmp3 = einsum('ijk,jmnpqrs->mpirnqks',F[mpoInd][site],tmp2)
+        H += np.reshape(tmp3,(dim,dim))
+    return H
+
+def calc_ham(M,W,F,site,oneSite=True):
+    if oneSite:
+        return calc_ham_oneSite(M,W,F,site)
+    else:
+        return calc_ham_twoSite(M,W,F,site)
 
 def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=True,reuseOldState=True):
     vecShape = vecs.shape
@@ -113,27 +141,51 @@ def make_ham_func_twoSite(M,W,F,site,usePrecond=False,debug=False):
     # Define Hamiltonian function to give Hx
     (n1,n2,n3) = M[0].shape
     (n4,n5,n6) = M[1].shape
-    print(M[0].shape)
-    print(M[1].shape)
     def Hfun(x):
-        x_reshape = np.reshape(x,(n1,n2,n4,n6)) # PH - Check ordering???
+        x_reshape = np.reshape(x,(n1,n4,n2,n6)) # PH - Check ordering???
         fin_sum = np.zeros(x_reshape.shape,dtype=np.complex_)
         for mpoInd in range(len(W)):
             if W[mpoInd][site] is None:
                 pass # PH Adapt to No operator
             else:
-                in_sum1 =  einsum('ijk,lkmn->ijlmn',F[mpoInd][1],x_reshape)
-                print(W[mpoInd][0].shape)
-                in_sum2 =  einsum('jopl,ijlmn->ipomn',W[mpoInd][0],in_sum1)
-                in_sum3 =  einsum('oqrm,ipomn->iprqn',W[mpoInd][1],in_sum2)
-                fin_sum += einsum('sqn,iprqn->pirs',F[mpoInd][0],in_sum3)
+                in_sum1 = einsum('ros,nqks->ronqk',F[mpoInd][site+1],x_reshape)
+                in_sum2 = einsum('lopq,ronqk->lprnk',W[mpoInd][site+1],in_sum1)
+                in_sum3 = einsum('jlmn,lprnk->jmprk',W[mpoInd][site],in_sum2)
+                in_sum4 = einsum('ijk,jmprk->mpir',F[mpoInd][site],in_sum3)
+                fin_sum += in_sum4
+                #in_sum1 =  einsum('ijk,lkmn->ijlmn',F[mpoInd][1],x_reshape)
+                #in_sum2 =  einsum('jopl,ijlmn->ipomn',W[mpoInd][0],in_sum1)
+                #in_sum3 =  einsum('oqrm,ipomn->iprqn',W[mpoInd][1],in_sum2)
+                #fin_sum += einsum('sqn,iprqn->pirs',F[mpoInd][0],in_sum3)
         return -np.reshape(fin_sum,-1)
     if usePrecond:
         print('No preconditioner available yet for two site optimization')
     def precond(dx,e,x0):
         return dx
     return Hfun,precond
-
+"""
+def calc_ham_twoSite(M,W,F,site):
+    # Create the Hamiltonian using site & site+1
+    #H +=einsum('ijk,jlmn,lopq,ros->mpirnqks',envList[mpoInd][0],mpoList[mpoInd][0],mpoList[mpoInd][1],envList[mpoInd][2])
+    (_,_,n1,_) = W[0][0].shape
+    (_,_,n2,_) = W[0][1].shape
+    (n3,_,_) = F[0][0].shape
+    (n4,_,_) = F[0][1].shape
+    dim = n1*n2*n3*n4
+    H = np.zeros((dim,dim),dtype=np.complex_)
+    for mpoInd in range(len(W)):
+        # Put in identities where None operator
+        if W[mpoInd][site+1] is None:
+            W[mpoInd][site+1] = np.array([[np.eye(n1)]])
+        if W[mpoInd][site] is None:
+            W[mpoInd][site] = np.array([[np.eye(n1)]])
+        # Contract envs with mpos to get effective ham
+        tmp1 = einsum('lopq,ros->lpqrs',W[mpoInd][site+1],F[mpoInd][site+1])
+        tmp2 = einsum('jlmn,lpqrs->jmnpqrs',W[mpoInd][site],tmp1)
+        tmp3 = einsum('ijk,jmnpqrs->mpirnqks',F[mpoInd][site],tmp2)
+        H += np.reshape(tmp3,(dim,dim))
+    return H
+"""
 def make_ham_func(M,W,F,site,usePrecond=False,debug=False,oneSite=True):
     if oneSite:
         return make_ham_func_oneSite(M,W,F,site,usePrecond=usePrecond,debug=debug)
@@ -173,14 +225,20 @@ def calc_eigs_exact(mpsL,W,F,site,
         vecs = sla.orth(vecs)
     # Don't preserve state at ends
     if (site == 0) or (site == len(mpsL[0])-1): preserveState = True
-    E,vecs,ovlp = check_overlap(Mprev,vecs,E,preserveState=preserveState)
+    if oneSite:
+        E,vecs,ovlp = check_overlap(Mprev,vecs,E,preserveState=preserveState)
+    else: # PH - We should be able to find the overlap
+        E,vecs,ovlp = E,vecs,None
     return E,vecs,ovlp
 
 def calc_eigs_arnoldi(mpsL,W,F,site,
                       nStates,nStatesCalc=None,
                       preserveState=False,orthonormalize=False,
                       oneSite=True):
-    guess = np.reshape(mpsL[0][site],-1)
+    if oneSite:
+        guess = np.reshape(mpsL[0][site],-1)
+    else:
+        guess = np.reshape(einsum('ijk,lkm->iljm',mpsL[state][site],mpsL[state][site+1]),-1)
     Hfun,_ = make_ham_func(mpsL[0],W,F,site,oneSite=oneSite)
     (n1,n2,n3) = mpsL[0][site].shape
     H = LinearOperator((n1*n2*n3,n1*n2*n3),matvec=Hfun)
@@ -211,8 +269,12 @@ def calc_eigs_davidson(mpsL,W,F,site,
     if nStatesCalc is None: nStatesCalc = nStates
     nStates,nStatesCalc = min(nStates,n1*n2*n3-1), min(nStatesCalc,n1*n2*n3-1)
     guess = []
+    # PH - Figure out new initial guess here !!!
     for state in range(nStates):
-        guess.append(np.reshape(mpsL[state][site],-1))
+        if oneSite:
+            guess.append(np.reshape(mpsL[state][site],-1))
+        else:
+            guess.append(np.reshape(einsum('ijk,lkm->iljm',mpsL[state][site],mpsL[state][site+1]),-1))
     # PH - Could add some convergence check
     vals,vecso = davidson(Hfun,guess,precond,nroots=nStatesCalc,pick=pick_eigs,follow_state=False,tol=1e-10,max_cycle=100)
     sort_inds = np.argsort(np.real(vals))
