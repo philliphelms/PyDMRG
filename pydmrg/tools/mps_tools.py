@@ -94,6 +94,30 @@ def move_gauge(mps,init_site,fin_site):
             mps = move_gauge_left(mps,site)
     return mps
 
+def renorm_inf(mpsList,mpoList,envList,vecs,mbd):
+    (_,_,n1,_) = mpoList[0][0].shape
+    (_,_,n2,_) = mpoList[0][1].shape
+    (n3,_,_) = envList[0][0].shape
+    (n4,_,_) = envList[0][1].shape
+    nStates = len(mpsList)
+    for state in range(nStates):
+        # Reshape Matrices
+        psi = np.reshape(vecs[:,state],(n1,n2,n3,n4))
+        psi = np.transpose(psi,(2,0,1,3))
+        psi = np.reshape(psi,(n3*n1,n4*n2))
+        # Do SVD
+        (U,S,V) = np.linalg.svd(psi,full_matrices=False)
+        U = np.reshape(U,(n3,n1,-1))
+        U = U[:,:,:mbd]
+        mpsList[state][0] = np.swapaxes(U,0,1)
+        V = np.reshape(V,(-1,n2,n4))
+        V = V[:mbd,:,:]
+        mpsList[state][1] = np.swapaxes(V,0,1)
+        (n4,n5,n6) = mpsList[0][1].shape
+        S = S[:mbd]
+        EE,EEs = calc_entanglement(S)
+    return mpsList,EE,EEs,S
+
 def list_occs(N):
     occ = np.zeros((2**N,N),dtype=int)
     for i in range(2**N):
