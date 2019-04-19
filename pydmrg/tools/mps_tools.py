@@ -60,11 +60,22 @@ def conj_mps(mps,copyMPS=True):
             mps_c[state][site] = np.conj(mps[state][site])
     return mps_c
 
+def svd_right(ten):
+    (n1,n2,n3) = ten.shape
+    ten_reshape = np.reshape(ten,(n1*n2,n3))
+    (u,s,v) = np.linalg.svd(ten_reshape,full_matrices=False)
+    return (u,s,v)
+
+def svd_left(ten):
+    ten_reshape = np.swapaxes(ten,0,1)
+    (n1,n2,n3) = ten_reshape.shape
+    ten_reshape = np.reshape(ten_reshape,(n1,n2*n3))
+    (u,s,v) = np.linalg.svd(ten_reshape,full_matrices=False)
+    return (u,s,v)
+
 def move_gauge_right(mps,site,returnEE=False):
     # PH - This needs to be adjuste for lists of mps
-    (n1,n2,n3) = mps[site].shape
-    M_reshape = np.reshape(mps[site],(n1*n2,n3))
-    (u,s,v) = np.linalg.svd(M_reshape,full_matrices=False)
+    (u,s,v) = svd_right(mps[site])
     if returnEE: EE,EEspec = calc_entanglement(s)
     mps[site] = np.reshape(u,(n1,n2,n3))
     mps[site+1] = np.einsum('i,ij,kjl->kil',s,v,mps[site+1])
@@ -72,10 +83,7 @@ def move_gauge_right(mps,site,returnEE=False):
     else: return mps
 
 def move_gauge_left(mps,site,returnEE=False):
-    M_reshape = np.swapaxes(mps[site],0,1)
-    (n1,n2,n3) = M_reshape.shape
-    M_reshape = np.reshape(M_reshape,(n1,n2*n3))
-    (u,s,v) = np.linalg.svd(M_reshape,full_matrices=False)
+    (u,s,v) = svd_right(mps[site])
     if returnEE: EE,EEspec = calc_entanglement(s)
     M_reshape = np.reshape(v,(n1,n2,n3))
     mps[site] = np.swapaxes(M_reshape,0,1)

@@ -33,26 +33,6 @@ def return_edge_mpo(mpo):
         mpoEdge.append(op)
     return mpoEdge
 
-def make_next_guess(mps,mbd=10,d=2):
-    nStates = len(mps)
-    for state in range(nStates):
-        (n1,n2,n3) = mps[state][0].shape
-        mps[state][0] = np.pad(mps[state][0],((0,0),(0,min(mbd,n3)-n2),(0,min(mbd,n3*d)-n3)),'constant')
-        mps[state][1] = np.pad(mps[state][1],((0,0),(0,min(mbd,n3*d)-n3),(0,min(mbd,n3)-n2)),'constant')
-    return mps
-
-def single_iter(N,mps,mpo,env,nStates,alg='davidson',mbd=10):
-    # Solve Eigenproblem
-    E,vecs,_ = calc_eigs(mps,mpo,env,0,nStates,
-                         alg=alg,oneSite=False,edgePreserveState=False)
-    # Do SVD
-    mps,EE,EEs,S = renorm_inf(mps,mpo,env,vecs,mbd)
-    # Update Environments
-    env = update_env_inf(mps[0],mpo,env,mpsl=None)
-    # Update MPS (increase bond dim)
-    mps = make_next_guess(mps,mbd=mbd)
-    return N,E,EE,EEs,mps,env,S
-
 def printResults(converged,E,EE,EEspec,gap):
     if VERBOSE > 1: print('#'*75)
     if converged:
@@ -66,20 +46,86 @@ def printResults(converged,E,EE,EEspec,gap):
         if VERBOSE > 3: print('\t\t{}'.format(EEspec[i]))
     if VERBOSE > 1: print('#'*75)
 
-def checkConv(E_prev,E,tol,iterCnt,maxIter=100,minIter=None,nStates=1,targetState=0):
-    if nStates != 1: E = E[targetState]
-    if (np.abs(E-E_prev) < tol) and (iterCnt > minIter):
+def make_next_guess(mps,Sl,Slm,mbd=10):
+    (n1_,n2_,n3_) = mps[0][0].shape
+    (n4_,n5_,n6_) = mps[0][1].shape
+    for state in range(len(mps)):
+        # Get Left Side Prediction
+        LB = np.einsum('j,ijk->ijk',Sl,mps[state][1])
+        (U,S,V) = svd_right(LB)
+        Alp1 = np.reshape(U,LB.shape)
+        lambdaR = np.einsum('i,ij->ij',S,V)
+        # Get Right Side Prediction
+        AL = np.einsum('ijk,k->ijk',mps[state][0],Sl)
+        (U,S,V) = svd_left(AL)
+        Blp1 = np.reshape(V,AL.shape)
+        lambdaL = np.einsum('ij,j->ij',U,S)
+        # Put into MPS
+        mps[state][0] = np.einsum('ijk,kl,lm->ijm',Alp1,lambdaR,np.linalg.inv(np.diag(Slm))) # PH - How to take inverse of vector
+        mps[state][1] = np.einsum('ij,kjm->kim',lambdaL,Blp1)
+    # Increase Bond Dim if needed
+    nStates = len(mps)
+    (n1,n2,n3) = mps[0][0].shape
+    (n4,n5,n6) = mps[0][1].shape
+    for state in range(nStates):
+        (n1,n2,n3) = mps[state][0].shape
+        mps[state][0] = np.pad(mps[state][0],((0,0),(0,min(mbd,n3_)-n2),(0,min(mbd,n3_*n1)-n3)),'constant')
+        mps[state][1] = np.pad(mps[state][1],((0,0),(0,min(mbd,n5_*n4)-n5),(0,min(mbd,n5_)-n6)),'constant')
+    return mps,lambdaL
+
+def calc_conv_fidelity(lL,l):
+    (lL_dim,_) = lL.shape
+    (l_dim,) = l.shape
+    # Calculate fidelity of rdms, page 109 of schollwock
+    l = np.diag(l)
+    if l_dim > lL_dim:
+        lL = np.pad(lL,((0,l_dim-lL_dim),(0,l_dim-lL_dim)),'constant')
+    mat = np.dot(lL,np.conj(l).T)
+    (U,S,V) = np.linalg.svd(mat)
+    fidelity = np.sum(S)
+    return fidelity
+
+def checkConv(lambdaL,S,iterCnt,
+              tol=1e-10,maxIter=100,minIter=None,
+              nStates=1,targetState=0):
+    # Get fidelity of rdms
+    fidelity = calc_conv_fidelity(lambdaL,S)
+    # Check for convergence
+    if (np.abs(fidelity-1.) < tol) and (iterCnt > minIter-3):
         cont = False
         conv = True
     elif iterCnt > maxIter - 1:
         cont = False
         conv = False
     else:
-        iterCnt += 1
-        E_prev = E
         cont = True
         conv = False
-    return cont,conv,E_prev,iterCnt
+    return cont,conv,fidelity
+
+def single_iter(N,mps,mpo,
+                env,Sprev,E_prev,
+                iterCnt=0,maxIter=1000,
+                minIter=10,targetState=0,
+                nStates=1,tol=1e-10,alg='davidson',mbd=10):
+    # Solve Eigenproblem
+    E,vecs,_ = calc_eigs(mps,mpo,env,0,nStates,
+                         alg=alg,oneSite=False,edgePreserveState=False)
+    # Do SVD
+    mps,EE,EEs,S = renorm_inf(mps,mpo,env,vecs,mbd)
+    # Update Environments
+    env = update_env_inf(mps[0],mpo,env,mpsl=None)
+    # Update MPS (increase bond dim)
+    if Sprev is None: Sprev = S
+    mps,lambdaL = make_next_guess(mps,S,Sprev,mbd=mbd)
+    # Check for convergence
+    cont,conv,fidelity = checkConv(lambdaL,Sprev,iterCnt,
+                                   tol=tol,maxIter=maxIter,minIter=minIter,
+                                   nStates=nStates,targetState=targetState)
+    # Print Results
+    print('N={}\tEnergy = {:f}\tdiff={:f}\tfidelity={:f}\tEE={:f}'.format(N,np.real(E/N),np.real(np.abs(E/N-E_prev/N)),1.-fidelity,EE))
+    # Update IterCnt and Energies
+    iterCnt += 1
+    return (N,E,EE,EEs,mps,env,S,cont,conv,iterCnt)
 
 def run_iters(mps,mpo,env,mbd=10,maxIter=100,minIter=None,
                tol=1e-10,fname=None,nStates=1,
@@ -95,21 +141,25 @@ def run_iters(mps,mpo,env,mbd=10,maxIter=100,minIter=None,
     # Do first step (using edge mpo)
     N = 2
     if True: # PH - Find way to determine if we have a new environment
-        N,E,EE,EEs,mps,env,S = single_iter(2,mps,mpoEdge,env,nStates,alg=alg,mbd=mbd)
+        output = single_iter(2,mps,mpoEdge,
+                             env,None,0.,
+                             iterCnt=0,maxIter=maxIter,
+                             minIter=minIter,targetState=targetState,
+                             nStates=nStates,tol=tol,alg=alg,mbd=mbd)
+        (N,E,EE,EEs,mps,env,S,cont,conv,iterCnt) = output
 
     # Run iterations
     cont = True
-    iterCnt = 0
-    E_prev = E
-    N += 2
     while cont:
-        # Run single update
-        N,E,EE,EEs,mps,env,S = single_iter(N,mps,mpoBulk,env,nStates,alg=alg,mbd=mbd)
-        # Print Results
-        print('N={}\tEnergy = {:f}\tdiff={:f}\tEE={:f}'.format(N,np.real(E/N),np.real(np.abs(E/N-E_prev)),EE))
-        # Check for convergence
-        cont,conv,E_prev,iterCnt = checkConv(E_prev,E/N,tol,iterCnt,maxIter,minIter,nStates=nStates,targetState=targetState)
+        # Increase System Size
         N += 2
+        # Run single update
+        output = single_iter(N,mps,mpoBulk,
+                             env,S,E,
+                             iterCnt=iterCnt,maxIter=maxIter,
+                             minIter=minIter,targetState=targetState,
+                             nStates=nStates,tol=tol,alg=alg,mbd=mbd)
+        (N,E,EE,EEs,mps,env,S,cont,conv,iterCnt) = output
 
     # Save Resulting MPS
     save_mps(mps,fname,gaugeSite=0)
@@ -299,14 +349,14 @@ if __name__ == "__main__":
     from mpo.asep import return_mpo
     # Hamiltonian Parameters
     p = 0.1 
-    alpha = 0.2      # in at left
+    alpha = 0.5      # in at left
     gamma = 1.-alpha  # Out at left
     q     = 1.-p      # Jump left
-    beta  = 0.4     # Out at right
+    beta  = 0.5     # Out at right
     delta = 1.-beta   # In at right
     s = -0.5
     # Get MPO
     hamParams = np.array([alpha,gamma,p,q,beta,delta,s])
     mpo = return_mpo(4,hamParams)
     # Run idmrg
-    output = run_idmrg(mpo,mbd=10)
+    output = run_idmrg(mpo,mbd=20)
