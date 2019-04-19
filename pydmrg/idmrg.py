@@ -102,10 +102,28 @@ def checkConv(lambdaL,S,iterCnt,
         conv = False
     return cont,conv,fidelity
 
+def calc_local_energy(mps,mpo,state=0,mpsl=None):
+    if mpsl is None: mpsl = conj_mps(mps)
+    from mpo.asep import return_mpo
+    from tools.contract import inf_contract as contract
+    p = 0.1 
+    alpha = 0.5      # in at left
+    gamma = 1.-alpha  # Out at left
+    q     = 1.-p      # Jump left
+    beta  = 0.5     # Out at right
+    delta = 1.-beta   # In at right
+    s0 = -0.5
+    hamParams = np.array([alpha,gamma,p,q,beta,delta,s0])
+    MPO_Eloc = return_mpo(4,hamParams,singleBond=True,bond=1)
+    MPO_Eloc = return_bulk_mpo(MPO_Eloc)
+    norm = contract(mps=mps,lmps=mpsl,state=0,lstate=0)
+    Eloc = -contract(mpo=MPO_Eloc,mps=mps,lmps=mpsl,state=0,lstate=0)/norm
+    return Eloc
+
 def single_iter(N,mps,mpo,
                 env,Sprev,E_prev,
                 iterCnt=0,maxIter=1000,
-                minIter=10,targetState=0,
+                minIter=10,targetState=0,local_energy=True,
                 nStates=1,tol=1e-10,alg='davidson',mbd=10):
     # Solve Eigenproblem
     E,vecs,_ = calc_eigs(mps,mpo,env,0,nStates,
@@ -121,8 +139,10 @@ def single_iter(N,mps,mpo,
     cont,conv,fidelity = checkConv(lambdaL,Sprev,iterCnt,
                                    tol=tol,maxIter=maxIter,minIter=minIter,
                                    nStates=nStates,targetState=targetState)
+    # Calculate Local Energy
+    Eloc = calc_local_energy(mps,mpo)
     # Print Results
-    print('N={}\tEnergy = {:f}\tdiff={:f}\tfidelity={:f}\tEE={:f}'.format(N,np.real(E/N),np.real(np.abs(E/N-E_prev/N)),1.-fidelity,EE))
+    print('N={}\tEnergy = {:f}\tLocal E={:f}\tdiff={:e}\tfidelity={:e}\tEE={:f}'.format(N,np.real(E/N),np.real(Eloc),np.real(np.abs(E/N-E_prev/N)),1.-fidelity,EE))
     # Update IterCnt and Energies
     iterCnt += 1
     return (N,E,EE,EEs,mps,env,S,cont,conv,iterCnt)
@@ -175,13 +195,13 @@ def run_iters(mps,mpo,env,mbd=10,maxIter=100,minIter=None,
     if returnEntSpec:
         output.append(EEs)
     if returnState:
-        output.append(mpsL)
+        output.append(mps)
     if returnEnv:
-        output.append(F)
+        output.append(env)
     return output
 
 def run_idmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
-             tol=1e-2,maxIter=1000,minIter=10,fname=None,
+             tol=1e-10,maxIter=1000,minIter=10,fname=None,
              nStates=1,targetState=0,alg='davidson',
              preserveState=False,edgePreserveState=False,
              returnState=False,returnEnv=False,
@@ -266,28 +286,28 @@ def run_idmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
         # Extract Extra results
         if returnEntSpec and returnState and returnEnv:
             EEs = output[3]
-            mpsList = output[4]
+            mps = output[4]
             env = output[5]
         elif returnEntSpec and returnState:
             EEs = output[3]
-            mpsList = output[4]
+            mps = output[4]
         elif returnEntSpec and returnEnv:
             EEs = output[3]
             env = output[4]
         elif returnState and returnEnv:
-            mpsList = output[3]
+            mps = output[3]
             env = output[4]
         elif returnEntSpec:
             EEs = output[3]
         elif returnState:
-            mpsList = output[3]
+            mps = output[3]
         elif returnEnv:
             env = output[3]
 
         if calcLeftState:
             # Run DMRG Sweeps (left eigenvector)
             if VERBOSE > 0: print('Calculating Left Eigenstate')
-            output = run_iters(mpslList,mpol,envl,
+            output = run_iters(mpsl,mpol,envl,
                               mbd=mbdi,
                               maxIter=maxIter[mbdInd],
                               minIter=minIter[mbdInd],
@@ -307,21 +327,21 @@ def run_idmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
             # Extra potential extra data
             if returnEntSpec and returnState and returnEnv:
                 EEsl = output[3]
-                mpslList = output[4]
+                mpsl = output[4]
                 envl = output[5]
             elif returnEntSpec and returnState:
                 EEsl = output[3]
-                mpslList = output[4]
+                mpsl = output[4]
             elif returnEntSpec and returnEnv:
                 EEsl = output[3]
                 envl = output[4]
             elif returnState and returnEnv:
-                mpslList = output[3]
+                mpsl = output[3]
                 envl = output[4]
             elif returnEntSpec:
                 EEsl = output[3]
             elif returnState:
-                mpslList = output[3]
+                mpsl = output[3]
             elif returnEnv:
                 envl = output[3]
 
@@ -329,7 +349,7 @@ def run_idmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
     if calcLeftState:
         EE = [EE,EEl]
         if returnEntSpec: EEs = [EEs,EEsl]
-        if returnState: mpsList = [mpsList,mpslList]
+        if returnState: mpsList = [mps,mpsl]
         if returnEnv: env = [env,envl]
 
     # Return Results

@@ -22,15 +22,43 @@ import collections
 #       hamParams[6] = s      (bias)
 ###########################################################################
 
-def return_mpo(N,hamParams,periodic=False):
+def return_mpo(N,hamParams,periodic=False,singleBond=False,bond=None):
     if not isinstance(hamParams[0],(collections.Sequence,np.ndarray)):
         hamParams = val2vecParams(N,hamParams)
     else:
         hamParams = extractParams(N,hamParams)
-    if periodic:
-        return periodic_mpo(N,hamParams)
+    if singleBond:
+        return single_bond_mpo(N,hamParams,bond=bond)
     else:
-        return open_mpo(N,hamParams)
+        if periodic:
+            return periodic_mpo(N,hamParams)
+        else:
+            return open_mpo(N,hamParams)
+
+def single_bond_mpo(N,hamParams,bond=None):
+    # Extract parameter values
+    (a,g,p,q,b,d,s) = hamParams
+    (ea,eg,ep,eq,eb,ed) = exponentiateBias(hamParams)
+    # Decide which bond to measure current over
+    if bond is None:
+        bond = int(N/2)
+    # List to hold all mpos
+    mpoL = []
+    mpo = [None]*N
+    # Fill in mpo
+    if bond == 'left':
+        print('Left and right MPOs not implemented yet')
+    elif bond == 'right':
+        print('Left and right MPOs not implemented yet')
+    else:
+        mpo[bond] = np.array([[Sp,-n,Sm,-v]])
+        mpo[bond+1] = np.array([[ep[bond]*Sm  ],
+                                [ p[bond]*v   ],
+                                [eq[bond+1]*Sp],
+                                [ q[bond+1]*n ]])
+    # Include in list of mpos
+    mpoL.append(mpo)
+    return mpoL
 
 def open_mpo(N,hamParams):
     # Extract parameter values
