@@ -4,7 +4,7 @@ import time
 import os
 
 # Set Calculation Parameters
-mbd = 10 # Can only be a single value currently
+mbd = 12 # Can only be a single value currently
 
 # Jumping Rates
 p = 0.1

@@ -10,6 +10,7 @@ from tools.diag_tools import *
 from tools.env_tools import *
 from tools.contract import *
 import warnings
+import copy
 
 VERBOSE = 10
 
@@ -130,6 +131,9 @@ def single_iter(N,mps,mpo,
                          alg=alg,oneSite=False,edgePreserveState=False)
     # Do SVD
     mps,EE,EEs,S = renorm_inf(mps,mpo,env,vecs,mbd)
+    # Calculate Local Energy
+    print('Recontracted Energy = {}'.format(1./N*einsum('ijk,lkm,m,nmo,jpql,prsn,qit,t,stu,uro->',
+                                            env[0][0],mps[0][0],S,mps[0][1],mpo[0][0],mpo[0][1],mps[0][0].conj(),S.conj(),mps[0][1].conj(),env[0][1])))
     # Update Environments
     env = update_env_inf(mps[0],mpo,env,mpsl=None)
     # Update MPS (increase bond dim)
@@ -139,8 +143,6 @@ def single_iter(N,mps,mpo,
     cont,conv,fidelity = checkConv(lambdaL,Sprev,iterCnt,
                                    tol=tol,maxIter=maxIter,minIter=minIter,
                                    nStates=nStates,targetState=targetState)
-    # Calculate Local Energy
-    Eloc = calc_local_energy(mps,mpo)
     # Print Results
     print('N={}\tEnergy = {:f}\tLocal E={:f}\tdiff={:e}\tfidelity={:e}\tEE={:f}'.format(N,np.real(E/N),np.real(Eloc),np.real(np.abs(E/N-E_prev/N)),1.-fidelity,EE))
     # Update IterCnt and Energies
@@ -201,7 +203,7 @@ def run_iters(mps,mpo,env,mbd=10,maxIter=100,minIter=None,
     return output
 
 def run_idmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
-             tol=1e-10,maxIter=1000,minIter=10,fname=None,
+             tol=1e-16,maxIter=1000,minIter=10,fname=None,
              nStates=1,targetState=0,alg='davidson',
              preserveState=False,edgePreserveState=False,
              returnState=False,returnEnv=False,
