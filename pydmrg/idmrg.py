@@ -34,12 +34,18 @@ def return_edge_mpo(mpo):
         mpoEdge.append(op)
     return mpoEdge
 
-def printResults(converged,E,EE,EEspec,gap):
+def printResults(converged,E,EE,EEspec,gap,left=False):
     if VERBOSE > 1: print('#'*75)
     if converged:
-        if VERBOSE > 0: print('Converged at E = {}'.format(E))
+        if left:
+            if VERBOSE > 0: print('Left  State Converged at E = {}'.format(E))
+        else:
+            if VERBOSE > 0: print('Right State Converged at E = {}'.format(E))
     else:
-        if VERBOSE > 0: print('Convergence not acheived, E = {}'.format(E))
+        if left:
+            if VERBOSE > 0: print('Left  State Convergence not acheived, E = {}'.format(E))
+        else:
+            if VERBOSE > 0: print('Right State Convergence not acheived, E = {}'.format(E))
     if VERBOSE > 2: print('\tGap = {}'.format(gap))
     if VERBOSE > 2: print('\tEntanglement Entropy  = {}'.format(EE))
     if VERBOSE > 3: print('\tEntanglement Spectrum =')
@@ -103,37 +109,35 @@ def checkConv(lambdaL,S,iterCnt,
         conv = False
     return cont,conv,fidelity
 
-def calc_local_energy(mps,mpo,state=0,mpsl=None):
-    if mpsl is None: mpsl = conj_mps(mps)
-    from mpo.asep import return_mpo
-    from tools.contract import inf_contract as contract
-    p = 0.1 
-    alpha = 0.5      # in at left
-    gamma = 1.-alpha  # Out at left
-    q     = 1.-p      # Jump left
-    beta  = 0.5     # Out at right
-    delta = 1.-beta   # In at right
-    s0 = -0.5
-    hamParams = np.array([alpha,gamma,p,q,beta,delta,s0])
-    MPO_Eloc = return_mpo(4,hamParams,singleBond=True,bond=1)
-    MPO_Eloc = return_bulk_mpo(MPO_Eloc)
-    norm = contract(mps=mps,lmps=mpsl,state=0,lstate=0)
-    Eloc = -contract(mpo=MPO_Eloc,mps=mps,lmps=mpsl,state=0,lstate=0)/norm
+def calc_local_energy(vecs,mpo,env,state=0):
+    # Try to calc local energy messy
+    (_,_,n1,_) = mpo[0][0].shape
+    (_,_,n2,_) = mpo[0][1].shape
+    (n3,_,_) = env[0][0].shape
+    (n4,_,_) = env[0][1].shape
+    psi = np.reshape(vecs[:,state],(n1,n2,n3,n4))
+    # PH - Make this faster!     
+    nOps = len(mpo)
+    for opInd in range(nOps):
+        Eloc = einsum('ijkl,mnoi,npqj,oqkl->',psi,
+                                              np.expand_dims(mpo[opInd][0][-1,:,:,:],axis=0),
+                                              np.expand_dims(mpo[opInd][1][: ,0,:,:],axis=1),
+                                              psi.conj())
     return Eloc
 
 def single_iter(N,mps,mpo,
                 env,Sprev,E_prev,
                 iterCnt=0,maxIter=1000,
                 minIter=10,targetState=0,local_energy=True,
-                nStates=1,tol=1e-10,alg='davidson',mbd=10):
+                nStates=1,tol=1e-10,alg='davidson',mbd=10,firstIter=False,
+                left=False):
     # Solve Eigenproblem
     E,vecs,_ = calc_eigs(mps,mpo,env,0,nStates,
                          alg=alg,oneSite=False,edgePreserveState=False)
     # Do SVD
     mps,EE,EEs,S = renorm_inf(mps,mpo,env,vecs,mbd)
     # Calculate Local Energy
-    print('Recontracted Energy = {}'.format(1./N*einsum('ijk,lkm,m,nmo,jpql,prsn,qit,t,stu,uro->',
-                                            env[0][0],mps[0][0],S,mps[0][1],mpo[0][0],mpo[0][1],mps[0][0].conj(),S.conj(),mps[0][1].conj(),env[0][1])))
+    Eloc = calc_local_energy(vecs,mpo,env,state=targetState)
     # Update Environments
     env = update_env_inf(mps[0],mpo,env,mpsl=None)
     # Update MPS (increase bond dim)
@@ -143,64 +147,105 @@ def single_iter(N,mps,mpo,
     cont,conv,fidelity = checkConv(lambdaL,Sprev,iterCnt,
                                    tol=tol,maxIter=maxIter,minIter=minIter,
                                    nStates=nStates,targetState=targetState)
-    # Print Results
-    print('N={}\tEnergy = {:f}\tLocal E={:f}\tdiff={:e}\tfidelity={:e}\tEE={:f}'.format(N,np.real(E/N),np.real(Eloc),np.real(np.abs(E/N-E_prev/N)),1.-fidelity,EE))
     # Update IterCnt and Energies
     iterCnt += 1
-    return (N,E,EE,EEs,mps,env,S,cont,conv,iterCnt)
+    return (N,E,Eloc,EE,EEs,vecs,mps,mpo,env,S,cont,conv,iterCnt,fidelity)
 
-def run_iters(mps,mpo,env,mbd=10,maxIter=100,minIter=None,
-               tol=1e-10,fname=None,nStates=1,
-               targetState=0,alg='davidson',
-               preserveState=False,returnState=False,
-               returnEnv=False,returnEntSpec=False,
-               orthonormalize=False):
+def run_iters(mps,mpo,env,mpsl=None,mpol=None,envl=None,
+              mbd=10,maxIter=100,minIter=None,
+              tol=1e-10,fname=None,nStates=1,
+              targetState=0,alg='davidson',
+              preserveState=False,returnState=False,
+              returnEnv=False,returnEntSpec=False,
+              orthonormalize=False,callFunc=None):
+    # Check if left state needed
+    calcLeftState = True
+    printStr = ''
+    if mpsl is None: 
+        calcLeftState = False
+        outputl = None
+
     # Get Edge and bulk mpos separated
-    # PH - How to handle this is initial environment is already loaded...
     mpoEdge = return_edge_mpo(mpo)
     mpoBulk = return_bulk_mpo(mpo)
+    if calcLeftState:
+        mpolEdge = return_edge_mpo(mpol)
+        mpolBulk = return_bulk_mpo(mpol)
 
     # Do first step (using edge mpo)
-    N = 2
+    N,Nl = 2,2
+    E_prev = 0
     if True: # PH - Find way to determine if we have a new environment
         output = single_iter(2,mps,mpoEdge,
                              env,None,0.,
                              iterCnt=0,maxIter=maxIter,
                              minIter=minIter,targetState=targetState,
-                             nStates=nStates,tol=tol,alg=alg,mbd=mbd)
-        (N,E,EE,EEs,mps,env,S,cont,conv,iterCnt) = output
+                             nStates=nStates,tol=tol,alg=alg,mbd=mbd,left=False)
+        (N,E,Eloc,EE,EEs,_,mps,_,env,S,cont,conv,iterCnt,fid) = output
+        if calcLeftState:
+            outputl = single_iter(2,mpsl,mpolEdge,
+                                  envl,None,0.,
+                                  iterCnt=0,maxIter=maxIter,
+                                  minIter=minIter,targetState=targetState,
+                                  nStates=nStates,tol=tol,alg=alg,mbd=mbd,left=True)
+            (Nl,El,Elocl,EEl,EEsl,_,mpsl,_,envl,Sl,contl,convl,iterCntl,fidl) = outputl
+        if callFunc is not None:
+            printStr = callFunc(output,outputl)
+        print('N={}\tEnergy = {:f}\tLocal E={:f}\tdiff={:e}\tfidelity={:e}\tEE={:f}'.format(N,np.real(E/N),np.real(Eloc),np.real(np.abs(E/N-E_prev/N)),1.-fid,EE)+printStr)
 
     # Run iterations
     cont = True
-    while cont:
+    contl = calcLeftState
+    while (cont or contl):
         # Increase System Size
         N += 2
+        E_prev = E
         # Run single update
         output = single_iter(N,mps,mpoBulk,
                              env,S,E,
                              iterCnt=iterCnt,maxIter=maxIter,
                              minIter=minIter,targetState=targetState,
-                             nStates=nStates,tol=tol,alg=alg,mbd=mbd)
-        (N,E,EE,EEs,mps,env,S,cont,conv,iterCnt) = output
+                             nStates=nStates,tol=tol,alg=alg,mbd=mbd,left=False)
+        (N,E,Eloc,EE,EEs,_,mps,_,env,S,cont,conv,iterCnt,fid) = output
+        if calcLeftState:
+            # Increase System Size
+            Nl += 2
+            # Run single update
+            outputl = single_iter(Nl,mpsl,mpolBulk,
+                                 envl,Sl,El,
+                                 iterCnt=iterCntl,maxIter=maxIter,
+                                 minIter=minIter,targetState=targetState,
+                                 nStates=nStates,tol=tol,alg=alg,mbd=mbd,left=True)
+            (Nl,El,Elocl,EEl,EEsl,_,mpsl,_,envl,Sl,contl,convl,iterCntl,fidl) = outputl
+        if callFunc is not None:
+            printStr = callFunc(output,outputl)
+        print('N={}\tEnergy = {:f}\tLocal E={:f}\tdiff={:e}\tfidelity={:e}\tEE={:f}'.format(N,np.real(E/N),np.real(Eloc),np.real(np.abs(E/N-E_prev/N)),1.-fid,EE)+printStr)
 
     # Save Resulting MPS
     save_mps(mps,fname,gaugeSite=0)
+    if calcLeftState: save_mps(mpsl,fname+'_left',gaugeSite=0)
 
     # Determine which vars to return
     if nStates != 1: 
         gap = E[0]-E[1]
+        if calcLeftState: gapl = El[0]-El[1]
     else:
-        gap = None
+        gap,gapl = None,None
     if hasattr(E,'__len__'): E = E[targetState]
     printResults(conv,E,EE,EEs,gap)
+    if calcLeftState: printResults(convl,El,EEl,EEsl,gapl,left=True)
     output = [E,EE,gap]
+    if calcLeftState: outputl= [El,EEl,gapl]
     if returnEntSpec:
         output.append(EEs)
+        if calcLeftState: outputl.append(EEsl)
     if returnState:
         output.append(mps)
+        if calcLeftState: outputl.append(mpsl)
     if returnEnv:
         output.append(env)
-    return output
+        if calcLeftState: outputl.append(envl)
+    return output,outputl
 
 def run_idmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
              tol=1e-16,maxIter=1000,minIter=10,fname=None,
@@ -208,7 +253,7 @@ def run_idmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
              preserveState=False,edgePreserveState=False,
              returnState=False,returnEnv=False,
              returnEntSpec=False,orthonormalize=False,
-             calcLeftState=False):
+             calcLeftState=False,callFunc=None):
 
     # Check Data Structures to make sure they are correct
     if not hasattr(mbd,'__len__'): mbd = np.array([mbd])
@@ -224,6 +269,9 @@ def run_idmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
         minIter = minIter*np.ones(len(mbd))
     else:
         assert(len(minIter) == len(mbd))
+    
+    # Give initial left mps, mpo, and env
+    mpsl,mpol,envl = None,None,None
 
     # Get mpo for calculating left state
     if calcLeftState: mpol = mpo_conj_trans(mpo)
@@ -262,23 +310,30 @@ def run_idmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
         if fname is not None: fname_mbd = fname + '_mbd' + str(mbdInd)
 
         # Run DMRG Sweeps (right eigenvector)
-        if VERBOSE > 0: print('Calculating Right Eigenstate')
-        output = run_iters(mps,mpo,env,
-                          mbd=mbdi,
-                          maxIter=maxIter[mbdInd],
-                          minIter=minIter[mbdInd],
-                          tol=tol[mbdInd],
-                          fname=fname_mbd,
-                          nStates=nStates,
-                          alg=alg,
-                          targetState=targetState,
-                          preserveState=preserveState,
-                          returnState=returnState,
-                          returnEnv=returnEnv,
-                          returnEntSpec=returnEntSpec,
-                          orthonormalize=orthonormalize)
-
+        if VERBOSE > 0: print('Calculating Eigenstates')
+        output = run_iters(mps,
+                           mpo,
+                           env,
+                           mpsl=mpsl,
+                           mpol=mpol,
+                           envl=envl,
+                           mbd=mbdi,
+                           maxIter=maxIter[mbdInd],
+                           minIter=minIter[mbdInd],
+                           tol=tol[mbdInd],
+                           fname=fname_mbd,
+                           nStates=nStates,
+                           alg=alg,
+                           targetState=targetState,
+                           preserveState=preserveState,
+                           returnState=returnState,
+                           returnEnv=returnEnv,
+                           returnEntSpec=returnEntSpec,
+                           orthonormalize=orthonormalize,
+                           callFunc=callFunc)
         # Extract Results
+        outputl = output[1]
+        output = output[0]
         E = output[0]
         EE = output[1]
         gap = output[2]
@@ -307,52 +362,34 @@ def run_idmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
             env = output[3]
 
         if calcLeftState:
-            # Run DMRG Sweeps (left eigenvector)
-            if VERBOSE > 0: print('Calculating Left Eigenstate')
-            output = run_iters(mpsl,mpol,envl,
-                              mbd=mbdi,
-                              maxIter=maxIter[mbdInd],
-                              minIter=minIter[mbdInd],
-                              tol=tol[mbdInd],
-                              fname=fname_mbd+'_left',
-                              nStates=nStates,
-                              alg=alg,
-                              targetState=targetState,
-                              preserveState=preserveState,
-                              returnState=returnState,
-                              returnEnv=returnEnv,
-                              returnEntSpec=returnEntSpec,
-                              orthonormalize=orthonormalize)
             # Extract left state specific Results
-            EEl = output[1]
-            EEvecl[mbdInd]  = output[1]
+            EEl = outputl[1]
+            EEvecl[mbdInd]  = outputl[1]
             # Extra potential extra data
             if returnEntSpec and returnState and returnEnv:
-                EEsl = output[3]
-                mpsl = output[4]
-                envl = output[5]
+                EEsl = outputl[3]
+                mpsl = outputl[4]
+                envl = outputl[5]
             elif returnEntSpec and returnState:
-                EEsl = output[3]
-                mpsl = output[4]
+                EEsl = outputl[3]
+                mpsl = outputl[4]
             elif returnEntSpec and returnEnv:
-                EEsl = output[3]
-                envl = output[4]
+                EEsl = outputl[3]
+                envl = outputl[4]
             elif returnState and returnEnv:
-                mpsl = output[3]
-                envl = output[4]
+                mpsl = outputl[3]
+                envl = outputl[4]
             elif returnEntSpec:
-                EEsl = output[3]
+                EEsl = outputl[3]
             elif returnState:
-                mpsl = output[3]
+                mpsl = outputl[3]
             elif returnEnv:
-                envl = output[3]
-
-    # Lump right and left results
-    if calcLeftState:
-        EE = [EE,EEl]
-        if returnEntSpec: EEs = [EEs,EEsl]
-        if returnState: mpsList = [mps,mpsl]
-        if returnEnv: env = [env,envl]
+                envl = outputl[3]
+            # Lump right and left results
+            EE = [EE,EEl]
+            if returnEntSpec: EEs = [EEs,EEsl]
+            if returnState: mpsList = [mps,mpsl]
+            if returnEnv: env = [env,envl]
 
     # Return Results
     if len(Evec) == 1:
