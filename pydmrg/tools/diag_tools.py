@@ -8,7 +8,7 @@ from tools.mps_tools import *
 import warnings
 import copy
 
-VERBOSE = 2
+VERBOSE = 10
 
 def calc_diag(M,W,F,site):
     (n1,n2,n3) = M[site].shape
@@ -60,6 +60,28 @@ def calc_ham_twoSite(M,W,F,site):
         H += np.reshape(tmp3,(dim,dim))
     return H
 
+def calc_ham_twoSiteQuick(M,W,F,site):
+    # Create the Hamiltonian using site & site+1
+    #H +=einsum('ijk,jlmn,lopq,ros->mpirnqks',envList[mpoInd][0],mpoList[mpoInd][0],mpoList[mpoInd][1],envList[mpoInd][2])
+    (_,_,n1,_) = W[0][0].shape
+    (_,_,n2,_) = W[0][1].shape
+    (n3,_,_) = F[0][0].shape
+    (n4,_,_) = F[0][1].shape
+    dim = n1*n2*n3*n4
+    H = np.zeros((dim,dim),dtype=np.complex_)
+    for mpoInd in range(len(W)):
+        # Put in identities where None operator
+        if W[mpoInd][site+1] is None:
+            W[mpoInd][site+1] = np.array([[np.eye(n1)]])
+        if W[mpoInd][site] is None:
+            W[mpoInd][site] = np.array([[np.eye(n1)]])
+        # Contract envs with mpos to get effective ham
+        tmp1 = einsum('lopq,ros->lpqrs',W[mpoInd][site+1],F[mpoInd][site+1])
+        tmp2 = einsum('jlmn,lpqrs->jmnpqrs',W[mpoInd][site],tmp1)
+        tmp3 = einsum('ijk,jmnpqrs->mpirnqks',F[mpoInd][site],tmp2)
+        H += np.reshape(tmp3,(dim,dim))
+    return H
+
 def calc_ham(M,W,F,site,oneSite=True):
     if oneSite:
         return calc_ham_oneSite(M,W,F,site)
@@ -67,18 +89,22 @@ def calc_ham(M,W,F,site,oneSite=True):
         return calc_ham_twoSite(M,W,F,site)
 
 def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=True,reuseOldState=True):
+    # Process Incoming Vectors
     vecShape = vecs.shape
     if len(vecShape) == 1: 
         nVecs = 1
         vecs = np.swapaxes(np.array([vecs]),0,1)
     else: _,nVecs = vecShape
-    # Check to make sure we dont have a small gap
+    # Calculate overlap between all of the vectors
     matchedState = False
     for j in range(nVecs):
         ovlp_j = np.abs(np.dot(Mprev,np.conj(vecs[:,j])))
         if VERBOSE > 3: print('\t\tChecking Overlap {} = {}'.format(j,ovlp_j))
+        # Check to see if the states are the same
         if ovlp_j > 0.98:
+            # If so, indicate we have the matched state
             matchedState = True
+            # Switch with ground state if needed
             if (j != 0) and preserveState and allowSwap:
                 # Swap eigenstates
                 if VERBOSE > 3: print('!!! Swapping States {} & {} !!!'.format(0,j))
@@ -88,17 +114,20 @@ def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=T
                 Etmp = E[j]
                 E[j] = E[0]
                 E[0] = Etmp
+    # Discard state if not overlapped and matchedState is activated
     if reuseOldState and preserveState and (not matchedState):
         if VERBOSE > 3: print('!!! Correct State Not Found !!!')
         vecs = Mprev
-        # Reformat it so it matches vecs
+        # Reformat vector 
         vecs = np.swapaxes(np.array([vecs]),0,1)
+    # Print Results
     if printStates:
         if np.abs(np.dot(Mprev,np.conj(vecs[:,0]))) < 0.9:
             print('Guess Prev\t\tEig Vec 0\t\tEig Vec 1')
             indices = np.argsort(np.abs(Mprev))[::-1]
             for i in range(len(Mprev)):
                 print('{}\t{}\t{}'.format(Mprev[indices[i]],vecs[indices[i],0],vecs[indices[i],1]))
+    # Return resulting matching energy, state, and overlap
     return E,vecs,np.abs(np.dot(Mprev,np.conj(vecs[:,0])))
 
 def make_ham_func_oneSite(M,W,F,site,usePrecond=False,debug=False):
@@ -242,21 +271,24 @@ def calc_eigs_davidson(mpsL,W,F,site,
                        nStates,nStatesCalc=None,
                        preserveState=False,orthonormalize=False,
                        oneSite=True,edgePreserveState=True):
+    # Retrieve Hamiltonian
     Hfun,precond = make_ham_func(mpsL[0],W,F,site,oneSite=oneSite)
+    # Get some necessary variables
     (n1,n2,n3) = mpsL[0][site].shape
     if nStatesCalc is None: nStatesCalc = nStates
     nStates,nStatesCalc = min(nStates,n1*n2*n3-1), min(nStatesCalc,n1*n2*n3-1)
+    # Set up initial Guess
     guess = []
-    # PH - Figure out new initial guess here !!!
     for state in range(nStates):
         if oneSite:
             guess.append(np.reshape(mpsL[state][site],-1))
         else:
             guess.append(np.reshape(einsum('ijk,lkm->iljm',mpsL[state][site],mpsL[state][site+1]),-1))
-    # PH - Could add some convergence check
+    # Run eigensolver
     vals,vecso = davidson(Hfun,guess,precond,nroots=nStatesCalc,pick=pick_eigs,follow_state=False,tol=1e-30,max_cycle=10000)
+    # Process and sort results
     sort_inds = np.argsort(np.real(vals))
-    try:
+    try: # Returns vector or list of vectors depending on number of states
         vecs = np.zeros((len(vecso[0]),nStates),dtype=np.complex_)
         E = -vals[sort_inds[:nStates]]
         for i in range(min(nStates,len(sort_inds))):
@@ -265,7 +297,7 @@ def calc_eigs_davidson(mpsL,W,F,site,
         vecs = vecso
         E = -vals
         pass
-    # Allow orthonormalize to a float indicating a gap size where it should be turned on
+    # if "orthonormalize" is a float, check to see if we are below threshold require orthonormalization
     if not isinstance(orthonormalize,bool):
         if nStates == 1: orthonormalize = False
         else:
@@ -274,11 +306,12 @@ def calc_eigs_davidson(mpsL,W,F,site,
                 orthonormalize = True
             else:
                 orthonormalize = False
-    # Orthonormalize (when gap is too small?) - PH, Why?
+    # Orthonormalize (when requested, valid only for numerically gapless systems)
     if (nStates > 1) and orthonormalize:
         vecs = sla.orth(vecs)
-    # At the ends, we do not want to switch states when preserving state is off
+    # Preserve states at edge if needed (usually prudent for state averaging)
     if ((site == 0) or (site == len(mpsL[0])-1)) and edgePreserveState: preserveState = True
+    # Check the overlap between the guess and results
     E,vecs,ovlp = check_overlap(guess[0],vecs,E,preserveState=preserveState)
     return E,vecs,ovlp
 

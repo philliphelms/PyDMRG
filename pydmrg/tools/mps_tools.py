@@ -218,7 +218,6 @@ def create_rand_mps(N,mbd,d=2,const=0.1):
 def create_rand_mps(N,mbd,d=2,const=1):
     # Create MPS
     M = []
-    print('Constant constant = {}'.format(const))
     for i in range(int(N/2)):
         M.insert(len(M),const*np.random.rand(d,min(d**(i),mbd),min(d**(i+1),mbd)))
     if N%2 is 1:
@@ -230,7 +229,6 @@ def create_rand_mps(N,mbd,d=2,const=1):
 def create_const_mps(N,mbd,d=2,const=1e-20):
     # Create MPS
     M = []
-    print('Constant constant = {}'.format(const))
     for i in range(int(N/2)):
         M.insert(len(M),const*np.ones((d,min(d**(i),mbd),min(d**(i+1),mbd))))
     if N%2 is 1:

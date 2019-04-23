@@ -53,7 +53,7 @@ def printResults(converged,E,EE,EEspec,gap,left=False):
         if VERBOSE > 3: print('\t\t{}'.format(EEspec[i]))
     if VERBOSE > 1: print('#'*75)
 
-def make_next_guess(mps,Sl,Slm,mbd=10):
+def make_next_guess_efficient(mps,Sl,Slm,mbd=10):
     (n1_,n2_,n3_) = mps[0][0].shape
     (n4_,n5_,n6_) = mps[0][1].shape
     for state in range(len(mps)):
@@ -79,6 +79,32 @@ def make_next_guess(mps,Sl,Slm,mbd=10):
         mps[state][0] = np.pad(mps[state][0],((0,0),(0,min(mbd,n3_)-n2),(0,min(mbd,n3_*n1)-n3)),'constant')
         mps[state][1] = np.pad(mps[state][1],((0,0),(0,min(mbd,n5_*n4)-n5),(0,min(mbd,n5_)-n6)),'constant')
     return mps,lambdaL
+
+def make_next_guess_slow(mps,Sl,Slm,mbd=10,targetState=0):
+    (n1_,n2_,n3_) = mps[0][0].shape
+    (n4_,n5_,n6_) = mps[0][1].shape
+    # Get LambdaL (needed to check fidelity)
+    AL = np.einsum('ijk,k->ijk',mps[targetState][0],Sl)
+    (U,S,V) = svd_left(AL)
+    Blp1 = np.reshape(V,AL.shape)
+    lambdaL = np.einsum('ij,j->ij',U,S)
+    # Incorporate Sing Vals into MPS as next guess
+    mps[targetState][0] = einsum('ijk,k->ijk',mps[targetState][0],Sl)
+    # Increase Bond Dim if needed
+    nStates = len(mps)
+    (n1,n2,n3) = mps[0][0].shape
+    (n4,n5,n6) = mps[0][1].shape
+    for state in range(nStates):
+        (n1,n2,n3) = mps[state][0].shape
+        mps[state][0] = np.pad(mps[state][0],((0,0),(0,min(mbd,n3_)-n2),(0,min(mbd,n3_*n1)-n3)),'constant')
+        mps[state][1] = np.pad(mps[state][1],((0,0),(0,min(mbd,n5_*n4)-n5),(0,min(mbd,n5_)-n6)),'constant')
+    return mps,lambdaL
+
+def make_next_guess(mps,Sl,Slm,mbd=10,method='slow'):
+    if method == 'slow':
+        return make_next_guess_slow(mps,Sl,Slm,mbd=mbd)
+    else:
+        return make_next_guess_efficient(mps,Sl,Slm,mbd=mbd)
 
 def calc_conv_fidelity(lL,l):
     (lL_dim,_) = lL.shape

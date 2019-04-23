@@ -26,8 +26,7 @@ def mpo_conj_trans(mpo):
     for opind,op in enumerate(mpo):
         for site in range(len(op)):
             if mpo[opind][site] is None:
-                print('mpo shape = {}'.format(None))
+                pass
             else:
-                print('mpo shape = {}'.format(mpo[opind][site].shape))
                 mpoct[opind][site] = np.transpose(mpo[opind][site],(0,1,3,2)).conj()
     return mpoct
