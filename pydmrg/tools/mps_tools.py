@@ -66,6 +66,13 @@ def svd_right(ten):
     (u,s,v) = np.linalg.svd(ten_reshape,full_matrices=False)
     return (u,s,v)
 
+def svd_right_inf(ten):
+    (n1,n2,n3) = ten.shape
+    ten = np.swapaxes(ten,0,1)
+    ten_reshape = np.reshape(ten,(n1*n2,n3))
+    (u,s,v) = np.linalg.svd(ten_reshape,full_matrices=False)
+    return (u,s,v)
+
 def svd_left(ten):
     ten_reshape = np.swapaxes(ten,0,1)
     (n1,n2,n3) = ten_reshape.shape

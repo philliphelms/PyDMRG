@@ -60,9 +60,17 @@ def make_next_guess_efficient(mps,Sl,Slm,mbd=10):
     for state in range(len(mps)):
         # Get Left Side Prediction
         LB = einsum('j,ijk->ijk',Sl,mps[state][1])
-        (U,S,V) = svd_right(LB)
-        Alp1 = np.reshape(U,LB.shape)
-        lambdaR = einsum('i,ij->ij',S,V)
+        if True:
+            (U,D,V) = svd_right_inf(LB)
+        else:
+            (U,D,V) = svd_right(LB)
+        if True: # Trying Stuff out
+            (na,nb,nc) = LB.shape
+            Alp1 = np.reshape(U,(nb,na,nc))
+            Alp1 = np.swapaxes(Alp1,0,1)
+        else:
+            Alp1 = np.reshape(U,LB.shape)
+        lambdaR = einsum('i,ij->ij',D,V)
         # Get Right Side Prediction
         AL = einsum('ijk,k->ijk',mps[state][0],Sl)
         (U,S,V) = svd_left(AL)
@@ -77,6 +85,7 @@ def make_next_guess_efficient(mps,Sl,Slm,mbd=10):
     (n4,n5,n6) = mps[0][1].shape
     for state in range(nStates):
         (n1,n2,n3) = mps[state][0].shape
+        print('Padding = {}'.format(min(mbd,n3_)-n2 + min(mbd,n3_*n1)-n3 + min(mbd,n5_*n4)-n5 + min(mbd,n5_)-n6))
         mps[state][0] = np.pad(mps[state][0],((0,0),(0,min(mbd,n3_)-n2),(0,min(mbd,n3_*n1)-n3)),'constant')
         mps[state][1] = np.pad(mps[state][1],((0,0),(0,min(mbd,n5_*n4)-n5),(0,min(mbd,n5_)-n6)),'constant')
     finTen = einsum('ijk,lkm->iljm',mps[0][0],mps[0][1])
