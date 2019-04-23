@@ -54,22 +54,23 @@ def printResults(converged,E,EE,EEspec,gap,left=False):
     if VERBOSE > 1: print('#'*75)
 
 def make_next_guess_efficient(mps,Sl,Slm,mbd=10):
+    initTen = einsum('ijk,k,lkm->iljm',mps[0][0],Sl,mps[0][1])
     (n1_,n2_,n3_) = mps[0][0].shape
     (n4_,n5_,n6_) = mps[0][1].shape
     for state in range(len(mps)):
         # Get Left Side Prediction
-        LB = np.einsum('j,ijk->ijk',Sl,mps[state][1])
+        LB = einsum('j,ijk->ijk',Sl,mps[state][1])
         (U,S,V) = svd_right(LB)
         Alp1 = np.reshape(U,LB.shape)
-        lambdaR = np.einsum('i,ij->ij',S,V)
+        lambdaR = einsum('i,ij->ij',S,V)
         # Get Right Side Prediction
-        AL = np.einsum('ijk,k->ijk',mps[state][0],Sl)
+        AL = einsum('ijk,k->ijk',mps[state][0],Sl)
         (U,S,V) = svd_left(AL)
         Blp1 = np.reshape(V,AL.shape)
-        lambdaL = np.einsum('ij,j->ij',U,S)
+        lambdaL = einsum('ij,j->ij',U,S)
         # Put into MPS
-        mps[state][0] = np.einsum('ijk,kl,lm->ijm',Alp1,lambdaR,np.linalg.inv(np.diag(Slm))) # PH - How to take inverse of vector
-        mps[state][1] = np.einsum('ij,kjm->kim',lambdaL,Blp1)
+        mps[state][0] = einsum('ijk,kl,lm->ijm',Alp1,lambdaR,np.linalg.inv(np.diag(Slm))) # PH - How to take inverse of vector
+        mps[state][1] = einsum('ij,kjm->kim',lambdaL,Blp1)
     # Increase Bond Dim if needed
     nStates = len(mps)
     (n1,n2,n3) = mps[0][0].shape
@@ -78,6 +79,12 @@ def make_next_guess_efficient(mps,Sl,Slm,mbd=10):
         (n1,n2,n3) = mps[state][0].shape
         mps[state][0] = np.pad(mps[state][0],((0,0),(0,min(mbd,n3_)-n2),(0,min(mbd,n3_*n1)-n3)),'constant')
         mps[state][1] = np.pad(mps[state][1],((0,0),(0,min(mbd,n5_*n4)-n5),(0,min(mbd,n5_)-n6)),'constant')
+    finTen = einsum('ijk,lkm->iljm',mps[0][0],mps[0][1])
+    try:
+        print('Guess Diff = {}'.format(np.sum(np.abs(initTen-finTen))))
+        print('Guess ovlp = {}'.format(einsum('iljm,iljm->',initTen,finTen)))
+    except:
+        pass
     return mps,lambdaL
 
 def make_next_guess_slow(mps,Sl,Slm,mbd=10,targetState=0):
@@ -100,7 +107,7 @@ def make_next_guess_slow(mps,Sl,Slm,mbd=10,targetState=0):
         mps[state][1] = np.pad(mps[state][1],((0,0),(0,min(mbd,n5_*n4)-n5),(0,min(mbd,n5_)-n6)),'constant')
     return mps,lambdaL
 
-def make_next_guess(mps,Sl,Slm,mbd=10,method='slow'):
+def make_next_guess(mps,Sl,Slm,mbd=10,method='efficient'):
     if method == 'slow':
         return make_next_guess_slow(mps,Sl,Slm,mbd=mbd)
     else:
