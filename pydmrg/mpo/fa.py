@@ -3,11 +3,11 @@ from mpo.ops import *
 import collections
 
 ############################################################################
-# East Model
+# FA Model
 #
 # Hamiltonian: 
-#   W = \sum_i (n_{i-1})[ e^{-\lambda} ( c\sigma_i^+ + (1-c)\sigma_i^-)
-#                                       -c(1-n_i)    - (1-c)n_i        ]
+#   W = \sum_i (n_{i-1}+n_{i+1})[ e^{-\lambda} ( c\sigma_i^+ + (1-c)\sigma_i^-)
+#                                               -c(1-n_i)    - (1-c)n_i        ]
 #
 # Functions:
 #   return_mpo(N,hamParams):
@@ -31,13 +31,13 @@ def open_mpo(N,hamParams):
     mpo = [None]*N
     for site in range(N):
         # Generic Operator Form
-        gen_mpo = np.array([[I,                                                                    z, z],
-                            [c[site]*(np.exp(-s[site])*Sp-v)+(1.-c[site])*(np.exp(-s[site])*Sm-n), z, z],
-                            [z,                                                                    n, I]])
+        flipOp = c[site]*(np.exp(-s[site])*Sp-v)+(1.-c[site])*(np.exp(-s[site])*Sm-n)
+        gen_mpo = np.array([[I,      z,      z, z],
+                            [flipOp, z,      z, z],
+                            [n,      z,      z, z],
+                            [z,      n, flipOp, I]])
         # Add operator to mpo
         if (site == 0):
-            # Ensure First site is occupied
-            gen_mpo[-1,0,:,:] = c[site]*(np.exp(-s[site])*Sp-v)+(1.-c[site])*(np.exp(-s[site])*Sm-n)
             mpo[site] = np.expand_dims(gen_mpo[-1,:],0)
         elif (site == N-1):
             mpo[site] = np.expand_dims(gen_mpo[:,0],1)
@@ -109,13 +109,13 @@ def open_act(N,hamParams):
     mpo = [None]*N
     for site in range(N):
         # Generic Operator Form
-        gen_mpo = np.array([[I,                                                                z, z],
-                            [c[site]*(np.exp(-s[site])*Sp)+(1.-c[site])*(np.exp(-s[site])*Sm), z, z],
-                            [z,                                                                n, I]])
+        flipOp = c[site]*(np.exp(-s[site])*Sp)+(1.-c[site])*(np.exp(-s[site])*Sm)
+        gen_mpo = np.array([[I,      z,      z, z],
+                            [flipOp, z,      z, z],
+                            [n,      z,      z, z],
+                            [z,      n, flipOp, I]])
         # Add operator to mpo
         if (site == 0):
-            # Ensure First site is occupied
-            gen_mpo[-1,0,:,:] = c[site]*(np.exp(-s[site])*Sp)+(1.-c[site])*(np.exp(-s[site])*Sm)
             mpo[site] = np.expand_dims(gen_mpo[-1,:],0)
         elif (site == N-1):
             mpo[site] = np.expand_dims(gen_mpo[:,0],1)
