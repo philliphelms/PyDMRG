@@ -8,7 +8,7 @@ from tools.mps_tools import *
 import warnings
 import copy
 
-VERBOSE = 10
+VERBOSE = 2
 
 def calc_diag(M,W,F,site):
     (n1,n2,n3) = M[site].shape
@@ -25,7 +25,7 @@ def calc_diag(M,W,F,site):
         diag += diag_mis.ravel()
     return diag
 
-def calc_ham(M,W,F,site):
+def calc_ham_oneSite(M,W,F,site):
     (n1,n2,n3) = M[site].shape
     dim = n1*n2*n3
     H = np.zeros((dim,dim),dtype=np.complex_)
@@ -37,6 +37,34 @@ def calc_ham(M,W,F,site):
         Htmp = einsum('jlp,linkq->ijknpq',F[mpoInd][site],tmp1)
         H += np.reshape(Htmp,(dim,dim))
     return H
+
+def calc_ham_twoSite(M,W,F,site):
+    # Create the Hamiltonian using site & site+1
+    #H +=einsum('ijk,jlmn,lopq,ros->mpirnqks',envList[mpoInd][0],mpoList[mpoInd][0],mpoList[mpoInd][1],envList[mpoInd][2])
+    (_,_,n1,_) = W[0][0].shape
+    (_,_,n2,_) = W[0][1].shape
+    (n3,_,_) = F[0][0].shape
+    (n4,_,_) = F[0][1].shape
+    dim = n1*n2*n3*n4
+    H = np.zeros((dim,dim),dtype=np.complex_)
+    for mpoInd in range(len(W)):
+        # Put in identities where None operator
+        if W[mpoInd][site+1] is None:
+            W[mpoInd][site+1] = np.array([[np.eye(n1)]])
+        if W[mpoInd][site] is None:
+            W[mpoInd][site] = np.array([[np.eye(n1)]])
+        # Contract envs with mpos to get effective ham
+        tmp1 = einsum('lopq,ros->lpqrs',W[mpoInd][site+1],F[mpoInd][site+1])
+        tmp2 = einsum('jlmn,lpqrs->jmnpqrs',W[mpoInd][site],tmp1)
+        tmp3 = einsum('ijk,jmnpqrs->mpirnqks',F[mpoInd][site],tmp2)
+        H += np.reshape(tmp3,(dim,dim))
+    return H
+
+def calc_ham(M,W,F,site,oneSite=True):
+    if oneSite:
+        return calc_ham_oneSite(M,W,F,site)
+    else:
+        return calc_ham_twoSite(M,W,F,site)
 
 def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=True,reuseOldState=True):
     vecShape = vecs.shape
@@ -73,7 +101,7 @@ def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=T
                 print('{}\t{}\t{}'.format(Mprev[indices[i]],vecs[indices[i],0],vecs[indices[i],1]))
     return E,vecs,np.abs(np.dot(Mprev,np.conj(vecs[:,0])))
 
-def make_ham_func(M,W,F,site,usePrecond=False,debug=False):
+def make_ham_func_oneSite(M,W,F,site,usePrecond=False,debug=False):
     # Define Hamiltonian function to give Hx
     def Hfun(x):
         x_reshape = np.reshape(x,M[site].shape)
@@ -109,6 +137,39 @@ def make_ham_func(M,W,F,site,usePrecond=False,debug=False):
             return dx
     return Hfun,precond
 
+def make_ham_func_twoSite(M,W,F,site,usePrecond=False,debug=False):
+    # Define Hamiltonian function to give Hx
+    (n1,n2,n3) = M[0].shape
+    (n4,n5,n6) = M[1].shape
+    def Hfun(x):
+        x_reshape = np.reshape(x,(n1,n4,n2,n6)) # PH - Check ordering???
+        fin_sum = np.zeros(x_reshape.shape,dtype=np.complex_)
+        for mpoInd in range(len(W)):
+            if W[mpoInd][site] is None:
+                pass # PH Adapt to No operator
+            else:
+                in_sum1 = einsum('ros,nqks->ronqk',F[mpoInd][site+1],x_reshape)
+                in_sum2 = einsum('lopq,ronqk->lprnk',W[mpoInd][site+1],in_sum1)
+                in_sum3 = einsum('jlmn,lprnk->jmprk',W[mpoInd][site],in_sum2)
+                in_sum4 = einsum('ijk,jmprk->mpir',F[mpoInd][site],in_sum3)
+                fin_sum += in_sum4
+                #in_sum1 =  einsum('ijk,lkmn->ijlmn',F[mpoInd][1],x_reshape)
+                #in_sum2 =  einsum('jopl,ijlmn->ipomn',W[mpoInd][0],in_sum1)
+                #in_sum3 =  einsum('oqrm,ipomn->iprqn',W[mpoInd][1],in_sum2)
+                #fin_sum += einsum('sqn,iprqn->pirs',F[mpoInd][0],in_sum3)
+        return -np.reshape(fin_sum,-1)
+    if usePrecond:
+        print('No preconditioner available yet for two site optimization')
+    def precond(dx,e,x0):
+        return dx
+    return Hfun,precond
+
+def make_ham_func(M,W,F,site,usePrecond=False,debug=False,oneSite=True):
+    if oneSite:
+        return make_ham_func_oneSite(M,W,F,site,usePrecond=usePrecond,debug=debug)
+    else:
+        return make_ham_func_twoSite(M,W,F,site,usePrecond=usePrecond,debug=debug)
+
 def pick_eigs(w,v,nroots,x0):
     idx = np.argsort(np.real(w))
     w = w[idx]
@@ -128,9 +189,9 @@ def orthonormalize(vecs):
     return vecs
 
 def calc_eigs_exact(mpsL,W,F,site,
-                    nStates,preserveState=False,
-                    orthonormalize=False):
-    H = calc_ham(mpsL[0],W,F,site)
+                    nStates,preserveState=False,edgePreserveState=True,
+                    orthonormalize=False,oneSite=True):
+    H = calc_ham(mpsL[0],W,F,site,oneSite=oneSite)
     Mprev = mpsL[0][site].ravel()
     vals,vecs = sla.eig(H)
     inds = np.argsort(vals)[::-1]
@@ -141,15 +202,22 @@ def calc_eigs_exact(mpsL,W,F,site,
     if (nStates > 1) and orthonormalize:
         vecs = sla.orth(vecs)
     # Don't preserve state at ends
-    if (site == 0) or (site == len(mpsL[0])-1): preserveState = True
-    E,vecs,ovlp = check_overlap(Mprev,vecs,E,preserveState=preserveState)
+    if ((site == 0) or (site == len(mpsL[0])-1)) and edgePreserveState: preserveState = True
+    if oneSite:
+        E,vecs,ovlp = check_overlap(Mprev,vecs,E,preserveState=preserveState)
+    else: # PH - We should be able to find the overlap
+        E,vecs,ovlp = E,vecs,None
     return E,vecs,ovlp
 
 def calc_eigs_arnoldi(mpsL,W,F,site,
                       nStates,nStatesCalc=None,
-                      preserveState=False,orthonormalize=False):
-    guess = np.reshape(mpsL[0][site],-1)
-    Hfun,_ = make_ham_func(mpsL[0],W,F,site)
+                      preserveState=False,orthonormalize=False,
+                      oneSite=True,edgePreserveState=True):
+    if oneSite:
+        guess = np.reshape(mpsL[0][site],-1)
+    else:
+        guess = np.reshape(einsum('ijk,lkm->iljm',mpsL[state][site],mpsL[state][site+1]),-1)
+    Hfun,_ = make_ham_func(mpsL[0],W,F,site,oneSite=oneSite)
     (n1,n2,n3) = mpsL[0][site].shape
     H = LinearOperator((n1*n2*n3,n1*n2*n3),matvec=Hfun)
     if nStatesCalc is None: nStatesCalc = nStates
@@ -166,22 +234,27 @@ def calc_eigs_arnoldi(mpsL,W,F,site,
     if (nStates > 1) and orthonormalize:
         vecs = sla.orth(vecs)
     # At the ends, we do not want to switch states when preserving state is off
-    if (site == 0) or (site == len(mpsL[0])-1): preserveState = True
+    if ((site == 0) or (site == len(mpsL[0])-1)) and edgePreserveState: preserveState = True
     E,vecs,ovlp = check_overlap(guess,vecs,E,preserveState=preserveState)
     return E,vecs,ovlp
 
 def calc_eigs_davidson(mpsL,W,F,site,
                        nStates,nStatesCalc=None,
-                       preserveState=False,orthonormalize=False):
-    Hfun,precond = make_ham_func(mpsL[0],W,F,site)
+                       preserveState=False,orthonormalize=False,
+                       oneSite=True,edgePreserveState=True):
+    Hfun,precond = make_ham_func(mpsL[0],W,F,site,oneSite=oneSite)
     (n1,n2,n3) = mpsL[0][site].shape
     if nStatesCalc is None: nStatesCalc = nStates
     nStates,nStatesCalc = min(nStates,n1*n2*n3-1), min(nStatesCalc,n1*n2*n3-1)
     guess = []
+    # PH - Figure out new initial guess here !!!
     for state in range(nStates):
-        guess.append(np.reshape(mpsL[state][site],-1))
+        if oneSite:
+            guess.append(np.reshape(mpsL[state][site],-1))
+        else:
+            guess.append(np.reshape(einsum('ijk,lkm->iljm',mpsL[state][site],mpsL[state][site+1]),-1))
     # PH - Could add some convergence check
-    vals,vecso = davidson(Hfun,guess,precond,nroots=nStatesCalc,pick=pick_eigs,follow_state=False,tol=1e-10,max_cycle=100)
+    vals,vecso = davidson(Hfun,guess,precond,nroots=nStatesCalc,pick=pick_eigs,follow_state=False,tol=1e-16,max_cycle=1000)
     sort_inds = np.argsort(np.real(vals))
     try:
         vecs = np.zeros((len(vecso[0]),nStates),dtype=np.complex_)
@@ -205,23 +278,29 @@ def calc_eigs_davidson(mpsL,W,F,site,
     if (nStates > 1) and orthonormalize:
         vecs = sla.orth(vecs)
     # At the ends, we do not want to switch states when preserving state is off
-    if (site == 0) or (site == len(mpsL[0])-1): preserveState = True
+    if ((site == 0) or (site == len(mpsL[0])-1)) and edgePreserveState: preserveState = True
     E,vecs,ovlp = check_overlap(guess[0],vecs,E,preserveState=preserveState)
     return E,vecs,ovlp
 
 def calc_eigs(mpsL,W,F,site,nStates,
-              alg='arnoldi',preserveState=False,
-              orthonormalize=False):
+              alg='davidson',preserveState=False,edgePreserveState=True,
+              orthonormalize=False,oneSite=True):
     if alg == 'davidson':
         E,vecs,ovlp = calc_eigs_davidson(mpsL,W,F,site,nStates,
                                          preserveState=preserveState,
-                                         orthonormalize=orthonormalize)
+                                         edgePreserveState=edgePreserveState,
+                                         orthonormalize=orthonormalize,
+                                         oneSite=oneSite)
     elif alg == 'exact':
         E,vecs,ovlp = calc_eigs_exact(mpsL,W,F,site,nStates,
                                       preserveState=preserveState,
-                                      orthonormalize=orthonormalize)
+                                      edgePreserveState=edgePreserveState,
+                                      orthonormalize=orthonormalize,
+                                      oneSite=oneSite)
     elif alg == 'arnoldi':
         E,vecs,ovlp = calc_eigs_arnoldi(mpsL,W,F,site,nStates,
                                         preserveState=preserveState,
-                                        orthonormalize=orthonormalize)
+                                        edgePreserveState=edgePreserveState,
+                                        orthonormalize=orthonormalize,
+                                        oneSite=oneSite)
     return E,vecs,ovlp

@@ -134,7 +134,7 @@ def renormalizeL(mpsL,v,site,nStates=1,targetState=0):
     return mpsL,EE,EEs
 
 def rightStep(mpsL,W,F,site,
-              nStates=1,alg='arnoldi',
+              nStates=1,alg='davidson',
               preserveState=False,orthonormalize=False):
     E,v,ovlp = calc_eigs(mpsL,W,F,site,
                          nStates,
@@ -146,7 +146,7 @@ def rightStep(mpsL,W,F,site,
     return E,mpsL,F,EE,EEs
 
 def rightSweep(mpsL,W,F,iterCnt,
-               nStates=1,alg='arnoldi',
+               nStates=1,alg='davidson',
                preserveState=False,startSite=None,
                endSite=None,orthonormalize=False):
     N = len(mpsL[0])
@@ -170,7 +170,7 @@ def rightSweep(mpsL,W,F,iterCnt,
     return Ereturn,mpsL,F,EE,EEs
 
 def leftStep(mpsL,W,F,site,
-             nStates=1,alg='arnoldi',
+             nStates=1,alg='davidson',
              preserveState=False,orthonormalize=False):
     E,v,ovlp = calc_eigs(mpsL,W,F,site,
                          nStates,
@@ -182,7 +182,7 @@ def leftStep(mpsL,W,F,site,
     return E,mpsL,F,EE,EEs
 
 def leftSweep(mpsL,W,F,iterCnt,
-              nStates=1,alg='arnoldi',
+              nStates=1,alg='davidson',
               preserveState=False,startSite=None,
               endSite=None,orthonormalize=False):
     N = len(mpsL[0])
@@ -235,7 +235,7 @@ def printResults(converged,E,EE,EEspec,gap):
 
 def run_sweeps(mpsL,W,F,initGuess=None,maxIter=0,minIter=None,
                tol=1e-10,fname = None,nStates=1,
-               targetState=0,alg='arnoldi',
+               targetState=0,alg='davidson',
                preserveState=False,gaugeSiteLoad=0,
                gaugeSiteSave=0,returnState=False,
                returnEnv=False,returnEntSpec=False,
@@ -307,7 +307,7 @@ def run_sweeps(mpsL,W,F,initGuess=None,maxIter=0,minIter=None,
 def run_dmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
              tol=1e-5,maxIter=10,minIter=0,fname=None,
              nStates=1,targetState=0,
-             constant_mbd=False,alg='arnoldi',
+             constant_mbd=False,alg='davidson',
              preserveState=False,gaugeSiteSave=None,
              returnState=False,returnEnv=False,returnEntSpec=False,
              orthonormalize=False,calcLeftState=False):

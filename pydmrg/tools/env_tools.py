@@ -48,6 +48,33 @@ def update_envR(M,W,F,site,Ml=None):
             F[mpoInd][site+1] = einsum('npq,mpnk->kmq',M[site],tmp2)
     return F
 
+def update_env_inf(mps,mpo,env,mpsl=None):
+    # Insert fake center in env
+    for mpoInd in range(len(mpo)):
+        env[mpoInd].insert(1,[])
+    # Update Right Environment (moving left)
+    env = update_envL(mps,mpo,env,1,Ml=mpsl)
+    for mpoInd in range(len(mpo)):
+        env[mpoInd][2] = env[mpoInd][1]
+    # Update Left Environment (moving right)
+    env = update_envR(mps,mpo,env,0,Ml=mpsl)
+    for mpoInd in range(len(mpo)):
+        env[mpoInd][0] = env[mpoInd][1]
+    # Put empty array as center environment tensor
+    for mpoInd in range(len(mpo)):
+        env[mpoInd][1] = env[mpoInd][2]
+        _ = env[mpoInd].pop()
+    return env
+
+def calc_env_inf(M,W,mbd,Ml=None,gaugeSite=0):
+    env_lst = []
+    for mpoInd in range(len(W)):
+        F = []
+        F.append(np.array([[[1.]]],dtype=np.complex_))
+        F.append(np.array([[[1.]]],dtype=np.complex_))
+        env_lst.append(F)
+    return env_lst
+
 def calc_env(M,W,mbd,Ml=None,gaugeSite=0):
     # PH - What to do with this gauge site stuff
     N = len(M)
