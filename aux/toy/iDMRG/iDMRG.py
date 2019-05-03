@@ -27,3 +27,12 @@ inds = np.argsort(E)[::-1]
 E = E[inds]
 v = v[:,inds]
 print('Energy = {}'.format(E[0]))
+
+# Perform SVD and create MPS
+psi = np.reshape(v[:,0],(2,2))
+(U,S,V) = np.linalg.svd(psi,full_matrices=False)
+mps = [None]*2
+mps[0] = np.reshape(U,(2,1,2))
+mps[1] = np.reshape(V,(2,2,1))
+
+
