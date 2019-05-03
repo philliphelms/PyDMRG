@@ -13,126 +13,6 @@ import warnings
 
 VERBOSE = 10
 
-def calcRDM(M,swpDir):
-    if swpDir == 'right':
-        (n1,n2,n3) = M.shape
-        M = np.swapaxes(M,0,1)
-        M = np.reshape(M,(n2*n1,n3))
-        return einsum('ij,kj->ik',M,np.conj(M))
-    elif swpDir == 'left':
-        (n1,n2,n3) = M.shape
-        M = np.swapaxes(M,0,1)
-        M = np.reshape(M,(n2,n1*n3))
-        return einsum('ij,ik->jk',M,np.conj(M))
-
-def calc_ent_right(M,v,site):
-    (n1,n2,n3) = M[site].shape
-    Mtmp = np.reshape(v,(n1,n2,n3))
-    M_reshape = np.reshape(Mtmp,(n1*n2,n3))
-    (_,S,_) = np.linalg.svd(M_reshape,full_matrices=False)
-    EE,EEs = calc_entanglement(S)
-    if VERBOSE > 2: print('\t\tEE = {}'.format(EE))
-    return EE, EEs
-
-def calc_ent_left(M,v,site):
-    (n1,n2,n3) = M[site].shape
-    Mtmp = np.reshape(v,(n1,n2,n3))
-    M_reshape = np.swapaxes(Mtmp,0,1)
-    M_reshape = np.reshape(M_reshape,(n2,n1*n3))
-    (_,S,_) = np.linalg.svd(M_reshape,full_matrices=False)
-    EE,EEs = calc_entanglement(S)
-    if VERBOSE > 2: print('\t\tEE = {}'.format(EE))
-    return EE, EEs
-
-def renormalizeR(mpsL,v,site,nStates=1,targetState=0):
-    (n1,n2,n3) = mpsL[0][site].shape
-    # Try to calculate Entanglement?
-    EE,EEs = calc_ent_right(mpsL[0],v[:,targetState],site)
-    # Calculate the reduced density matrix
-    _,nStatesCalc = v.shape
-    nStatesAvg = min(nStates,nStatesCalc)
-    for i in range(nStatesAvg):
-        if nStatesAvg != 1: 
-            vtmp = v[:,i]
-        else:
-            vtmp  = v
-        vReshape = np.reshape(vtmp,(n1,n2,n3))
-        w = 1./float(nStatesAvg)
-        if i == 0:
-            rdm = w*calcRDM(vReshape,'right')
-        else:
-            rdm +=w*calcRDM(vReshape,'right')
-    # Take eigenvalues of the rdm
-    vals,vecs = np.linalg.eig(rdm)
-    # Sort Inds
-    inds = np.argsort(vals)[::-1]
-    # Keep only maxBondDim eigenstates
-    inds = inds[:n3]
-    vals = vals[inds]
-    vecs = vecs[:,inds]
-    # Make sure vecs are orthonormal
-    vecs = sla.orth(vecs)
-    # Loop through all MPS in list
-    for state in range(nStates):
-        # Put resulting vectors into MPS
-        mpsL[state][site] = np.reshape(vecs,(n2,n1,n3))
-        mpsL[state][site] = np.swapaxes(mpsL[state][site],0,1)
-        if not np.all(np.isclose(einsum('ijk,ijl->kl',mpsL[state][site],np.conj(mpsL[state][site])),np.eye(n3),atol=1e-6)):
-            if VERBOSE > 4: print('\t\tNormalization Problem')
-        # Calculate next site for guess
-        if nStates != 1:
-            vReshape = np.reshape(v[:,min(nStatesAvg-1,state)],(n1,n2,n3))
-        else:
-            vReshape = np.reshape(v,(n1,n2,n3))
-        # PH - This next line is incorrect!!!
-        mpsL[state][site+1] = einsum('lmn,lmk,ikj->inj',np.conj(mpsL[state][site]),vReshape,mpsL[state][site+1])
-    return mpsL,EE,EEs
-
-def renormalizeL(mpsL,v,site,nStates=1,targetState=0):
-    (n1,n2,n3) = mpsL[0][site].shape
-    # Try to calculate Entanglement?
-    EE,EEs = calc_ent_left(mpsL[0],v[:,targetState],site)
-    # Calculate the reduced density matrix
-    _,nStatesCalc = v.shape
-    nStatesAvg = min(nStates,nStatesCalc)
-    for i in range(nStatesAvg):
-        if nStatesAvg != 1: 
-            vtmp = v[:,i]
-        else: 
-            vtmp = v
-        vReshape = np.reshape(vtmp,(n1,n2,n3))
-        w = 1./float(nStatesAvg)
-        if i == 0:
-            rdm = w*calcRDM(vReshape,'left') 
-        else:
-            rdm +=w*calcRDM(vReshape,'left')
-    # Take eigenvalues of the rdm
-    vals,vecs = np.linalg.eig(rdm) 
-    # Sort inds
-    inds = np.argsort(vals)[::-1]
-    # Keep only maxBondDim eigenstates
-    inds = inds[:n2]
-    vals = vals[inds]
-    vecs = vecs[:,inds]
-    # Make sure vecs are orthonormal
-    vecs = sla.orth(vecs)
-    vecs = vecs.T
-    # Loops through all MPSs in list
-    for state in range(nStates):
-        # Put resulting vectors into MPS
-        mpsL[state][site] = np.reshape(vecs,(n2,n1,n3))
-        mpsL[state][site] = np.swapaxes(mpsL[state][site],0,1)
-        if not np.all(np.isclose(einsum('ijk,ilk->jl',mpsL[state][site],np.conj(mpsL[state][site])),np.eye(n2),atol=1e-6)):
-            if VERBOSE > 4: print('\t\tNormalization Problem')
-        # Calculate next site's guess
-        if nStates != 1:
-            vReshape = np.reshape(v[:,min(nStatesAvg-1,state)],(n1,n2,n3))
-        else:
-            vReshape = np.reshape(v,(n1,n2,n3))
-        # Push gauge onto next site
-        mpsL[state][site-1] = einsum('ijk,lkm,lnm->ijn',mpsL[state][site-1],vReshape,np.conj(mpsL[state][site]))
-    return mpsL,EE,EEs
-
 def rightStep(mpsL,W,F,site,
               nStates=1,alg='davidson',
               preserveState=False,orthonormalize=False):
@@ -141,7 +21,7 @@ def rightStep(mpsL,W,F,site,
                          alg=alg,
                          preserveState=preserveState,
                          orthonormalize=orthonormalize)
-    mpsL,EE,EEs = renormalizeR(mpsL,v,site,nStates=nStates)
+    mpsL,EE,EEs = renormR(mpsL,v,site,nStates=nStates)
     F = update_envR(mpsL[0],W,F,site)
     return E,mpsL,F,EE,EEs
 
@@ -177,7 +57,7 @@ def leftStep(mpsL,W,F,site,
                          alg=alg,
                          preserveState=preserveState,
                          orthonormalize=orthonormalize)
-    mpsL,EE,EEs = renormalizeL(mpsL,v,site,nStates=nStates)
+    mpsL,EE,EEs = renormL(mpsL,v,site,nStates=nStates)
     F = update_envL(mpsL[0],W,F,site)
     return E,mpsL,F,EE,EEs
 

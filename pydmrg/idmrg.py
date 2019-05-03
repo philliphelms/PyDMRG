@@ -154,6 +154,7 @@ def checkConv(lambdaL,S,iterCnt,E,Eprev,
 
 def calc_local_energy(vecs,mpo,env,state=0):
     # Try to calc local energy messy
+    # Only uses env/mpo for shape
     (_,_,n1,_) = mpo[0][0].shape
     (_,_,n2,_) = mpo[0][1].shape
     (n3,_,_) = env[0][0].shape
@@ -177,8 +178,14 @@ def single_iter(N,mps,mpo,
     # Solve Eigenproblem
     E,vecs,_ = calc_eigs(mps,mpo,env,0,nStates,
                          alg=alg,oneSite=False,edgePreserveState=False)
+    try:
+        gap = E[0]-E[1]
+        E = E[0]
+    except:
+        gap = np.nan
+        pass
     # Do SVD
-    mps,EE,EEs,S = renorm_inf(mps,mpo,env,vecs,mbd)
+    mps,EE,EEs,S = renormInf(mps,mpo,env,vecs,mbd,targetState=targetState)
     # Calculate Local Energy
     Eloc = calc_local_energy(vecs,mpo,env,state=targetState)
     # Update Environments
@@ -192,7 +199,7 @@ def single_iter(N,mps,mpo,
                                    nStates=nStates,targetState=targetState)
     # Update IterCnt and Energies
     iterCnt += 1
-    return (N,E,Eloc,EE,EEs,vecs,mps,mpo,env,S,cont,conv,iterCnt,fidelity)
+    return (N,E,gap,Eloc,EE,EEs,vecs,mps,mpo,env,S,cont,conv,iterCnt,fidelity)
 
 def run_iters(mps,mpo,env,mpsl=None,mpol=None,envl=None,
               mbd=10,maxIter=100,minIter=None,
@@ -224,17 +231,17 @@ def run_iters(mps,mpo,env,mpsl=None,mpol=None,envl=None,
                              iterCnt=0,maxIter=maxIter,
                              minIter=minIter,targetState=targetState,
                              nStates=nStates,tol=tol,alg=alg,mbd=mbd,left=False)
-        (N,E,Eloc,EE,EEs,_,mps,_,env,S,cont,conv,iterCnt,fid) = output
+        (N,E,gap,Eloc,EE,EEs,_,mps,_,env,S,cont,conv,iterCnt,fid) = output
         if calcLeftState:
             outputl = single_iter(2,mpsl,mpolEdge,
                                   envl,None,0.,1.e10,
                                   iterCnt=0,maxIter=maxIter,
                                   minIter=minIter,targetState=targetState,
                                   nStates=nStates,tol=tol,alg=alg,mbd=mbd,left=True)
-            (Nl,El,Elocl,EEl,EEsl,_,mpsl,_,envl,Sl,contl,convl,iterCntl,fidl) = outputl
+            (Nl,El,gapl,Elocl,EEl,EEsl,_,mpsl,_,envl,Sl,contl,convl,iterCntl,fidl) = outputl
         if callFunc is not None:
             printStr = callFunc(output,outputl)
-        print('N={}\tEnergy = {:f}\tLocal E={:f}\tdiff={:e}\tfidelity={:e}\tEE={:f}'.format(N,np.real(E/N),np.real(Eloc),np.real(np.abs(E/N-E_prev/N)),1.-fid,EE)+printStr)
+        print('N={}\tEnergy = {:f}\tGap = {:.15f}\tLocal E={:f}\tdiff={:e}\tfidelity={:e}\tEE={:f}'.format(N,np.real(E/N),np.real(gap),np.real(Eloc),np.real(np.abs(E/N-E_prev/N)),1.-fid,EE)+printStr)
 
     # Run iterations
     cont = True
@@ -249,7 +256,7 @@ def run_iters(mps,mpo,env,mpsl=None,mpol=None,envl=None,
                              iterCnt=iterCnt,maxIter=maxIter,
                              minIter=minIter,targetState=targetState,
                              nStates=nStates,tol=tol,alg=alg,mbd=mbd,left=False)
-        (N,E,Eloc,EE,EEs,_,mps,_,env,S,cont,conv,iterCnt,fid) = output
+        (N,E,gap,Eloc,EE,EEs,_,mps,_,env,S,cont,conv,iterCnt,fid) = output
         if calcLeftState:
             # Increase System Size
             Nl += 2
@@ -259,21 +266,16 @@ def run_iters(mps,mpo,env,mpsl=None,mpol=None,envl=None,
                                  iterCnt=iterCntl,maxIter=maxIter,
                                  minIter=minIter,targetState=targetState,
                                  nStates=nStates,tol=tol,alg=alg,mbd=mbd,left=True)
-            (Nl,El,Elocl,EEl,EEsl,_,mpsl,_,envl,Sl,contl,convl,iterCntl,fidl) = outputl
+            (Nl,El,gapl,Elocl,EEl,EEsl,_,mpsl,_,envl,Sl,contl,convl,iterCntl,fidl) = outputl
         if callFunc is not None:
             printStr = callFunc(output,outputl)
-        print('N={}\tEnergy = {:f}\tLocal E={:f}\tdiff={:e}\tfidelity={:e}\tEE={:f}'.format(N,np.real(E/N),np.real(Eloc),np.real(np.abs(E/N-E_prev/N)),1.-fid,EE)+printStr)
+        print('N={:.0f}\tEnergy = {:.15f}\tGap = {:.15f}\tLocal E={:.15f}\tdiff={:.15e}\tfidelity={:.15e}\tEE={:.15f}'.format(N,np.real(E/N),np.real(gap),np.real(Eloc),np.real(np.abs(E/N-E_prev/N)),1.-fid,EE)+printStr)
 
     # Save Resulting MPS
     save_mps(mps,fname,gaugeSite=0)
     if calcLeftState: save_mps(mpsl,fname+'_left',gaugeSite=0)
 
     # Determine which vars to return
-    if nStates != 1: 
-        gap = E[0]-E[1]
-        if calcLeftState: gapl = El[0]-El[1]
-    else:
-        gap,gapl = None,None
     if hasattr(E,'__len__'): E = E[targetState]
     printResults(conv,E,EE,EEs,gap)
     if calcLeftState: printResults(convl,El,EEl,EEsl,gapl,left=True)

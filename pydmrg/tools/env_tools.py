@@ -32,6 +32,8 @@ def update_envL(M,W,F,site,Ml=None):
             F[mpoInd][site] = einsum('bacy,bxc->xya',tmp1,Ml[site])
         else:
             tmp1 = einsum('eaf,cdf->eacd',M[site],F[mpoInd][site+1])
+            (n1,n2,n3,n4) = tmp1.shape
+            (n5,n6,n7,n8) = W[mpoInd][site].shape
             tmp2 = einsum('eacd,ydbe->acyb',tmp1,W[mpoInd][site])
             F[mpoInd][site] = einsum('acyb,bxc->xya',tmp2,Ml[site])
     return F

@@ -11,10 +11,10 @@ N = int(argv[1])
 p = 0.1 
 mbd = int(argv[2]) # Can only be a single value currently
 # Set up bias
-ds0 = [0.0001,0.001,0.01,0.01]
-ds_change = [0.1,0.2,0.3,0.4]
+ds0 = [0.1,0.001,0.01,0.01]
+ds_change = [0.0,0.1,0.2,0.3,0.4]
 s_symm = -(N-1.)/(2.*(N+1.))*np.log(p/(1.-p))
-s0 = -0.0
+s0 = -0.5
 sF = 0.5 #s_symm #+ (s_symm - s0)
 s_thresh = 1000
 # Jumping Rates
