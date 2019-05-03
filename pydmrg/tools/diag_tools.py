@@ -285,7 +285,7 @@ def calc_eigs_davidson(mpsL,W,F,site,
         else:
             guess.append(np.reshape(einsum('ijk,lkm->iljm',mpsL[state][site],mpsL[state][site+1]),-1))
     # Run eigensolver
-    vals,vecso = davidson(Hfun,guess,precond,nroots=nStatesCalc,pick=pick_eigs,follow_state=False,tol=1e-30,max_cycle=10000)
+    vals,vecso = davidson(Hfun,guess,precond,nroots=nStatesCalc,pick=pick_eigs,follow_state=False,tol=1e-10,max_cycle=10000)
     # Process and sort results
     sort_inds = np.argsort(np.real(vals))
     try: # Returns vector or list of vectors depending on number of states

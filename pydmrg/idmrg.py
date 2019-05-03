@@ -116,7 +116,7 @@ def make_next_guess_slow(mps,Sl,Slm,mbd=10,targetState=0):
         mps[state][1] = np.pad(mps[state][1],((0,0),(0,min(mbd,n5_*n4)-n5),(0,min(mbd,n5_)-n6)),'constant')
     return mps,lambdaL
 
-def make_next_guess(mps,Sl,Slm,mbd=10,method='efficient'):
+def make_next_guess(mps,Sl,Slm,mbd=10,method='slow'):
     if method == 'slow':
         return make_next_guess_slow(mps,Sl,Slm,mbd=mbd)
     else:
@@ -134,13 +134,14 @@ def calc_conv_fidelity(lL,l):
     fidelity = np.sum(S)
     return fidelity
 
-def checkConv(lambdaL,S,iterCnt,
+def checkConv(lambdaL,S,iterCnt,E,Eprev,
               tol=1e-10,maxIter=100,minIter=None,
               nStates=1,targetState=0):
     # Get fidelity of rdms
     fidelity = calc_conv_fidelity(lambdaL,S)
     # Check for convergence
-    if (np.abs(fidelity-1.) < tol) and (iterCnt > minIter-3):
+    #if (np.abs(fidelity-1.) < tol) and (iterCnt > minIter-3):
+    if (np.abs(E-Eprev)/E < tol) and (iterCnt > minIter-3):
         cont = False
         conv = True
     elif iterCnt > maxIter - 1:
@@ -168,7 +169,7 @@ def calc_local_energy(vecs,mpo,env,state=0):
     return Eloc
 
 def single_iter(N,mps,mpo,
-                env,Sprev,E_prev,
+                env,Sprev,E_prev,Eloc_prev,
                 iterCnt=0,maxIter=1000,
                 minIter=10,targetState=0,local_energy=True,
                 nStates=1,tol=1e-10,alg='davidson',mbd=10,firstIter=False,
@@ -186,7 +187,7 @@ def single_iter(N,mps,mpo,
     if Sprev is None: Sprev = S
     mps,lambdaL = make_next_guess(mps,S,Sprev,mbd=mbd)
     # Check for convergence
-    cont,conv,fidelity = checkConv(lambdaL,Sprev,iterCnt,
+    cont,conv,fidelity = checkConv(lambdaL,Sprev,iterCnt,Eloc,Eloc_prev,
                                    tol=tol,maxIter=maxIter,minIter=minIter,
                                    nStates=nStates,targetState=targetState)
     # Update IterCnt and Energies
@@ -219,14 +220,14 @@ def run_iters(mps,mpo,env,mpsl=None,mpol=None,envl=None,
     E_prev = 0
     if True: # PH - Find way to determine if we have a new environment
         output = single_iter(2,mps,mpoEdge,
-                             env,None,0.,
+                             env,None,0.,1.e10,
                              iterCnt=0,maxIter=maxIter,
                              minIter=minIter,targetState=targetState,
                              nStates=nStates,tol=tol,alg=alg,mbd=mbd,left=False)
         (N,E,Eloc,EE,EEs,_,mps,_,env,S,cont,conv,iterCnt,fid) = output
         if calcLeftState:
             outputl = single_iter(2,mpsl,mpolEdge,
-                                  envl,None,0.,
+                                  envl,None,0.,1.e10,
                                   iterCnt=0,maxIter=maxIter,
                                   minIter=minIter,targetState=targetState,
                                   nStates=nStates,tol=tol,alg=alg,mbd=mbd,left=True)
@@ -244,7 +245,7 @@ def run_iters(mps,mpo,env,mpsl=None,mpol=None,envl=None,
         E_prev = E
         # Run single update
         output = single_iter(N,mps,mpoBulk,
-                             env,S,E,
+                             env,S,E,Eloc,
                              iterCnt=iterCnt,maxIter=maxIter,
                              minIter=minIter,targetState=targetState,
                              nStates=nStates,tol=tol,alg=alg,mbd=mbd,left=False)
@@ -254,7 +255,7 @@ def run_iters(mps,mpo,env,mpsl=None,mpol=None,envl=None,
             Nl += 2
             # Run single update
             outputl = single_iter(Nl,mpsl,mpolBulk,
-                                 envl,Sl,El,
+                                 envl,Sl,El,Elocl,
                                  iterCnt=iterCntl,maxIter=maxIter,
                                  minIter=minIter,targetState=targetState,
                                  nStates=nStates,tol=tol,alg=alg,mbd=mbd,left=True)
@@ -290,7 +291,7 @@ def run_iters(mps,mpo,env,mpsl=None,mpol=None,envl=None,
     return output,outputl
 
 def run_idmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
-             tol=1e-16,maxIter=1000,minIter=10,fname=None,
+             tol=1e-10,maxIter=1000,minIter=10,fname=None,
              nStates=1,targetState=0,alg='davidson',
              preserveState=False,edgePreserveState=False,
              returnState=False,returnEnv=False,

@@ -4,7 +4,7 @@ import time
 import os
 
 # Set Calculation Parameters
-mbd = 6 # Can only be a single value currently
+mbd = np.array([40,50,60,70,80,90,100,120,140,160,180,200,250,300,350,400,500])
 
 # Jumping Rates
 p = 0.1
@@ -69,10 +69,11 @@ def callFunc(output,outputl):
 # Run Optimizaton
 Etmp,EEtmp,gaptmp = run_idmrg(mpo,
                                  mbd=mbd,
-                                 minIter = 1,
-                                 maxIter = 1000,
+                                 minIter = 50,
+                                 maxIter = 500,
                                  fname=fname+'s0',
                                  nStates=nStates,
                                  alg=alg,
                                  callFunc=callFunc,
+                                 tol=1e-8,
                                  calcLeftState=leftState)
