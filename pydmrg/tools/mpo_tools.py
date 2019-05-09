@@ -5,7 +5,6 @@ def mpo2mat(mpo):
     N = len(mpo[0])
     mat = np.zeros((2**N,2**N))
     for i in range(2**N):
-        print('Percent Complete = {}'.format(i/(2**N)*100))
         i_occ = list(map(lambda x: int(x),'0'*(N-len(bin(i)[2:]))+bin(i)[2:]))
         for j in range(2**N):
             j_occ = list(map(lambda x: int(x),'0'*(N-len(bin(j)[2:]))+bin(j)[2:]))
