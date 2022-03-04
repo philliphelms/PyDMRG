@@ -1,5 +1,6 @@
 import numpy as np
-from pyscf.lib import einsum
+#from pyscf.lib import einsum
+einsum = np.einsum
 from tools.mps_tools import conj_mps
 
 def alloc_env(M,W,mbd):
@@ -9,7 +10,7 @@ def alloc_env(M,W,mbd):
     for mpoInd in range(len(W)):
         if W[mpoInd][0] is not None:
             _,mbdW,_,_ = W[mpoInd][0].shape
-        else: 
+        else:
             mbdW = 1
         F = []
         F.append(np.array([[[1]]]))

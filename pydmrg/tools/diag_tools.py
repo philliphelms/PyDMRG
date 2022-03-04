@@ -1,7 +1,9 @@
 import numpy as np
 import scipy.linalg as sla
-from pyscf.lib import einsum
-from pyscf.lib import eig as davidson
+#from pyscf.lib import einsum
+#from pyscf.lib import eig as davidson
+einsum = np.einsum
+from tools.la_tools import eig as davidson
 from scipy.sparse.linalg import eigs as arnoldi
 from scipy.sparse.linalg import LinearOperator
 from tools.mps_tools import *
@@ -68,7 +70,7 @@ def calc_ham(M,W,F,site,oneSite=True):
 
 def check_overlap(Mprev,vecs,E,preserveState=False,printStates=False,allowSwap=True,reuseOldState=True):
     vecShape = vecs.shape
-    if len(vecShape) == 1: 
+    if len(vecShape) == 1:
         nVecs = 1
         vecs = np.swapaxes(np.array([vecs]),0,1)
     else: _,nVecs = vecShape

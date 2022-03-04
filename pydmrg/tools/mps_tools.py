@@ -1,5 +1,6 @@
 import numpy as np
-from pyscf.lib import einsum
+#from pyscf.lib import einsum
+einsum = np.einsum
 import scipy.linalg as sla
 import copy
 import h5py
@@ -20,7 +21,7 @@ def calc_ent_right(M,v,site):
     (_,S,_) = np.linalg.svd(M_reshape,full_matrices=False)
     EE,EEs = calc_entanglement(S)
     print('\t\tEE = {}'.format(EE))
-    return EE, EEs 
+    return EE, EEs
 
 def calc_ent_left(M,v,site):
     (n1,n2,n3) = M[site].shape
@@ -370,7 +371,7 @@ def save_mps_hdf5(mpsL,fname,gaugeSite=0,comp_opts=4):
             for site in range(nSites):
                 stateGroup.create_dataset('M'+str(site)+'/real',data=np.real(mpsL[state][site]),compression='gzip',compression_opts=comp_opts)
                 stateGroup.create_dataset('M'+str(site)+'/imag',data=np.imag(mpsL[state][site]),compression='gzip',compression_opts=comp_opts)
-            
+
 
 def save_mps(mpsL,fname,gaugeSite=0,fformat='hdf5',comp_opts=4):
     if fname is not None:

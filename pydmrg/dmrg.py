@@ -1,7 +1,9 @@
 import numpy as np
 import scipy.linalg as sla
-from pyscf.lib import eig as davidson
-from pyscf.lib import einsum
+from tools.la_tools import eig as davidson
+#from pyscf.lib import eig as davidson
+#from pyscf.lib import einsum
+einsum = np.einsum
 from scipy.sparse.linalg import eigs as arnoldi
 from scipy.sparse.linalg import LinearOperator
 from tools.mps_tools import *
@@ -52,7 +54,7 @@ def renormalizeR(mpsL,v,site,nStates=1,targetState=0):
     _,nStatesCalc = v.shape
     nStatesAvg = min(nStates,nStatesCalc)
     for i in range(nStatesAvg):
-        if nStatesAvg != 1: 
+        if nStatesAvg != 1:
             vtmp = v[:,i]
         else:
             vtmp  = v
@@ -96,18 +98,18 @@ def renormalizeL(mpsL,v,site,nStates=1,targetState=0):
     _,nStatesCalc = v.shape
     nStatesAvg = min(nStates,nStatesCalc)
     for i in range(nStatesAvg):
-        if nStatesAvg != 1: 
+        if nStatesAvg != 1:
             vtmp = v[:,i]
-        else: 
+        else:
             vtmp = v
         vReshape = np.reshape(vtmp,(n1,n2,n3))
         w = 1./float(nStatesAvg)
         if i == 0:
-            rdm = w*calcRDM(vReshape,'left') 
+            rdm = w*calcRDM(vReshape,'left')
         else:
             rdm +=w*calcRDM(vReshape,'left')
     # Take eigenvalues of the rdm
-    vals,vecs = np.linalg.eig(rdm) 
+    vals,vecs = np.linalg.eig(rdm)
     # Sort inds
     inds = np.argsort(vals)[::-1]
     # Keep only maxBondDim eigenstates
@@ -274,7 +276,7 @@ def run_sweeps(mpsL,W,F,initGuess=None,maxIter=0,minIter=None,
                                         preserveState=preserveState,
                                         endSite=gaugeSiteSave,
                                         orthonormalize=orthonormalize)
-        # Do final calculation 
+        # Do final calculation
         _,v,_ = calc_eigs(mpsL,W,F,gaugeSiteSave,
                          nStates,
                          alg=alg,
@@ -289,7 +291,7 @@ def run_sweeps(mpsL,W,F,initGuess=None,maxIter=0,minIter=None,
             E,EE,EEs = _E,_EE,_EEs
     save_mps(mpsL,fname,gaugeSite=gaugeSiteSave)
     #EE,EEs = observable_sweep(M,F)
-    if nStates != 1: 
+    if nStates != 1:
         gap = E[0]-E[1]
     else:
         gap = None
@@ -316,7 +318,7 @@ def run_dmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
 
     # Set to save MPS at center site as default
     if gaugeSiteSave is None: gaugeSiteSave = int(N/2)+1
-    
+
     # Check Data Structures to make sure they are correct
     if not hasattr(mbd,'__len__'): mbd = np.array([mbd])
     if not hasattr(tol,'__len__'):
@@ -371,7 +373,7 @@ def run_dmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
                     if constant_mbd: mps = increase_mbd(mpslList,mbdi,constant=True)
                     glSite = 0
         else: # PH - Should check if it is a sting here and add the additional possibility that the input is an mpsList
-            # Load user provided MPS guess    
+            # Load user provided MPS guess
             if mbdInd == 0:
                 # Load user provided MPS Guess
                 mpsList,gSite = load_mps(initGuess+'_mbd'+str(mbdInd))
@@ -387,7 +389,7 @@ def run_dmrg(mpo,initEnv=None,initGuess=None,mbd=[2,4,8,16],
                     mpslList = increase_all_mbd(mpslList,mbdi)
 
         # Calc environment (or load if provided)
-        if initEnv is None: 
+        if initEnv is None:
             env = calc_env(mpsList[0],mpo,mbdi,gaugeSite=gSite)
             if calcLeftState: envl = calc_env(mpslList[0],mpol,mbdi,gaugeSite=glSite)
         else:
